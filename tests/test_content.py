@@ -131,6 +131,25 @@ class ContentTests(unittest.TestCase):
         self.assertFalse((data / "missing").exists())
         self.assertFalse(any(path.name.startswith(".missing.install-") for path in data.iterdir()))
 
+    def test_interrupted_empty_git_init_is_replaced_atomically(self) -> None:
+        source, ref = self._git_fixture()
+        spec = ContentSpec.from_mapping({
+            "id": "fixture", "label": "Fixture",
+            "source": {"type": "git", "repository": str(source), "ref": ref},
+            "binary": "fixture",
+        })
+        data = self.root / "data"
+        interrupted = data / "fixture"
+        interrupted.mkdir(parents=True)
+        run("git", "init", "--quiet", cwd=interrupted)
+
+        installer = Installer(str(data), env=dict(os.environ, GIT_ALLOW_PROTOCOL="file"))
+        executable = installer.ensure(spec)
+
+        self.assertEqual(executable, str(interrupted / "fixture"))
+        self.assertEqual(run("git", "rev-parse", "HEAD", cwd=interrupted), ref)
+        self.assertFalse(any(path.name.startswith(".fixture.install-") for path in data.iterdir()))
+
     def test_archive_extractors_reject_traversal_and_links(self) -> None:
         destination = self.root / "out"
         destination.mkdir()
@@ -169,4 +188,3 @@ class ContentTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

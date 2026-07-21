@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kilix-content"
-version = "0.1.0"
+version = "0.1.1"
 description = "Pinned user-level content catalog and installer for Kilix"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -25,4 +25,3 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 kilix_content = ["catalog/*.json"]
-

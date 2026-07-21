@@ -77,7 +77,7 @@ def download(urls: str | Iterable[str], destination: str, report: Report = lambd
                 actual = sha256_file(destination)
                 if actual != expected_sha256:
                     raise InstallError(
-                        f"checksum mismatch for {url}: expected {expected_sha256}, got {actual}")
+                        f"sha256 mismatch for {url}: expected {expected_sha256}, got {actual}")
             return destination
         except Exception as exc:
             last_error = exc
@@ -191,6 +191,14 @@ class Installer:
         if status.returncode != 0 or status.stdout.strip():
             raise InstallError(f"refusing modified managed checkout: {destination}")
         origin = _run(["git", "config", "--get", "remote.origin.url"], cwd=destination)
+        head = _run(["git", "rev-parse", "--verify", "HEAD"], cwd=destination)
+        if head.returncode != 0:
+            # An interrupted first-time `git init` has no selected source and
+            # is safe to replace when it is otherwise empty.  A configured
+            # origin, if present, must still be the catalog origin.
+            if origin.returncode == 0 and origin.stdout.strip() != spec.repository:
+                raise InstallError(f"refusing checkout with an unexpected origin: {destination}")
+            return
         if origin.returncode != 0 or origin.stdout.strip() != spec.repository:
             raise InstallError(f"refusing checkout with an unexpected origin: {destination}")
 
