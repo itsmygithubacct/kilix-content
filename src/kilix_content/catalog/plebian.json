@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "content": [
+    {
+      "id": "doom",
+      "label": "Doom",
+      "kind": "game",
+      "icon": "doom",
+      "description": "The official shareware episode, run through DOSBox.",
+      "source": {"type": "custom"},
+      "capabilities": ["dosbox", "x11-app", "audio"],
+      "launch": {"mode": "run", "preferred_size": "640x400"}
+    },
+    {
+      "id": "dosbox",
+      "label": "DOSBox",
+      "kind": "app",
+      "icon": "dosbox",
+      "description": "An MS-DOS prompt hosted in a private Kilix display.",
+      "source": {"type": "custom"},
+      "capabilities": ["x11-app", "audio"],
+      "launch": {"mode": "run", "preferred_size": "640x400"}
+    },
+    {
+      "id": "bashed-earth",
+      "label": "Bashed Earth",
+      "kind": "game",
+      "icon": "tank",
+      "description": "A deterministic terminal artillery game.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/Bashed-Earth",
+        "ref": "51436f176abefc6549cff3b15b816e5d2922598b"
+      },
+      "binary": "bashed-earth",
+      "build": ["make"],
+      "dependency_hint": "needs a C compiler, make, and zlib",
+      "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
+      "launch": {"mode": "terminal"}
+    },
+    {
+      "id": "kilix-jpak",
+      "label": "Kilix JPAK",
+      "kind": "game",
+      "icon": "kilix-jpak",
+      "description": "A one-hundred-vault action-puzzle game.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-jpak",
+        "ref": "1dbbbaf0a37d9aa4ec33500fce5771d51aeb3fb1"
+      },
+      "binary": "kilix-jpak",
+      "build": ["make"],
+      "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
+      "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
+      "launch": {"mode": "terminal"}
+    },
+    {
+      "id": "joustix",
+      "label": "Joustix",
+      "kind": "game",
+      "icon": "joustix",
+      "description": "A flying-joust arcade game.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/joustix",
+        "ref": "34eb4a19b159958d79f12167ade239410db5bbbe"
+      },
+      "binary": "joustix",
+      "build": ["make"],
+      "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
+      "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
+      "launch": {"mode": "terminal"}
+    },
+    {
+      "id": "chess-bash",
+      "label": "Chess Bash",
+      "kind": "game",
+      "icon": "chess-bash",
+      "description": "Animated isometric chess with local audio.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/chess-bash",
+        "ref": "f32688aed462b8869c6da109e8ffb5a5aa1072a5"
+      },
+      "binary": "chess-bash",
+      "build": ["make"],
+      "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
+      "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
+      "launch": {"mode": "terminal"}
+    },
+    {
+      "id": "kilix-fishtank",
+      "label": "Kilix Fishtank",
+      "kind": "game",
+      "icon": "fishtank",
+      "description": "An arcade-style virtual aquarium.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-fishtank",
+        "ref": "40c3d663987a430f15feeb2c917979c8f6345e2e"
+      },
+      "binary": "kilix-fishtank",
+      "build": ["make"],
+      "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
+      "capabilities": ["kitty-graphics", "kitty-keyboard", "kitty-mouse", "audio"],
+      "launch": {"mode": "terminal"}
+    },
+    {
+      "id": "terminal-lander",
+      "label": "Terminal Lander",
+      "kind": "game",
+      "icon": "lander",
+      "description": "A Kitty-graphics lunar lander.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/terminal_lander",
+        "ref": "6a9415e61df1946a7951a7a1f80a46b49e9e68c2"
+      },
+      "binary": "terminal-lander",
+      "build": ["make"],
+      "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
+      "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
+      "launch": {"mode": "terminal"}
+    },
+    {
+      "id": "kitty-brokeout",
+      "label": "Kitty Brokeout",
+      "kind": "game",
+      "icon": "brokeout",
+      "description": "A Kitty-graphics brick breaker.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kitty-brokeout",
+        "ref": "d7d98e04f1b8155283886416bafa3373f5aebc70"
+      },
+      "binary": "kitty-brokeout",
+      "build": ["make"],
+      "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
+      "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
+      "launch": {"mode": "terminal"}
+    },
+    {
+      "id": "kilix-amp",
+      "label": "Kilix Amp",
+      "kind": "app",
+      "icon": "amp",
+      "description": "A compact skinnable music player.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-amp",
+        "ref": "8937c3671ed50a16f2541d73506e207f8b3471bb"
+      },
+      "binary": "kilix-amp",
+      "build": ["make"],
+      "dependency_hint": "needs SDL2, SDL2_image, libsndfile, zlib, and FluidSynth development files",
+      "capabilities": ["x11-app", "audio", "clipboard"],
+      "launch": {"mode": "xpane", "preferred_size": "600x360"}
+    }
+  ]
+}
+
