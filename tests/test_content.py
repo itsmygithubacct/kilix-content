@@ -44,8 +44,11 @@ class ContentTests(unittest.TestCase):
 
     def test_packaged_catalog_is_valid_and_immutable(self) -> None:
         catalog = default_catalog()
-        self.assertGreaterEqual(len(catalog), 10)
+        self.assertGreaterEqual(len(catalog), 12)
         self.assertEqual(catalog.require("kilix-jpak").launch_mode, "terminal")
+        self.assertEqual(catalog.require("kilix-rancher").binary,
+                         "kilix-rancher")
+        self.assertEqual(catalog.require("kilix-pong").icon, "pong")
         self.assertEqual(catalog.require("kilix-amp").launch_mode, "xpane")
         for entry in catalog:
             if entry.source_type == "git":

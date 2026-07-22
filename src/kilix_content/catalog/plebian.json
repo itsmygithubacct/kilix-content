@@ -56,6 +56,40 @@
       "launch": {"mode": "terminal"}
     },
     {
+      "id": "kilix-rancher",
+      "label": "Kilix Rancher",
+      "kind": "game",
+      "icon": "rancher",
+      "description": "Raise a fire-kitten and compete in real-time arena battles.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-rancher",
+        "ref": "3e56cafa590fb7a54b52adcb64ab9ff9154352ff"
+      },
+      "binary": "kilix-rancher",
+      "build": ["make"],
+      "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
+      "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
+      "launch": {"mode": "terminal"}
+    },
+    {
+      "id": "kilix-pong",
+      "label": "Kilix Pong",
+      "kind": "game",
+      "icon": "pong",
+      "description": "A deterministic one-player or local two-player paddle-ball game.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-pong",
+        "ref": "35234c85b07ab64100f27c44dc9d98b23e4534b7"
+      },
+      "binary": "kilix-pong",
+      "build": ["make"],
+      "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
+      "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
+      "launch": {"mode": "terminal"}
+    },
+    {
       "id": "joustix",
       "label": "Joustix",
       "kind": "game",
@@ -159,4 +193,3 @@
     }
   ]
 }
-
