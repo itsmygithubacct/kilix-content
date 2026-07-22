@@ -49,6 +49,9 @@ class ContentTests(unittest.TestCase):
         self.assertEqual(catalog.require("kilix-rancher").binary,
                          "kilix-rancher")
         self.assertEqual(catalog.require("kilix-pong").icon, "pong")
+        lights = catalog.require("kilix-lights")
+        self.assertEqual(lights.binary, "bin/kilix-lights")
+        self.assertIn("kitty-mouse", lights.capabilities)
         self.assertEqual(catalog.require("kilix-amp").launch_mode, "xpane")
         for entry in catalog:
             if entry.source_type == "git":

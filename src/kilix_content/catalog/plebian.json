@@ -90,6 +90,23 @@
       "launch": {"mode": "terminal"}
     },
     {
+      "id": "kilix-lights",
+      "label": "Kilix Lights",
+      "kind": "game",
+      "icon": "lights",
+      "description": "A full-color Lights Out puzzle in a retro electrical workshop.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-lights",
+        "ref": "b38d2cdedc9b0e10db38692c7efaf32a08dec4bf"
+      },
+      "binary": "bin/kilix-lights",
+      "build": ["make"],
+      "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
+      "capabilities": ["kitty-graphics", "kitty-keyboard", "kitty-mouse", "audio"],
+      "launch": {"mode": "terminal"}
+    },
+    {
       "id": "joustix",
       "label": "Joustix",
       "kind": "game",
