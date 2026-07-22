@@ -30,7 +30,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/Bashed-Earth",
-        "ref": "51436f176abefc6549cff3b15b816e5d2922598b"
+        "ref": "5bab724bc507fe960a971a4661be0767466f2748"
       },
       "binary": "bashed-earth",
       "build": ["make"],
@@ -47,7 +47,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-jpak",
-        "ref": "1dbbbaf0a37d9aa4ec33500fce5771d51aeb3fb1"
+        "ref": "7baa36847e3d2a11570b525c75ba271616bdbb8e"
       },
       "binary": "kilix-jpak",
       "build": ["make"],
@@ -64,7 +64,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-rancher",
-        "ref": "3e56cafa590fb7a54b52adcb64ab9ff9154352ff"
+        "ref": "88215ad25652254443fcf03ddce6043a34e2efec"
       },
       "binary": "kilix-rancher",
       "build": ["make"],
@@ -81,7 +81,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-pong",
-        "ref": "35234c85b07ab64100f27c44dc9d98b23e4534b7"
+        "ref": "506fdfbf4a735132df2c04a08c624f4ed696337c"
       },
       "binary": "kilix-pong",
       "build": ["make"],
@@ -98,7 +98,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/joustix",
-        "ref": "34eb4a19b159958d79f12167ade239410db5bbbe"
+        "ref": "c071f8230a527bc3e535ef5b55dddf9aebbea9b2"
       },
       "binary": "joustix",
       "build": ["make"],
@@ -115,7 +115,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/chess-bash",
-        "ref": "f32688aed462b8869c6da109e8ffb5a5aa1072a5"
+        "ref": "9220fde5af4c6910ec6eeec32d1c47185f84d609"
       },
       "binary": "chess-bash",
       "build": ["make"],
@@ -132,7 +132,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-fishtank",
-        "ref": "40c3d663987a430f15feeb2c917979c8f6345e2e"
+        "ref": "2ae6049a4ebc575432623e137777855dc007c3c6"
       },
       "binary": "kilix-fishtank",
       "build": ["make"],
@@ -149,7 +149,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/terminal_lander",
-        "ref": "6a9415e61df1946a7951a7a1f80a46b49e9e68c2"
+        "ref": "669ee105978cd2f8e8db2ac939cffae4f5efae5d"
       },
       "binary": "terminal-lander",
       "build": ["make"],
@@ -166,7 +166,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kitty-brokeout",
-        "ref": "d7d98e04f1b8155283886416bafa3373f5aebc70"
+        "ref": "c77bfd14ea7b654822a6f0267ed690622a61bbfa"
       },
       "binary": "kitty-brokeout",
       "build": ["make"],
