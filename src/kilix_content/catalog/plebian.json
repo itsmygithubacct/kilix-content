@@ -107,6 +107,23 @@
       "launch": {"mode": "terminal"}
     },
     {
+      "id": "super-kilix",
+      "label": "Super Kilix",
+      "kind": "game",
+      "icon": "super-kilix",
+      "description": "An original side-scrolling platformer starring Kilix.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/super-kilix",
+        "ref": "519e93b4372ccaa866ce6e18ea1835b201975f5a"
+      },
+      "binary": "super-kilix",
+      "build": ["make"],
+      "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
+      "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
+      "launch": {"mode": "terminal"}
+    },
+    {
       "id": "joustix",
       "label": "Joustix",
       "kind": "game",
