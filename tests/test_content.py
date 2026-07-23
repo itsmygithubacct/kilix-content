@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import errno
 import hashlib
 import io
 import json
@@ -9,6 +10,7 @@ import subprocess
 import tarfile
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 
@@ -27,6 +29,7 @@ from kilix_content import (  # noqa: E402
     safe_extract_tar,
     safe_extract_zip,
 )
+from kilix_content.install import _rename_exchange  # noqa: E402
 
 
 def run(*argv: str, cwd: Path) -> str:
@@ -155,6 +158,48 @@ class ContentTests(unittest.TestCase):
         self.assertEqual(executable, str(interrupted / "fixture"))
         self.assertEqual(run("git", "rev-parse", "HEAD", cwd=interrupted), ref)
         self.assertFalse(any(path.name.startswith(".fixture.install-") for path in data.iterdir()))
+
+    def test_replacement_uses_exchange_without_hiding_destination(self) -> None:
+        data = self.root / "data"
+        destination = data / "fixture"
+        stage = data / ".fixture.install-test"
+        destination.mkdir(parents=True)
+        stage.mkdir()
+        (destination / "value").write_text("old")
+        (stage / "value").write_text("new")
+        installer = Installer(str(data))
+        observations: list[bool] = []
+
+        def observed_exchange(first: str, second: str) -> None:
+            observations.append(os.path.isdir(second))
+            _rename_exchange(first, second)
+            observations.append(os.path.isdir(second))
+
+        with mock.patch("kilix_content.install._rename_exchange",
+                        side_effect=observed_exchange):
+            installer._replace_stage(str(stage), str(destination))
+
+        self.assertEqual(observations, [True, True])
+        self.assertEqual((destination / "value").read_text(), "new")
+        self.assertFalse(stage.exists())
+
+    def test_failed_exchange_preserves_selected_destination(self) -> None:
+        data = self.root / "data"
+        destination = data / "fixture"
+        stage = data / ".fixture.install-test"
+        destination.mkdir(parents=True)
+        stage.mkdir()
+        (destination / "value").write_text("old")
+        (stage / "value").write_text("new")
+        installer = Installer(str(data))
+
+        with mock.patch("kilix_content.install._rename_exchange",
+                        side_effect=OSError(errno.ENOSYS, "unsupported")):
+            with self.assertRaises(InstallError):
+                installer._replace_stage(str(stage), str(destination))
+
+        self.assertEqual((destination / "value").read_text(), "old")
+        self.assertEqual((stage / "value").read_text(), "new")
 
     def test_archive_extractors_reject_traversal_and_links(self) -> None:
         destination = self.root / "out"

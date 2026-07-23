@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import ctypes
+import errno
 import hashlib
 import os
 import shutil
@@ -18,9 +20,32 @@ from .model import ContentSpec
 
 Report = Callable[[str], None]
 
+_AT_FDCWD = -100
+_RENAME_EXCHANGE = 2
+
 
 class InstallError(RuntimeError):
     """A content install failed without selecting a partial result."""
+
+
+def _rename_exchange(first: str, second: str) -> None:
+    """Atomically exchange two filesystem entries using Linux renameat2."""
+    libc = ctypes.CDLL(None, use_errno=True)
+    try:
+        renameat2 = libc.renameat2
+    except AttributeError as exc:
+        raise OSError(errno.ENOSYS, "renameat2 is unavailable") from exc
+    renameat2.argtypes = [
+        ctypes.c_int, ctypes.c_char_p,
+        ctypes.c_int, ctypes.c_char_p,
+        ctypes.c_uint,
+    ]
+    renameat2.restype = ctypes.c_int
+    if renameat2(_AT_FDCWD, os.fsencode(first),
+                 _AT_FDCWD, os.fsencode(second),
+                 _RENAME_EXCHANGE) != 0:
+        error = ctypes.get_errno()
+        raise OSError(error, os.strerror(error), first, second)
 
 
 def sha256_file(path: str) -> str:
@@ -166,21 +191,20 @@ class Installer:
         raise InstallError(f"{spec.content_id} uses a non-installable {spec.source_type} source")
 
     def _replace_stage(self, stage: str, destination: str) -> None:
-        old: str | None = None
         if os.path.lexists(destination):
             if os.path.islink(destination) or not os.path.isdir(destination):
                 raise InstallError(f"refusing to replace non-directory content path: {destination}")
-            old = tempfile.mkdtemp(prefix=f".{os.path.basename(destination)}.old-", dir=self.root)
-            os.rmdir(old)
-            os.rename(destination, old)
-        try:
+            try:
+                _rename_exchange(stage, destination)
+            except OSError as exc:
+                raise InstallError(
+                    f"could not atomically replace content path: {destination}"
+                ) from exc
+            # The destination is never absent: stage now names the superseded
+            # tree, which can be removed after the atomic exchange.
+            shutil.rmtree(stage)
+        else:
             os.rename(stage, destination)
-        except Exception:
-            if old and not os.path.exists(destination):
-                os.rename(old, destination)
-            raise
-        if old:
-            shutil.rmtree(old)
 
     def _existing_git_is_replaceable(self, spec: ContentSpec, destination: str) -> None:
         if not os.path.exists(destination):
