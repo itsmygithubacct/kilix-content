@@ -29,7 +29,7 @@
       "description": "A deterministic terminal artillery game.",
       "source": {
         "type": "git",
-        "repository": "https://github.com/itsmygithubacct/Bashed-Earth",
+        "repository": "https://github.com/itsmygithubacct/bashed-earth",
         "ref": "5bab724bc507fe960a971a4661be0767466f2748"
       },
       "binary": "bashed-earth",
