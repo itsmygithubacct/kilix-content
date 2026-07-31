@@ -29,6 +29,10 @@ installer = Installer("/absolute/user/data/games")
 executable = installer.ready(game) or installer.ensure(game, print)
 ```
 
+Kilix Lander and Kilix Brokeout retain the catalog IDs `terminal-lander` and
+`kitty-brokeout`, respectively, so existing installations and preferences do
+not need migration.
+
 Applications with specialized licensed payloads can use a `custom` catalog
 entry while reusing `download()`, `safe_extract_tar()`, and
 `safe_extract_zip()` for their bounded setup procedure.
@@ -65,4 +69,3 @@ remain with Plebian-OS, the desktop provider, and each application.
 ## License
 
 MIT. See [LICENSE](LICENSE).
-

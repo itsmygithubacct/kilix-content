@@ -176,14 +176,14 @@
     },
     {
       "id": "terminal-lander",
-      "label": "Terminal Lander",
+      "label": "Kilix Lander",
       "kind": "game",
       "icon": "lander",
       "description": "A Kitty-graphics lunar lander.",
       "source": {
         "type": "git",
-        "repository": "https://github.com/itsmygithubacct/terminal_lander",
-        "ref": "669ee105978cd2f8e8db2ac939cffae4f5efae5d"
+        "repository": "https://github.com/itsmygithubacct/kilix-lander",
+        "ref": "7e799fd75d517898adf09e97f7fa0406a9d27bfc"
       },
       "binary": "terminal-lander",
       "build": ["make"],
@@ -193,14 +193,14 @@
     },
     {
       "id": "kitty-brokeout",
-      "label": "Kitty Brokeout",
+      "label": "Kilix Brokeout",
       "kind": "game",
       "icon": "brokeout",
       "description": "A Kitty-graphics brick breaker.",
       "source": {
         "type": "git",
-        "repository": "https://github.com/itsmygithubacct/kitty-brokeout",
-        "ref": "c77bfd14ea7b654822a6f0267ed690622a61bbfa"
+        "repository": "https://github.com/itsmygithubacct/kilix-brokeout",
+        "ref": "dcd624ac7a893e2d00f14e7ccfb97c11e162e8f0"
       },
       "binary": "kitty-brokeout",
       "build": ["make"],
