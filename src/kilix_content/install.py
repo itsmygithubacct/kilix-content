@@ -291,17 +291,27 @@ class Installer:
         return ready
 
     def _build(self, spec: ContentSpec, directory: str, report: Report) -> None:
+        detail = ""
         if spec.build:
             report(f"building {spec.label} …")
             result = _run(list(spec.build), cwd=directory, env=self.env)
+            detail = "\n".join(
+                output.strip()
+                for output in (result.stdout, result.stderr)
+                if output.strip()
+            )[-1000:]
             if result.returncode != 0:
-                detail = (result.stderr or result.stdout).strip()[-1000:]
                 hint = f" ({spec.dependency_hint})" if spec.dependency_hint else ""
                 raise InstallError(f"build failed{hint}: {detail}")
         executable = self.executable(spec, directory)
+        detail_suffix = f": {detail}" if detail else ""
         try:
             info = os.stat(executable, follow_symlinks=False)
         except OSError as exc:
-            raise InstallError(f"build produced no {spec.binary}") from exc
+            raise InstallError(
+                f"build produced no {spec.binary}{detail_suffix}"
+            ) from exc
         if not stat.S_ISREG(info.st_mode) or not os.access(executable, os.X_OK):
-            raise InstallError(f"build produced no runnable {spec.binary}")
+            raise InstallError(
+                f"build produced no runnable {spec.binary}{detail_suffix}"
+            )

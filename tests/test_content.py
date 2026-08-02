@@ -59,6 +59,8 @@ class ContentTests(unittest.TestCase):
         for entry in catalog:
             if entry.source_type == "git":
                 self.assertEqual(len(entry.ref), 40)
+            if entry.build[:1] == ("make",):
+                self.assertEqual(entry.build, ("make", "all"))
 
     def test_catalog_rejects_mutable_refs_paths_and_duplicates(self) -> None:
         base = {
@@ -139,6 +141,18 @@ class ContentTests(unittest.TestCase):
             installer.ensure(spec)
         self.assertFalse((data / "missing").exists())
         self.assertFalse(any(path.name.startswith(".missing.install-") for path in data.iterdir()))
+
+    def test_successful_build_without_artifact_reports_build_output(self) -> None:
+        spec = ContentSpec.from_mapping({
+            "id": "missing-output", "label": "Missing Output",
+            "source": {"type": "system"},
+            "binary": "missing-output",
+            "build": [sys.executable, "-c", "print('built only an internal archive')"],
+        })
+        installer = Installer(str(self.root / "data"))
+        with self.assertRaisesRegex(
+                InstallError, "built only an internal archive"):
+            installer._build(spec, str(self.root), lambda _message: None)
 
     def test_interrupted_empty_git_init_is_replaced_atomically(self) -> None:
         source, ref = self._git_fixture()

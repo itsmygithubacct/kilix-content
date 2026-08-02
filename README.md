@@ -41,9 +41,10 @@ entry while reusing `download()`, `safe_extract_tar()`, and
 
 The packaged `plebian.json` catalog uses schema version 1. Installable Git
 entries require an immutable commit, relative executable path, and optional
-build argv. Capabilities are declarative labels for the host; they are not
-commands or package names. Launch modes are `terminal`, `run`, `xpane`,
-`browse`, `window`, or `custom`.
+build argv. Make-based entries name `all` explicitly so an included dependency
+fragment cannot silently become the build's default target. Capabilities are
+declarative labels for the host; they are not commands or package names. Launch
+modes are `terminal`, `run`, `xpane`, `browse`, `window`, or `custom`.
 
 Catalog parsing rejects unknown source/launch modes, duplicate or unsafe IDs,
 mutable Git refs, malformed digests, absolute executable paths, and parent-path

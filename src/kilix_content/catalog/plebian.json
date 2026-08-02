@@ -33,7 +33,7 @@
         "ref": "5bab724bc507fe960a971a4661be0767466f2748"
       },
       "binary": "bashed-earth",
-      "build": ["make"],
+      "build": ["make", "all"],
       "dependency_hint": "needs a C compiler, make, and zlib",
       "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
       "launch": {"mode": "terminal"}
@@ -50,7 +50,7 @@
         "ref": "7baa36847e3d2a11570b525c75ba271616bdbb8e"
       },
       "binary": "kilix-jpak",
-      "build": ["make"],
+      "build": ["make", "all"],
       "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
       "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
       "launch": {"mode": "terminal"}
@@ -67,7 +67,7 @@
         "ref": "88215ad25652254443fcf03ddce6043a34e2efec"
       },
       "binary": "kilix-rancher",
-      "build": ["make"],
+      "build": ["make", "all"],
       "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
       "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
       "launch": {"mode": "terminal"}
@@ -84,7 +84,7 @@
         "ref": "506fdfbf4a735132df2c04a08c624f4ed696337c"
       },
       "binary": "kilix-pong",
-      "build": ["make"],
+      "build": ["make", "all"],
       "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
       "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
       "launch": {"mode": "terminal"}
@@ -101,7 +101,7 @@
         "ref": "b38d2cdedc9b0e10db38692c7efaf32a08dec4bf"
       },
       "binary": "bin/kilix-lights",
-      "build": ["make"],
+      "build": ["make", "all"],
       "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
       "capabilities": ["kitty-graphics", "kitty-keyboard", "kitty-mouse", "audio"],
       "launch": {"mode": "terminal"}
@@ -118,7 +118,7 @@
         "ref": "519e93b4372ccaa866ce6e18ea1835b201975f5a"
       },
       "binary": "super-kilix",
-      "build": ["make"],
+      "build": ["make", "all"],
       "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
       "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
       "launch": {"mode": "terminal"}
@@ -135,7 +135,7 @@
         "ref": "c071f8230a527bc3e535ef5b55dddf9aebbea9b2"
       },
       "binary": "joustix",
-      "build": ["make"],
+      "build": ["make", "all"],
       "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
       "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
       "launch": {"mode": "terminal"}
@@ -152,7 +152,7 @@
         "ref": "9220fde5af4c6910ec6eeec32d1c47185f84d609"
       },
       "binary": "chess-bash",
-      "build": ["make"],
+      "build": ["make", "all"],
       "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
       "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
       "launch": {"mode": "terminal"}
@@ -169,7 +169,7 @@
         "ref": "2ae6049a4ebc575432623e137777855dc007c3c6"
       },
       "binary": "kilix-fishtank",
-      "build": ["make"],
+      "build": ["make", "all"],
       "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
       "capabilities": ["kitty-graphics", "kitty-keyboard", "kitty-mouse", "audio"],
       "launch": {"mode": "terminal"}
@@ -186,7 +186,7 @@
         "ref": "7e799fd75d517898adf09e97f7fa0406a9d27bfc"
       },
       "binary": "terminal-lander",
-      "build": ["make"],
+      "build": ["make", "all"],
       "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
       "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
       "launch": {"mode": "terminal"}
@@ -203,7 +203,7 @@
         "ref": "dcd624ac7a893e2d00f14e7ccfb97c11e162e8f0"
       },
       "binary": "kitty-brokeout",
-      "build": ["make"],
+      "build": ["make", "all"],
       "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
       "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
       "launch": {"mode": "terminal"}
@@ -220,7 +220,7 @@
         "ref": "8937c3671ed50a16f2541d73506e207f8b3471bb"
       },
       "binary": "kilix-amp",
-      "build": ["make"],
+      "build": ["make", "all"],
       "dependency_hint": "needs SDL2, SDL2_image, libsndfile, zlib, and FluidSynth development files",
       "capabilities": ["x11-app", "audio", "clipboard"],
       "launch": {"mode": "xpane", "preferred_size": "600x360"}
