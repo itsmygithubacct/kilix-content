@@ -217,12 +217,12 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-amp",
-        "ref": "8937c3671ed50a16f2541d73506e207f8b3471bb"
+        "ref": "2bcb035dadf30b3d619d4fc00e8f84bca8b554f8"
       },
       "binary": "kilix-amp",
       "build": ["make", "all"],
       "dependency_hint": "needs SDL2, SDL2_image, libsndfile, zlib, and FluidSynth development files",
-      "capabilities": ["x11-app", "audio", "clipboard"],
+      "capabilities": ["x11-app", "audio", "clipboard", "headless-control"],
       "launch": {"mode": "xpane", "preferred_size": "600x360"}
     }
   ]
