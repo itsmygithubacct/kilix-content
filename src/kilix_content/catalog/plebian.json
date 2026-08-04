@@ -30,7 +30,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/bashed-earth",
-        "ref": "5bab724bc507fe960a971a4661be0767466f2748"
+        "ref": "7c3e4dd11dbd434464cbffa6f6f0dc56e7b4334a"
       },
       "binary": "bashed-earth",
       "build": ["make", "all"],
@@ -47,7 +47,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-jpak",
-        "ref": "7baa36847e3d2a11570b525c75ba271616bdbb8e"
+        "ref": "eef3170a9cf0a601a8e87282e5320cbeb0a9e037"
       },
       "binary": "kilix-jpak",
       "build": ["make", "all"],
@@ -64,7 +64,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-rancher",
-        "ref": "88215ad25652254443fcf03ddce6043a34e2efec"
+        "ref": "f7e39a1d73cbf718098174d629d126ea9e306aba"
       },
       "binary": "kilix-rancher",
       "build": ["make", "all"],
@@ -81,7 +81,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-pong",
-        "ref": "506fdfbf4a735132df2c04a08c624f4ed696337c"
+        "ref": "9c92abedbe52aa66cf9f00b07551e6aeac0d7b88"
       },
       "binary": "kilix-pong",
       "build": ["make", "all"],
@@ -98,7 +98,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-lights",
-        "ref": "b38d2cdedc9b0e10db38692c7efaf32a08dec4bf"
+        "ref": "506922102ce55794e2096e9afd031688e3de3e94"
       },
       "binary": "bin/kilix-lights",
       "build": ["make", "all"],
@@ -115,7 +115,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/super-kilix",
-        "ref": "519e93b4372ccaa866ce6e18ea1835b201975f5a"
+        "ref": "e47f6687fd3056faf4b3fa10d2a21c45de9c60ff"
       },
       "binary": "super-kilix",
       "build": ["make", "all"],
@@ -132,7 +132,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/joustix",
-        "ref": "c071f8230a527bc3e535ef5b55dddf9aebbea9b2"
+        "ref": "a3b2e3594abdd7a9f67f57678829f697d1f0d387"
       },
       "binary": "joustix",
       "build": ["make", "all"],
@@ -149,7 +149,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/chess-bash",
-        "ref": "9220fde5af4c6910ec6eeec32d1c47185f84d609"
+        "ref": "f373d6d68268bbf9fb63ec46d35801600d52acad"
       },
       "binary": "chess-bash",
       "build": ["make", "all"],
@@ -166,7 +166,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-fishtank",
-        "ref": "2ae6049a4ebc575432623e137777855dc007c3c6"
+        "ref": "d037789807fe57c412d2672a1063261391e716b3"
       },
       "binary": "kilix-fishtank",
       "build": ["make", "all"],
