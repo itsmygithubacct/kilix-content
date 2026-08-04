@@ -183,7 +183,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-lander",
-        "ref": "7e799fd75d517898adf09e97f7fa0406a9d27bfc"
+        "ref": "758956d0b54f70bc1140f48c9463f5e6a3a115b7"
       },
       "binary": "terminal-lander",
       "build": ["make", "all"],
@@ -200,7 +200,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-brokeout",
-        "ref": "dcd624ac7a893e2d00f14e7ccfb97c11e162e8f0"
+        "ref": "4143cefa5b417093813a0872d063c87ca816a541"
       },
       "binary": "kitty-brokeout",
       "build": ["make", "all"],
