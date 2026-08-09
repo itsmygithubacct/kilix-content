@@ -1,2 +1,1 @@
 """Packaged content catalogs."""
-

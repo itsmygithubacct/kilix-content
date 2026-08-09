@@ -1,10 +1,11 @@
 """Pinned content catalog and user-level installer."""
 
+from functools import lru_cache
 from importlib.resources import files
 
 from .install import (
-    InstallError,
     Installer,
+    InstallError,
     download,
     safe_extract_tar,
     safe_extract_zip,
@@ -13,15 +14,14 @@ from .install import (
 )
 from .model import Catalog, CatalogError, ContentSpec
 
+__version__ = "0.2.0"
 
-__version__ = "0.1.0"
 
-
+@lru_cache(maxsize=1)
 def default_catalog() -> Catalog:
     resource = files("kilix_content").joinpath("catalog/plebian.json")
     with resource.open(encoding="utf-8") as stream:
-        import json
-        return Catalog.from_mapping(json.load(stream))
+        return Catalog.loads(stream.read(), label="packaged catalog")
 
 
 __all__ = [
@@ -37,4 +37,3 @@ __all__ = [
     "sha256_file",
     "verify_git_checkout",
 ]
-

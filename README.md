@@ -8,9 +8,13 @@ preferred geometry.
 The installer accepts only argument arrays; it never invokes a shell. Managed
 Git content is fetched at an exact 40-character commit into a private staging
 directory, checked out detached, initialized recursively, built, verified, and
-atomically selected. Readiness checks bind the executable to the expected
-origin, commit, clean tracked state, and initialized submodules. Archive helpers
-require an exact SHA-256 and reject absolute paths, traversal, and links.
+atomically selected. Readiness checks bind the default managed directory and
+any configured Git checkout to the expected origin, commit, detached state,
+clean tracked state, and initialized submodules. An explicitly different plain
+directory remains a trusted user-managed executable override. Archive helpers
+require an exact SHA-256, reject absolute paths, traversal, links, and special
+files, and default to at most 100,000 members and 8 GiB of expanded regular-file
+data.
 
 This is deliberately a user-level component. Plebian-OS may pin the catalog and
 install declared operating-system capabilities, but privileged provisioning
@@ -37,6 +41,11 @@ Applications with specialized licensed payloads can use a `custom` catalog
 entry while reusing `download()`, `safe_extract_tar()`, and
 `safe_extract_zip()` for their bounded setup procedure.
 
+`download()` writes a private sibling of its destination, computes SHA-256 as
+bytes arrive, and uses one atomic replacement only after validation succeeds.
+A failed mirror therefore leaves any existing destination intact, and a
+destination symlink is replaced rather than followed.
+
 ## Catalog contract
 
 The packaged `plebian.json` catalog uses schema version 1. Installable Git
@@ -46,20 +55,25 @@ fragment cannot silently become the build's default target. Capabilities are
 declarative labels for the host; they are not commands or package names. Launch
 modes are `terminal`, `run`, `xpane`, `browse`, `window`, or `custom`.
 
-Catalog parsing rejects unknown source/launch modes, duplicate or unsafe IDs,
-mutable Git refs, malformed digests, absolute executable paths, and parent-path
-escapes before any installation begins.
+Catalog parsing rejects duplicate or unknown fields, unknown source/launch
+modes, duplicate or unsafe IDs, wrong scalar types, mutable Git refs, malformed
+digests, absolute executable paths, and parent-path escapes before any
+installation begins. JSON input is limited to 1 MiB. The packaged catalog is
+immutable and cached after its first validated load.
 
 ## Test
 
 ```sh
-python3 -m unittest discover -s tests -v
+make test
+make benchmark
 ```
 
 Tests use local Git repositories and in-memory archives. They cover catalog
 validation, fragmented installation failures, recursive dependency checkout,
 dirty/wrong-origin refusal, atomic replacement, traversal and symlink rejection,
-checksum enforcement, and executable readiness.
+checksum enforcement, bounded child diagnostics, and executable readiness. The
+benchmark records cached and cold catalog cost, indexed lookup, managed Git
+verification/readiness, and a verified 32 MiB download.
 
 ## Scope
 

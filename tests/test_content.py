@@ -5,31 +5,36 @@ import hashlib
 import io
 import json
 import os
-from pathlib import Path
+import re
+import shlex
+import stat
 import subprocess
 import tarfile
 import tempfile
 import unittest
-from unittest import mock
 import zipfile
-
+from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 import sys
+
 sys.path.insert(0, str(ROOT / "src"))
 
-from kilix_content import (  # noqa: E402
+import kilix_content
+from kilix_content import (
     Catalog,
     CatalogError,
     ContentSpec,
-    InstallError,
     Installer,
+    InstallError,
     default_catalog,
     download,
     safe_extract_tar,
     safe_extract_zip,
+    verify_git_checkout,
 )
-from kilix_content.install import _rename_exchange  # noqa: E402
+from kilix_content.install import _rename_exchange
 
 
 def run(*argv: str, cwd: Path) -> str:
@@ -47,10 +52,10 @@ class ContentTests(unittest.TestCase):
 
     def test_packaged_catalog_is_valid_and_immutable(self) -> None:
         catalog = default_catalog()
+        self.assertIs(catalog, default_catalog())
         self.assertGreaterEqual(len(catalog), 12)
         self.assertEqual(catalog.require("kilix-jpak").launch_mode, "terminal")
-        self.assertEqual(catalog.require("kilix-rancher").binary,
-                         "kilix-rancher")
+        self.assertEqual(catalog.require("kilix-rancher").binary, "kilix-rancher")
         self.assertEqual(catalog.require("kilix-pong").icon, "pong")
         lights = catalog.require("kilix-lights")
         self.assertEqual(lights.binary, "bin/kilix-lights")
@@ -61,6 +66,14 @@ class ContentTests(unittest.TestCase):
                 self.assertEqual(len(entry.ref), 40)
             if entry.build[:1] == ("make",):
                 self.assertEqual(entry.build, ("make", "all"))
+        with self.assertRaises(TypeError):
+            catalog._by_id["replacement"] = catalog.require("kilix-jpak")
+
+    def test_runtime_and_package_versions_match(self) -> None:
+        pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+        declared = re.search(r'^version = "([^"]+)"$', pyproject, re.MULTILINE)
+        self.assertIsNotNone(declared)
+        self.assertEqual(kilix_content.__version__, declared.group(1))
 
     def test_catalog_rejects_mutable_refs_paths_and_duplicates(self) -> None:
         base = {
@@ -70,12 +83,56 @@ class ContentTests(unittest.TestCase):
             "binary": "fixture",
         }
         with self.assertRaises(CatalogError):
-            ContentSpec.from_mapping({**base, "source": {**base["source"], "ref": "main"}})
+            ContentSpec.from_mapping(
+                {**base, "source": {**base["source"], "ref": "main"}}
+            )
         with self.assertRaises(CatalogError):
             ContentSpec.from_mapping({**base, "binary": "../fixture"})
         spec = ContentSpec.from_mapping(base)
         with self.assertRaises(CatalogError):
             Catalog((spec, spec))
+
+    def test_catalog_rejects_unknown_fields_and_wrong_scalar_types(self) -> None:
+        base = {
+            "id": "fixture",
+            "label": "Fixture",
+            "source": {"type": "git", "repository": "fixture", "ref": "a" * 40},
+            "binary": "fixture",
+        }
+        invalid_entries = (
+            7,
+            {**base, "unknown": "value"},
+            {**base, "source": {**base["source"], "unknown": "value"}},
+            {**base, "launch": {"unknown": "value"}},
+            {**base, "source": {"type": []}},
+            {**base, "launch": {"mode": []}},
+            {**base, "binary": 0},
+            {**base, "binary": "bad\x00path"},
+            {**base, "launch": {"preferred_size": "wide"}},
+        )
+        for entry in invalid_entries:
+            with self.subTest(entry=entry), self.assertRaises(CatalogError):
+                ContentSpec.from_mapping(entry)
+        invalid_catalogs = (
+            {"schema_version": True, "content": []},
+            {"schema_version": 1, "content": [], "unknown": "value"},
+            {"schema_version": 1, "content": [7]},
+        )
+        for catalog in invalid_catalogs:
+            with self.subTest(catalog=catalog), self.assertRaises(CatalogError):
+                Catalog.from_mapping(catalog)
+
+    def test_catalog_loader_rejects_duplicate_keys_and_oversize_input(self) -> None:
+        duplicate = self.root / "duplicate.json"
+        duplicate.write_text(
+            '{"schema_version":1,"schema_version":1,"content":[]}', encoding="utf-8"
+        )
+        with self.assertRaisesRegex(CatalogError, "duplicate"):
+            Catalog.load(duplicate)
+        oversized = self.root / "oversized.json"
+        oversized.write_text(" " * (1024 * 1024 + 1), encoding="utf-8")
+        with self.assertRaisesRegex(CatalogError, "size limit"):
+            Catalog.load(oversized)
 
     def _git_fixture(self) -> tuple[Path, str]:
         dependency = self.root / "dependency"
@@ -96,82 +153,328 @@ class ContentTests(unittest.TestCase):
         run("git", "config", "user.email", "fixture@example.invalid", cwd=source)
         run("git", "add", "fixture", cwd=source)
         subprocess.run(
-            ["git", "-c", "protocol.file.allow=always", "submodule", "add", "--quiet",
-             str(dependency), "third_party/dependency"],
-            cwd=source, check=True, capture_output=True, text=True,
+            [
+                "git",
+                "-c",
+                "protocol.file.allow=always",
+                "submodule",
+                "add",
+                "--quiet",
+                str(dependency),
+                "third_party/dependency",
+            ],
+            cwd=source,
+            check=True,
+            capture_output=True,
+            text=True,
         )
         run("git", "commit", "--quiet", "-m", "fixture", cwd=source)
         return source, run("git", "rev-parse", "HEAD", cwd=source)
 
     def test_git_install_is_recursive_pinned_and_atomic(self) -> None:
         source, ref = self._git_fixture()
-        spec = ContentSpec.from_mapping({
-            "id": "fixture", "label": "Fixture",
-            "source": {"type": "git", "repository": str(source), "ref": ref},
-            "binary": "fixture",
-        })
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {"type": "git", "repository": str(source), "ref": ref},
+                "binary": "fixture",
+            }
+        )
         data = self.root / "data"
         env = dict(os.environ, GIT_ALLOW_PROTOCOL="file")
         installer = Installer(str(data), env=env)
         executable = installer.ensure(spec)
         self.assertEqual(executable, str(data / "fixture" / "fixture"))
-        self.assertTrue((data / "fixture" / "third_party/dependency/value.txt").is_file())
+        self.assertTrue(
+            (data / "fixture" / "third_party/dependency/value.txt").is_file()
+        )
         self.assertEqual(installer.ready(spec), executable)
-        self.assertFalse(any(path.name.startswith(".fixture.install-") for path in data.iterdir()))
+        self.assertFalse(
+            any(path.name.startswith(".fixture.install-") for path in data.iterdir())
+        )
 
-        run("git", "remote", "set-url", "origin", str(source) + "-wrong", cwd=data / "fixture")
+        run(
+            "git",
+            "remote",
+            "set-url",
+            "origin",
+            str(source) + "-wrong",
+            cwd=data / "fixture",
+        )
         self.assertIsNone(installer.ready(spec))
         run("git", "remote", "set-url", "origin", str(source), cwd=data / "fixture")
+        dependency_file = data / "fixture" / "third_party/dependency/value.txt"
+        dependency_file.write_text("modified dependency\n", encoding="utf-8")
+        self.assertIsNone(installer.ready(spec))
+        run(
+            "git",
+            "checkout",
+            "--",
+            "value.txt",
+            cwd=data / "fixture" / "third_party/dependency",
+        )
         with (data / "fixture" / "fixture").open("a") as stream:
             stream.write("# modified\n")
         self.assertIsNone(installer.ready(spec))
         with self.assertRaises(InstallError):
             installer.ensure(spec)
 
+    def test_configured_git_checkout_is_verified_but_plain_override_is_trusted(
+        self,
+    ) -> None:
+        source, ref = self._git_fixture()
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {"type": "git", "repository": str(source), "ref": ref},
+                "binary": "fixture",
+            }
+        )
+        installed_root = self.root / "installed"
+        installer = Installer(
+            str(installed_root), env=dict(os.environ, GIT_ALLOW_PROTOCOL="file")
+        )
+        selected = Path(installer.ensure(spec))
+        configured = Installer(str(self.root / "different-root"))
+        self.assertEqual(configured.ready(spec, str(selected.parent)), str(selected))
+
+        run("git", "remote", "set-url", "origin", "wrong", cwd=selected.parent)
+        self.assertIsNone(configured.ready(spec, str(selected.parent)))
+        run("git", "remote", "set-url", "origin", str(source), cwd=selected.parent)
+        run("git", "switch", "--quiet", "-c", "attached", cwd=selected.parent)
+        self.assertIsNone(configured.ready(spec, str(selected.parent)))
+
+        unmanaged = self.root / "unmanaged"
+        unmanaged.mkdir()
+        (unmanaged / "fixture").write_text("executable", encoding="utf-8")
+        (unmanaged / "fixture").chmod(0o755)
+        self.assertEqual(
+            configured.ready(spec, str(unmanaged)), str(unmanaged / "fixture")
+        )
+
+    def test_git_verification_rejects_symlinked_metadata_and_ignores_redirect_env(
+        self,
+    ) -> None:
+        source, ref = self._git_fixture()
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {"type": "git", "repository": str(source), "ref": ref},
+                "binary": "fixture",
+            }
+        )
+        installer = Installer(
+            str(self.root / "data"), env=dict(os.environ, GIT_ALLOW_PROTOCOL="file")
+        )
+        selected = Path(installer.ensure(spec)).parent
+        with mock.patch.dict(os.environ, {"GIT_DIR": str(source / ".git")}):
+            verify_git_checkout(str(source), ref, str(selected))
+
+        external_git = self.root / "external-git"
+        (selected / ".git").rename(external_git)
+        (selected / ".git").symlink_to(external_git, target_is_directory=True)
+        with self.assertRaises(InstallError):
+            verify_git_checkout(str(source), ref, str(selected))
+
+    def test_git_install_ignores_inherited_config_templates_and_exec_paths(
+        self,
+    ) -> None:
+        source, ref = self._git_fixture()
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {"type": "git", "repository": str(source), "ref": ref},
+                "binary": "fixture",
+            }
+        )
+        sentinel = self.root / "inherited-hook-ran"
+        hooks = self.root / "hooks"
+        hooks.mkdir()
+        hook = hooks / "post-checkout"
+        hook.write_text(
+            f"#!/bin/sh\n: > {shlex.quote(str(sentinel))}\n", encoding="utf-8"
+        )
+        hook.chmod(0o755)
+        template = self.root / "template"
+        (template / "hooks").mkdir(parents=True)
+        (template / "hooks" / "post-checkout").symlink_to(hook)
+        global_config = self.root / "global.gitconfig"
+        global_config.write_text(
+            f"[core]\n\thooksPath = {hooks}\n"
+            f'[url "{self.root / "redirected"}"]\n'
+            f"\tinsteadOf = {source}\n",
+            encoding="utf-8",
+        )
+        empty_exec_path = self.root / "empty-git-exec-path"
+        empty_exec_path.mkdir()
+        environment = dict(
+            os.environ,
+            GIT_ALLOW_PROTOCOL="file:ext",
+            GIT_CONFIG_COUNT="1",
+            GIT_CONFIG_GLOBAL=str(global_config),
+            GIT_CONFIG_KEY_0="core.hooksPath",
+            GIT_CONFIG_VALUE_0=str(hooks),
+            GIT_EXEC_PATH=str(empty_exec_path),
+            GIT_TEMPLATE_DIR=str(template),
+            SSH_ASKPASS=str(hook),
+        )
+        installer = Installer(str(self.root / "data"), env=environment)
+
+        executable = installer.ensure(spec)
+
+        self.assertTrue(os.access(executable, os.X_OK))
+        self.assertFalse(sentinel.exists())
+
     def test_failed_git_fetch_leaves_no_selected_or_partial_tree(self) -> None:
         source, _ref = self._git_fixture()
-        spec = ContentSpec.from_mapping({
-            "id": "missing", "label": "Missing",
-            "source": {"type": "git", "repository": str(source), "ref": "f" * 40},
-            "binary": "fixture",
-        })
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "missing",
+                "label": "Missing",
+                "source": {"type": "git", "repository": str(source), "ref": "f" * 40},
+                "binary": "fixture",
+            }
+        )
         data = self.root / "data"
-        installer = Installer(str(data), env=dict(os.environ, GIT_ALLOW_PROTOCOL="file"))
+        installer = Installer(
+            str(data), env=dict(os.environ, GIT_ALLOW_PROTOCOL="file")
+        )
         with self.assertRaises(InstallError):
             installer.ensure(spec)
         self.assertFalse((data / "missing").exists())
-        self.assertFalse(any(path.name.startswith(".missing.install-") for path in data.iterdir()))
+        self.assertFalse(
+            any(path.name.startswith(".missing.install-") for path in data.iterdir())
+        )
+
+    def test_clean_stale_git_checkout_updates_atomically(self) -> None:
+        source, first_ref = self._git_fixture()
+        first = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {
+                    "type": "git",
+                    "repository": str(source),
+                    "ref": first_ref,
+                },
+                "binary": "fixture",
+            }
+        )
+        data = self.root / "data"
+        installer = Installer(
+            str(data), env=dict(os.environ, GIT_ALLOW_PROTOCOL="file")
+        )
+        selected = Path(installer.ensure(first))
+        (source / "fixture").write_text("#!/bin/sh\nexit 2\n", encoding="utf-8")
+        run("git", "add", "fixture", cwd=source)
+        run("git", "commit", "--quiet", "-m", "second", cwd=source)
+        second_ref = run("git", "rev-parse", "HEAD", cwd=source)
+        second = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {
+                    "type": "git",
+                    "repository": str(source),
+                    "ref": second_ref,
+                },
+                "binary": "fixture",
+            }
+        )
+
+        self.assertEqual(installer.ensure(second), str(selected))
+        self.assertIn("exit 2", selected.read_text(encoding="utf-8"))
+        self.assertEqual(
+            run("git", "rev-parse", "HEAD", cwd=selected.parent), second_ref
+        )
+        self.assertFalse(
+            any(path.name.startswith(".fixture.install-") for path in data.iterdir())
+        )
 
     def test_successful_build_without_artifact_reports_build_output(self) -> None:
-        spec = ContentSpec.from_mapping({
-            "id": "missing-output", "label": "Missing Output",
-            "source": {"type": "system"},
-            "binary": "missing-output",
-            "build": [sys.executable, "-c", "print('built only an internal archive')"],
-        })
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "missing-output",
+                "label": "Missing Output",
+                "source": {"type": "system"},
+                "binary": "missing-output",
+                "build": [
+                    sys.executable,
+                    "-c",
+                    "print('built only an internal archive')",
+                ],
+            }
+        )
         installer = Installer(str(self.root / "data"))
-        with self.assertRaisesRegex(
-                InstallError, "built only an internal archive"):
+        with self.assertRaisesRegex(InstallError, "built only an internal archive"):
             installer._build(spec, str(self.root), lambda _message: None)
 
     def test_interrupted_empty_git_init_is_replaced_atomically(self) -> None:
         source, ref = self._git_fixture()
-        spec = ContentSpec.from_mapping({
-            "id": "fixture", "label": "Fixture",
-            "source": {"type": "git", "repository": str(source), "ref": ref},
-            "binary": "fixture",
-        })
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {"type": "git", "repository": str(source), "ref": ref},
+                "binary": "fixture",
+            }
+        )
         data = self.root / "data"
         interrupted = data / "fixture"
         interrupted.mkdir(parents=True)
         run("git", "init", "--quiet", cwd=interrupted)
 
-        installer = Installer(str(data), env=dict(os.environ, GIT_ALLOW_PROTOCOL="file"))
+        installer = Installer(
+            str(data), env=dict(os.environ, GIT_ALLOW_PROTOCOL="file")
+        )
         executable = installer.ensure(spec)
 
         self.assertEqual(executable, str(interrupted / "fixture"))
         self.assertEqual(run("git", "rev-parse", "HEAD", cwd=interrupted), ref)
-        self.assertFalse(any(path.name.startswith(".fixture.install-") for path in data.iterdir()))
+        self.assertFalse(
+            any(path.name.startswith(".fixture.install-") for path in data.iterdir())
+        )
+
+    def test_interrupted_git_init_with_untracked_file_is_preserved(self) -> None:
+        source, ref = self._git_fixture()
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {"type": "git", "repository": str(source), "ref": ref},
+                "binary": "fixture",
+            }
+        )
+        data = self.root / "data"
+        interrupted = data / "fixture"
+        interrupted.mkdir(parents=True)
+        run("git", "init", "--quiet", cwd=interrupted)
+        sentinel = interrupted / "personal.txt"
+        sentinel.write_text("keep", encoding="utf-8")
+
+        installer = Installer(
+            str(data), env=dict(os.environ, GIT_ALLOW_PROTOCOL="file")
+        )
+        with self.assertRaises(InstallError):
+            installer.ensure(spec)
+        self.assertEqual(sentinel.read_text(encoding="utf-8"), "keep")
+
+    def test_installer_rejects_paths_from_direct_unvalidated_specs(self) -> None:
+        installer = Installer(str(self.root / "data"))
+        escaped_id = ContentSpec(
+            "../escape", "Fixture", "game", "", "", "system", binary="fixture"
+        )
+        with self.assertRaises(InstallError):
+            installer.destination(escaped_id)
+        escaped_binary = ContentSpec(
+            "fixture", "Fixture", "game", "", "", "system", binary="../escape"
+        )
+        with self.assertRaises(InstallError):
+            installer.executable(escaped_binary)
 
     def test_replacement_uses_exchange_without_hiding_destination(self) -> None:
         data = self.root / "data"
@@ -189,8 +492,9 @@ class ContentTests(unittest.TestCase):
             _rename_exchange(first, second)
             observations.append(os.path.isdir(second))
 
-        with mock.patch("kilix_content.install._rename_exchange",
-                        side_effect=observed_exchange):
+        with mock.patch(
+            "kilix_content.install._rename_exchange", side_effect=observed_exchange
+        ):
             installer._replace_stage(str(stage), str(destination))
 
         self.assertEqual(observations, [True, True])
@@ -207,10 +511,14 @@ class ContentTests(unittest.TestCase):
         (stage / "value").write_text("new")
         installer = Installer(str(data))
 
-        with mock.patch("kilix_content.install._rename_exchange",
-                        side_effect=OSError(errno.ENOSYS, "unsupported")):
-            with self.assertRaises(InstallError):
-                installer._replace_stage(str(stage), str(destination))
+        with (
+            mock.patch(
+                "kilix_content.install._rename_exchange",
+                side_effect=OSError(errno.ENOSYS, "unsupported"),
+            ),
+            self.assertRaises(InstallError),
+        ):
+            installer._replace_stage(str(stage), str(destination))
 
         self.assertEqual((destination / "value").read_text(), "old")
         self.assertEqual((stage / "value").read_text(), "new")
@@ -233,6 +541,95 @@ class ContentTests(unittest.TestCase):
             safe_extract_zip(archive, str(destination))
         self.assertFalse((self.root / "escape").exists())
 
+        linked_tar = self.root / "linked.tar"
+        with tarfile.open(linked_tar, "w") as archive:
+            info = tarfile.TarInfo("link")
+            info.type = tarfile.SYMTYPE
+            info.linkname = "target"
+            archive.addfile(info)
+        with tarfile.open(linked_tar) as archive, self.assertRaises(InstallError):
+            safe_extract_tar(archive, str(destination))
+
+        linked_zip = self.root / "linked.zip"
+        with zipfile.ZipFile(linked_zip, "w") as archive:
+            info = zipfile.ZipInfo("link")
+            info.create_system = 3
+            info.external_attr = (stat.S_IFLNK | 0o777) << 16
+            archive.writestr(info, "target")
+        with zipfile.ZipFile(linked_zip) as archive, self.assertRaises(InstallError):
+            safe_extract_zip(archive, str(destination))
+
+    def test_archive_extractors_bound_output_and_normalize_collisions(self) -> None:
+        payload = self.root / "payload.tar"
+        with tarfile.open(payload, "w") as archive:
+            info = tarfile.TarInfo("value")
+            info.size = 1
+            archive.addfile(info, io.BytesIO(b"x"))
+        destination = self.root / "tar-out"
+        destination.mkdir()
+        with (
+            tarfile.open(payload) as archive,
+            self.assertRaisesRegex(InstallError, "safety limit"),
+        ):
+            safe_extract_tar(archive, str(destination), max_bytes=0)
+
+        conflict = self.root / "conflict.tar"
+        with tarfile.open(conflict, "w") as archive:
+            directory = tarfile.TarInfo("same")
+            directory.type = tarfile.DIRTYPE
+            archive.addfile(directory)
+            regular = tarfile.TarInfo("same")
+            regular.size = 1
+            archive.addfile(regular, io.BytesIO(b"x"))
+        collision_out = self.root / "collision-out"
+        collision_out.mkdir()
+        with tarfile.open(conflict) as archive, self.assertRaises(InstallError):
+            safe_extract_tar(archive, str(collision_out))
+
+        zipped = self.root / "bounded.zip"
+        with zipfile.ZipFile(zipped, "w") as archive:
+            archive.writestr("value", b"x")
+        zip_out = self.root / "zip-out"
+        zip_out.mkdir()
+        with (
+            zipfile.ZipFile(zipped) as archive,
+            self.assertRaisesRegex(InstallError, "safety limit"),
+        ):
+            safe_extract_zip(archive, str(zip_out), max_bytes=0)
+
+    def test_archive_installer_selects_verified_executable_without_partial_tree(
+        self,
+    ) -> None:
+        payload = self.root / "fixture.tar"
+        body = b"#!/bin/sh\nexit 0\n"
+        with tarfile.open(payload, "w") as archive:
+            info = tarfile.TarInfo("fixture")
+            info.mode = 0o755
+            info.size = len(body)
+            archive.addfile(info, io.BytesIO(body))
+        digest = hashlib.sha256(payload.read_bytes()).hexdigest()
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {
+                    "type": "archive",
+                    "urls": [payload.as_uri()],
+                    "sha256": digest,
+                },
+                "binary": "fixture",
+            }
+        )
+        data = self.root / "data"
+        installer = Installer(str(data))
+        executable = installer.ensure(spec)
+        self.assertEqual(executable, str(data / "fixture/fixture"))
+        self.assertEqual(Path(executable).read_bytes(), body)
+        self.assertEqual(installer.ensure(spec), executable)
+        self.assertFalse(
+            any(path.name.startswith(".fixture.install-") for path in data.iterdir())
+        )
+
     def test_download_validates_checksum(self) -> None:
         source = self.root / "payload"
         source.write_bytes(b"payload")
@@ -240,9 +637,74 @@ class ContentTests(unittest.TestCase):
         digest = hashlib.sha256(b"payload").hexdigest()
         download(source.as_uri(), str(destination), expected_sha256=digest)
         self.assertEqual(destination.read_bytes(), b"payload")
+        destination.write_bytes(b"preserve")
         with self.assertRaises(InstallError):
             download(source.as_uri(), str(destination), expected_sha256="0" * 64)
-        self.assertFalse(destination.exists())
+        self.assertEqual(destination.read_bytes(), b"preserve")
+
+    def test_download_replaces_symlink_atomically_without_touching_target(self) -> None:
+        source = self.root / "payload"
+        source.write_bytes(b"payload")
+        digest = hashlib.sha256(b"payload").hexdigest()
+        victim = self.root / "victim"
+        victim.write_bytes(b"keep")
+        destination = self.root / "download"
+        destination.symlink_to(victim)
+
+        with mock.patch(
+            "kilix_content.install.sha256_file",
+            side_effect=AssertionError("second hash pass"),
+        ):
+            download(source.as_uri(), str(destination), expected_sha256=digest)
+        self.assertFalse(destination.is_symlink())
+        self.assertEqual(destination.read_bytes(), b"payload")
+        self.assertEqual(victim.read_bytes(), b"keep")
+        self.assertFalse(any(".download-" in path.name for path in self.root.iterdir()))
+
+    def test_download_requires_a_candidate_and_build_spawn_errors_are_normalized(
+        self,
+    ) -> None:
+        with self.assertRaises(InstallError):
+            download((), str(self.root / "download"))
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {"type": "system"},
+                "binary": "fixture",
+                "build": ["definitely-no-such-kilix-content-command"],
+                "dependency_hint": "install the fixture builder",
+            }
+        )
+        with self.assertRaisesRegex(InstallError, "install the fixture builder"):
+            Installer(str(self.root / "data"))._build(
+                spec, str(self.root), lambda _message: None
+            )
+
+    def test_build_diagnostics_are_tail_bounded(self) -> None:
+        writer = (
+            "import os,sys\n"
+            "block=b'x'*65536\n"
+            "for _ in range(32): os.write(sys.stdout.fileno(),block)\n"
+            "print('tail marker')\n"
+            "raise SystemExit(7)\n"
+        )
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {"type": "system"},
+                "binary": "fixture",
+                "build": [sys.executable, "-c", writer],
+            }
+        )
+        with self.assertRaises(InstallError) as raised:
+            Installer(str(self.root / "data"))._build(
+                spec, str(self.root), lambda _message: None
+            )
+        message = str(raised.exception)
+        self.assertLessEqual(len(message), 1024)
+        self.assertIn("tail marker", message)
 
     def test_json_loader_reports_malformed_catalog(self) -> None:
         path = self.root / "catalog.json"

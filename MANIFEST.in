@@ -1,0 +1,3 @@
+include CHANGELOG.md
+include Makefile
+recursive-include benchmarks *.py

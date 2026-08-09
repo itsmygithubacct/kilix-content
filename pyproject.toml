@@ -1,19 +1,20 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "kilix-content"
-version = "0.1.1"
+version = "0.2.0"
 description = "Pinned user-level content catalog and installer for Kilix"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {file = "LICENSE"}
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{name = "itsmygithubacct", email = "itsmygithubacct@users.noreply.github.com"}]
 classifiers = [
   "Programming Language :: Python :: 3",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: POSIX :: Linux",
+  "Typing :: Typed",
 ]
 
 [tool.setuptools]
@@ -24,4 +25,4 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-kilix_content = ["catalog/*.json"]
+kilix_content = ["catalog/*.json", "py.typed"]
