@@ -174,7 +174,7 @@ def download(
         try:
             report(f"downloading {url.rsplit('/', 1)[-1]} …")
             request = urllib.request.Request(
-                url, headers={"User-Agent": "kilix-content/0.2"}
+                url, headers={"User-Agent": "kilix-content/0.3"}
             )
             destination_dir = os.path.dirname(os.path.abspath(destination))
             descriptor, temporary = tempfile.mkstemp(
@@ -415,13 +415,14 @@ class Installer:
             raise InstallError(f"content root is not a directory: {self.root}")
 
     def destination(self, spec: ContentSpec) -> str:
+        install_id = spec.install_id
         try:
-            destination = os.path.abspath(os.path.join(self.root, spec.content_id))
+            destination = os.path.abspath(os.path.join(self.root, install_id))
         except (TypeError, ValueError) as exc:
-            raise InstallError("content id is not a safe path component") from exc
+            raise InstallError("install id is not a safe path component") from exc
         if destination == self.root or os.path.dirname(destination) != self.root:
             raise InstallError(
-                f"content id is not a safe path component: {spec.content_id!r}"
+                f"install id is not a safe path component: {install_id!r}"
             )
         return destination
 
@@ -563,7 +564,7 @@ class Installer:
             raise InstallError("managed checkout identity is invalid")
         destination = self.destination(spec)
         self._existing_git_is_replaceable(spec, destination)
-        stage = tempfile.mkdtemp(prefix=f".{spec.content_id}.install-", dir=self.root)
+        stage = tempfile.mkdtemp(prefix=f".{spec.install_id}.install-", dir=self.root)
         try:
             commands = (
                 ["git", "init", "--quiet"],
@@ -617,7 +618,7 @@ class Installer:
             raise InstallError(
                 f"refusing to replace existing archive content: {destination}"
             )
-        stage = tempfile.mkdtemp(prefix=f".{spec.content_id}.install-", dir=self.root)
+        stage = tempfile.mkdtemp(prefix=f".{spec.install_id}.install-", dir=self.root)
         archive_path = os.path.join(stage, ".download")
         extracted = os.path.join(stage, "content")
         os.mkdir(extracted)

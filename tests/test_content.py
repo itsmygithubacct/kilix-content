@@ -28,6 +28,7 @@ from kilix_content import (
     ContentSpec,
     Installer,
     InstallError,
+    PackageSpec,
     default_catalog,
     download,
     safe_extract_tar,
@@ -142,6 +143,192 @@ class ContentTests(unittest.TestCase):
         oversized.write_text(" " * (1024 * 1024 + 1), encoding="utf-8")
         with self.assertRaisesRegex(CatalogError, "size limit"):
             Catalog.load(oversized)
+
+    def test_schema_two_packages_flatten_into_shared_content_specs(self) -> None:
+        source, _ref = self._git_fixture()
+        second = source / "second"
+        second.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+        second.chmod(0o755)
+        run("git", "add", "second", cwd=source)
+        run("git", "commit", "--quiet", "-m", "provide second", cwd=source)
+        ref = run("git", "rev-parse", "HEAD", cwd=source)
+        catalog = Catalog.from_mapping(
+            {
+                "schema_version": 2,
+                "packages": [
+                    {
+                        "id": "fixture-suite",
+                        "source": {
+                            "type": "git",
+                            "repository": str(source),
+                            "ref": ref,
+                        },
+                        "build": [
+                            sys.executable,
+                            "-c",
+                            "print('built shared fixture package')",
+                        ],
+                        "dependency_hint": "needs the fixture runtime",
+                    }
+                ],
+                "content": [
+                    {
+                        "id": "fixture-first",
+                        "label": "Fixture First",
+                        "kind": "app",
+                        "package": "fixture-suite",
+                        "binary": "fixture",
+                    },
+                    {
+                        "id": "fixture-second",
+                        "label": "Fixture Second",
+                        "kind": "app",
+                        "package": "fixture-suite",
+                        "binary": "second",
+                    },
+                ],
+            }
+        )
+
+        first = catalog.require("fixture-first")
+        sibling = catalog.require("fixture-second")
+        package = catalog.require_package("fixture-suite")
+        self.assertEqual(catalog.packages, (package,))
+        self.assertEqual(first.package_id, "fixture-suite")
+        self.assertEqual(first.install_id, "fixture-suite")
+        self.assertEqual(first.repository, str(source))
+        self.assertEqual(first.ref, ref)
+        self.assertEqual(first.build, package.build)
+        self.assertEqual(first.dependency_hint, "needs the fixture runtime")
+        self.assertTrue(package.supplies(first))
+        self.assertEqual(
+            catalog.provided_by("fixture-suite"), (first, sibling)
+        )
+
+        data = self.root / "shared-data"
+        installer = Installer(
+            str(data), env=dict(os.environ, GIT_ALLOW_PROTOCOL="file")
+        )
+        first_executable = installer.ensure(first)
+        with mock.patch.object(
+            installer,
+            "_ensure_git",
+            side_effect=AssertionError("shared package was installed twice"),
+        ):
+            sibling_executable = installer.ensure(sibling)
+        self.assertEqual(first_executable, str(data / "fixture-suite/fixture"))
+        self.assertEqual(sibling_executable, str(data / "fixture-suite/second"))
+        self.assertEqual(installer.destination(first), installer.destination(sibling))
+        self.assertEqual(
+            [path.name for path in data.iterdir()], ["fixture-suite"]
+        )
+
+    def test_schema_two_rejects_invalid_or_ambiguous_packages(self) -> None:
+        package = {
+            "id": "fixture-suite",
+            "source": {
+                "type": "git",
+                "repository": "fixture",
+                "ref": "a" * 40,
+            },
+        }
+        entry = {
+            "id": "fixture",
+            "label": "Fixture",
+            "kind": "app",
+            "package": "fixture-suite",
+            "binary": "fixture",
+        }
+        invalid = (
+            {"schema_version": 1, "packages": [package], "content": []},
+            {"schema_version": 2, "packages": {}, "content": []},
+            {
+                "schema_version": 2,
+                "packages": [package, package],
+                "content": [entry],
+            },
+            {
+                "schema_version": 2,
+                "packages": [{**package, "unknown": True}],
+                "content": [entry],
+            },
+            {
+                "schema_version": 2,
+                "packages": [
+                    {"id": "fixture-suite", "source": {"type": "system"}}
+                ],
+                "content": [entry],
+            },
+            {
+                "schema_version": 2,
+                "packages": [package],
+                "content": [{**entry, "package": "missing"}],
+            },
+            {
+                "schema_version": 2,
+                "packages": [package],
+                "content": [
+                    {
+                        **entry,
+                        "source": {"type": "system"},
+                    }
+                ],
+            },
+            {
+                "schema_version": 2,
+                "packages": [package],
+                "content": [{**entry, "build": ["make", "all"]}],
+            },
+            {
+                "schema_version": 2,
+                "packages": [package],
+                "content": [],
+            },
+        )
+        for payload in invalid:
+            with self.subTest(payload=payload), self.assertRaises(CatalogError):
+                Catalog.from_mapping(payload)
+
+        collision = {
+            "schema_version": 2,
+            "packages": [package],
+            "content": [
+                {
+                    "id": "fixture-suite",
+                    "label": "Conflicting direct entry",
+                    "source": {
+                        "type": "git",
+                        "repository": "different",
+                        "ref": "b" * 40,
+                    },
+                    "binary": "fixture",
+                }
+            ],
+        }
+        with self.assertRaisesRegex(CatalogError, "conflicts"):
+            Catalog.from_mapping(collision)
+
+        direct = PackageSpec.from_mapping(package)
+        flattened = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {
+                    "type": "git",
+                    "repository": "different",
+                    "ref": "b" * 40,
+                },
+                "binary": "fixture",
+            }
+        )
+        flattened = ContentSpec(
+            **{
+                **flattened.__dict__,
+                "package_id": "fixture-suite",
+            }
+        )
+        with self.assertRaisesRegex(CatalogError, "does not match"):
+            Catalog((flattened,), 2, packages=(direct,))
 
     def _git_fixture(self) -> tuple[Path, str]:
         dependency = self.root / "dependency"
@@ -479,6 +666,12 @@ class ContentTests(unittest.TestCase):
         )
         with self.assertRaises(InstallError):
             installer.destination(escaped_id)
+        escaped_package = ContentSpec(
+            "fixture", "Fixture", "game", "", "", "system",
+            binary="fixture", package_id="../escape"
+        )
+        with self.assertRaises(InstallError):
+            installer.destination(escaped_package)
         escaped_binary = ContentSpec(
             "fixture", "Fixture", "game", "", "", "system", binary="../escape"
         )
@@ -717,7 +910,7 @@ class ContentTests(unittest.TestCase):
 
     def test_json_loader_reports_malformed_catalog(self) -> None:
         path = self.root / "catalog.json"
-        path.write_text(json.dumps({"schema_version": 2, "content": []}))
+        path.write_text(json.dumps({"schema_version": 3, "content": []}))
         with self.assertRaises(CatalogError):
             Catalog.load(path)
 

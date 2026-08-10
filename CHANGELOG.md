@@ -3,6 +3,22 @@
 All notable user-visible changes are recorded here. The public API remains
 pre-1.0.
 
+## 0.3.0 - 2026-08-10
+
+### Added
+
+- Add catalog schema version 2 packages: one immutable Git/archive source and
+  build can provide multiple independently named application/content entries.
+- Add `PackageSpec`, `ContentSpec.install_id`, package lookup, and
+  `Catalog.provided_by()` for hosts and installers.
+
+### Changed
+
+- Key managed installation directories and staging paths by the package
+  install identity while preserving schema version 1 and direct specifications.
+- Reject duplicate, unused, unknown, non-installable, conflicting, or
+  ambiguously overridden package declarations before installation begins.
+
 ## 0.2.2 - 2026-08-10
 
 ### Changed

@@ -12,9 +12,9 @@ from .install import (
     sha256_file,
     verify_git_checkout,
 )
-from .model import Catalog, CatalogError, ContentSpec
+from .model import Catalog, CatalogError, ContentSpec, PackageSpec
 
-__version__ = "0.2.2"
+__version__ = "0.3.0"
 
 
 @lru_cache(maxsize=1)
@@ -30,6 +30,7 @@ __all__ = [
     "ContentSpec",
     "InstallError",
     "Installer",
+    "PackageSpec",
     "default_catalog",
     "download",
     "safe_extract_tar",

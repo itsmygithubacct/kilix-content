@@ -3,7 +3,9 @@
 `kilix-content` is the unprivileged content catalog and installer shared by
 Kilix-hosted desktops. It gives games and applications one declarative record
 for identity, immutable source, build command, capabilities, launch mode, and
-preferred geometry.
+preferred geometry. Schema version 2 can separate an immutable package from
+the applications it provides, so one checkout and build can expose several
+catalog IDs without duplicating source or installation state.
 
 The installer accepts only argument arrays; it never invokes a shell. Managed
 Git content is fetched at an exact 40-character commit into a private staging
@@ -33,6 +35,22 @@ installer = Installer("/absolute/user/data/games")
 executable = installer.ready(game) or installer.ensure(game, print)
 ```
 
+Package-provided applications use the same API. Given a schema-version-2
+catalog named `shared_catalog`, each flattened `ContentSpec` carries the
+package source/build metadata for compatibility, while `install_id` selects
+the shared directory:
+
+```python
+files = shared_catalog.require("kilix-file")
+system = shared_catalog.require("kilix-system-center")
+
+assert files.install_id == system.install_id == "kilix-tui-utils"
+assert shared_catalog.provided_by("kilix-tui-utils") == (files, system)
+
+files_executable = installer.ensure(files, print)
+system_executable = installer.ready(system)
+```
+
 Kilix Lander and Kilix Brokeout retain the catalog IDs `terminal-lander` and
 `kitty-brokeout`, respectively, so existing installations and preferences do
 not need migration.
@@ -48,19 +66,28 @@ destination symlink is replaced rather than followed.
 
 ## Catalog contract
 
-The packaged `plebian.json` catalog uses schema version 1. Installable Git
-entries require an immutable commit, relative executable path, and optional
-build argv. Make-based entries always name their intended target explicitly so
-an included dependency fragment cannot silently become the build's default
-target. Most use `all`; Kilix PDF Conversion uses its pinned `runtime` target.
-Capabilities are
+The packaged `plebian.json` catalog remains schema version 1. Schema version 2
+adds a top-level `packages` array. Each package owns an installable Git/archive
+source, build argv, and dependency hint. A content entry may reference it by
+`package` and owns its own ID, executable path, label, capabilities, launch
+mode, and geometry. Package references cannot override source/build fields;
+unknown, duplicate, unused, non-installable, or conflicting package identities
+are rejected. Schema version 1 and direct `ContentSpec` construction remain
+compatible.
+
+Installable Git entries and packages require an immutable commit, relative
+executable path, and optional build argv. Make-based entries always name their
+intended target explicitly so an included dependency fragment cannot silently
+become the build's default target. Most use `all`; Kilix PDF Conversion uses
+its pinned `runtime` target. Capabilities are
 declarative labels for the host; they are not commands or package names. Launch
 modes are `terminal`, `run`, `xpane`, `browse`, `window`, or `custom`.
 
 Catalog parsing rejects duplicate or unknown fields, unknown source/launch
-modes, duplicate or unsafe IDs, wrong scalar types, mutable Git refs, malformed
-digests, absolute executable paths, and parent-path escapes before any
-installation begins. JSON input is limited to 1 MiB. The packaged catalog is
+modes, duplicate or unsafe IDs, mismatched package metadata, wrong scalar
+types, mutable Git refs, malformed digests, absolute executable paths, and
+parent-path escapes before any installation begins. JSON input is limited to
+1 MiB and to 4,096 package/content records apiece. The packaged catalog is
 immutable and cached after its first validated load.
 
 ## Test
@@ -71,11 +98,12 @@ make benchmark
 ```
 
 Tests use local Git repositories and in-memory archives. They cover catalog
-validation, fragmented installation failures, recursive dependency checkout,
-dirty/wrong-origin refusal, atomic replacement, traversal and symlink rejection,
-checksum enforcement, bounded child diagnostics, and executable readiness. The
-benchmark records cached and cold catalog cost, indexed lookup, managed Git
-verification/readiness, and a verified 32 MiB download.
+validation, shared-package installation/readiness, fragmented installation
+failures, recursive dependency checkout, dirty/wrong-origin refusal, atomic
+replacement, traversal and symlink rejection, checksum enforcement, bounded
+child diagnostics, and executable readiness. The benchmark records cached and
+cold catalog cost, indexed lookup, managed Git verification/readiness, and a
+verified 32 MiB download.
 
 ## Scope
 
