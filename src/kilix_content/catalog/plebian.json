@@ -258,6 +258,23 @@
       "dependency_hint": "needs zlib development files to build and the ffmpeg binary at run time",
       "capabilities": ["network"],
       "launch": {"mode": "terminal"}
+    },
+    {
+      "id": "kilix-nvr",
+      "label": "Camera Recorder",
+      "kind": "app",
+      "icon": "display",
+      "description": "Records RTSP cameras, finds what moved, and keeps what mattered.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-nvr",
+        "ref": "ea91485b515c7242be0df6d9f39b65ae9dafe190"
+      },
+      "binary": "build/kilix-nvr",
+      "build": ["make", "all"],
+      "dependency_hint": "needs sqlite3 and zlib development files to build, and the ffmpeg binary at run time",
+      "capabilities": ["network"],
+      "launch": {"mode": "terminal"}
     }
   ]
 }
