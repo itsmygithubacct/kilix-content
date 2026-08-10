@@ -61,11 +61,18 @@ class ContentTests(unittest.TestCase):
         self.assertEqual(lights.binary, "bin/kilix-lights")
         self.assertIn("kitty-mouse", lights.capabilities)
         self.assertEqual(catalog.require("kilix-amp").launch_mode, "xpane")
+        pdf = catalog.require("kilix-pdf-conversion")
+        self.assertEqual(pdf.binary, "kilix-pdf")
+        self.assertEqual(pdf.build, ("make", "runtime"))
+        self.assertEqual(pdf.launch_mode, "terminal")
         for entry in catalog:
             if entry.source_type == "git":
                 self.assertEqual(len(entry.ref), 40)
             if entry.build[:1] == ("make",):
-                self.assertEqual(entry.build, ("make", "all"))
+                expected_target = (
+                    "runtime" if entry.content_id == "kilix-pdf-conversion" else "all"
+                )
+                self.assertEqual(entry.build, ("make", expected_target))
         with self.assertRaises(TypeError):
             catalog._by_id["replacement"] = catalog.require("kilix-jpak")
 

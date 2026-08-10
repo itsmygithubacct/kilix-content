@@ -3,6 +3,13 @@
 All notable user-visible changes are recorded here. The public API remains
 pre-1.0.
 
+## 0.2.1 - 2026-08-10
+
+### Added
+
+- Add the public Kilix PDF Conversion provider at an immutable commit, with its
+  explicit hash-verified `runtime` build target and terminal launch contract.
+
 ## 0.2.0 - 2026-08-08
 
 ### Added

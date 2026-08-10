@@ -50,8 +50,10 @@ destination symlink is replaced rather than followed.
 
 The packaged `plebian.json` catalog uses schema version 1. Installable Git
 entries require an immutable commit, relative executable path, and optional
-build argv. Make-based entries name `all` explicitly so an included dependency
-fragment cannot silently become the build's default target. Capabilities are
+build argv. Make-based entries always name their intended target explicitly so
+an included dependency fragment cannot silently become the build's default
+target. Most use `all`; Kilix PDF Conversion uses its pinned `runtime` target.
+Capabilities are
 declarative labels for the host; they are not commands or package names. Launch
 modes are `terminal`, `run`, `xpane`, `browse`, `window`, or `custom`.
 

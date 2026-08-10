@@ -226,6 +226,23 @@
       "launch": {"mode": "xpane", "preferred_size": "600x360"}
     },
     {
+      "id": "kilix-pdf-conversion",
+      "label": "PDF Conversion",
+      "kind": "app",
+      "icon": "doc_text",
+      "description": "Convert PDFs into validated, self-contained Markdown bundles.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-pdf-conversion",
+        "ref": "f252c0d906f148e16a14b432b9fb4f0a150e82ee"
+      },
+      "binary": "kilix-pdf",
+      "build": ["make", "runtime"],
+      "dependency_hint": "needs Python 3.11 or newer, python3-venv, make, and network access for the hash-verified runtime install",
+      "capabilities": ["network"],
+      "launch": {"mode": "terminal"}
+    },
+    {
       "id": "kilix-rtsp",
       "label": "Camera Viewer",
       "kind": "app",
