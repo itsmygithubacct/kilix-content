@@ -14,7 +14,7 @@ from .install import (
 )
 from .model import Catalog, CatalogError, ContentSpec
 
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 
 
 @lru_cache(maxsize=1)

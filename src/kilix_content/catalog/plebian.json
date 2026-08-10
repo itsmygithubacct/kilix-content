@@ -234,13 +234,13 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-pdf-conversion",
-        "ref": "f252c0d906f148e16a14b432b9fb4f0a150e82ee"
+        "ref": "206e5c21c5829f30f0cd1815966f5540531d29e3"
       },
       "binary": "kilix-pdf",
       "build": ["make", "runtime"],
-      "dependency_hint": "needs Python 3.11 or newer, python3-venv, make, and network access for the hash-verified runtime install",
+      "dependency_hint": "needs Python 3.11 or newer, uv, make, and network access for the frozen runtime install",
       "capabilities": ["network"],
-      "launch": {"mode": "terminal"}
+      "launch": {"mode": "terminal", "preferred_size": "760x520"}
     },
     {
       "id": "kilix-rtsp",

@@ -65,6 +65,8 @@ class ContentTests(unittest.TestCase):
         self.assertEqual(pdf.binary, "kilix-pdf")
         self.assertEqual(pdf.build, ("make", "runtime"))
         self.assertEqual(pdf.launch_mode, "terminal")
+        self.assertEqual(pdf.preferred_size, "760x520")
+        self.assertIn("uv", pdf.dependency_hint)
         for entry in catalog:
             if entry.source_type == "git":
                 self.assertEqual(len(entry.ref), 40)

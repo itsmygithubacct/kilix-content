@@ -3,6 +3,13 @@
 All notable user-visible changes are recorded here. The public API remains
 pre-1.0.
 
+## 0.2.2 - 2026-08-10
+
+### Changed
+
+- Advance PDF Conversion to its uv-managed runtime and declare the preferred
+  desktop-window geometry used by graphical Kilix providers.
+
 ## 0.2.1 - 2026-08-10
 
 ### Added
