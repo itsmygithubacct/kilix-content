@@ -581,7 +581,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-pdf",
-        "ref": "9a16ba134b7fe5863e7091fa9cb7fd7147bf22ad"
+        "ref": "aa6da823d083ed7b750ca44599b26f79eb425dff"
       },
       "binary": "kilix-pdf-viewer",
       "build": ["make", "all"],
