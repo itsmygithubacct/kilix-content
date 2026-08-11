@@ -631,7 +631,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-rtsp",
-        "ref": "c276a741cc87c93dc6664df799b0f155f9b4ed76"
+        "ref": "ae620a999f03f3b7c242bc5d37a494a0144f2598"
       },
       "binary": "build/kilix-rtsp",
       "build": ["make", "all"],
@@ -648,11 +648,28 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-nvr",
-        "ref": "ea91485b515c7242be0df6d9f39b65ae9dafe190"
+        "ref": "8e67ac86768a54666426f5f44f1dac93f64ee623"
       },
       "binary": "build/kilix-nvr",
       "build": ["make", "all"],
       "dependency_hint": "needs sqlite3 and zlib development files to build, and the ffmpeg binary at run time",
+      "capabilities": ["network"],
+      "launch": {"mode": "terminal"}
+    },
+    {
+      "id": "kilix-object-detect",
+      "label": "Image Analyzer",
+      "kind": "app",
+      "icon": "display",
+      "description": "What is in a picture, a recording or a camera - and what it sounds like.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-object-detect",
+        "ref": "723509fa50f3f4743d48556c67094c35c5bad28b"
+      },
+      "binary": "build/kilix-look",
+      "build": ["make", "all"],
+      "dependency_hint": "needs zlib development files to build, the ffmpeg binary at run time, and `kilix install yolo` for a model",
       "capabilities": ["network"],
       "launch": {"mode": "terminal"}
     }
