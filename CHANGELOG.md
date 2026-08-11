@@ -14,11 +14,15 @@ pre-1.0.
   VirtualBox Manager, and the shared terminal accessories.
 - Install all TUI-provided applications from one immutable
   `kilix-tui-utils` package and explicit `make runtime` build.
+- Add the terminal-native PDF Viewer with retained-scroll presentation,
+  complete CPU rasterization, and an Evince fallback.
 
 ### Changed
 
 - Describe PDF conversion input and its fixed conversion action through the
   shared application contract.
+- Advance PDF Conversion to the revision whose development checks provision
+  their tools through `uv`.
 - Add `Installer.ready_provided()` so callers verify one shared package source
   once while retaining independent executable readiness for every app.
 

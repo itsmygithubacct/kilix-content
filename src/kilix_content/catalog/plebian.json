@@ -573,6 +573,31 @@
       "launch": {"mode": "xpane", "preferred_size": "600x360"}
     },
     {
+      "id": "kilix-pdf",
+      "label": "PDF Viewer",
+      "kind": "app",
+      "icon": "doc_text",
+      "description": "View PDFs with retained terminal scrolling and automatic CPU fallbacks.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-pdf",
+        "ref": "9a16ba134b7fe5863e7091fa9cb7fd7147bf22ad"
+      },
+      "binary": "kilix-pdf-viewer",
+      "build": ["make", "all"],
+      "dependency_hint": "needs a C compiler, make, Poppler GLib, Cairo, GLib, and zlib development files; Evince is the graphical fallback",
+      "capabilities": ["filesystem-read", "kitty-graphics", "kitty-keyboard", "kitty-mouse"],
+      "actions": {
+        "open": {
+          "accepts_input": true,
+          "description": "Open one PDF"
+        }
+      },
+      "accepts": ["application/pdf"],
+      "lifecycle": {"preserve_on_failure": true},
+      "launch": {"mode": "terminal", "preferred_size": "960x700"}
+    },
+    {
       "id": "kilix-pdf-conversion",
       "label": "PDF Conversion",
       "kind": "app",
@@ -581,7 +606,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-pdf-conversion",
-        "ref": "5476c380bbaed79d4463cc4131c0d494741a8d99"
+        "ref": "07ee29296e1c0c3fc2a8e4899a53c1098e96b05d"
       },
       "binary": "kilix-pdf",
       "build": ["make", "runtime"],
