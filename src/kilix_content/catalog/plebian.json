@@ -345,6 +345,21 @@
       "launch": {"mode": "terminal", "preferred_size": "920x620"}
     },
     {
+      "id": "kilix-camera-wall",
+      "label": "Camera Wall",
+      "kind": "app",
+      "icon": "display",
+      "description": "Watch the cameras with what the models make of them, and what happened.",
+      "source": {"type": "system"},
+      "command": ["kilix", "nvr", "view"],
+      "capabilities": ["network", "kitty-graphics"],
+      "actions": {
+        "wall": {"description": "Every configured camera at once"},
+        "camera": {"accepts_input": true, "description": "One camera, with detection"}
+      },
+      "launch": {"mode": "terminal", "preferred_size": "1280x800"}
+    },
+    {
       "id": "kilix-region-painter",
       "label": "Region Painter",
       "kind": "app",
@@ -648,7 +663,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-nvr",
-        "ref": "8e67ac86768a54666426f5f44f1dac93f64ee623"
+        "ref": "2b25825e4b8ead11ee6904e4c9ed08ed5240da7a"
       },
       "binary": "build/kilix-nvr",
       "build": ["make", "all"],
@@ -665,7 +680,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-object-detect",
-        "ref": "723509fa50f3f4743d48556c67094c35c5bad28b"
+        "ref": "675389f7df08779bc895f8fd869c2eb8ba1bbe5a"
       },
       "binary": "build/kilix-look",
       "build": ["make", "all"],
