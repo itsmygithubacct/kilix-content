@@ -6,7 +6,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-tui-utils",
-        "ref": "98da1e53a0f15c73f70d9e028bf31b1c0b224474"
+        "ref": "c359d66f59f95689a9e7f3cf826b103244e55eb1"
       },
       "build": ["make", "runtime"],
       "dependency_hint": "needs Python 3.11 or newer and make"
