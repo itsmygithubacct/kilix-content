@@ -23,11 +23,13 @@ sys.path.insert(0, str(ROOT / "src"))
 
 import kilix_content
 from kilix_content import (
+    ActionSpec,
     Catalog,
     CatalogError,
     ContentSpec,
     Installer,
     InstallError,
+    LifecycleSpec,
     PackageSpec,
     default_catalog,
     download,
@@ -68,12 +70,24 @@ class ContentTests(unittest.TestCase):
         self.assertEqual(pdf.launch_mode, "terminal")
         self.assertEqual(pdf.preferred_size, "760x520")
         self.assertIn("uv", pdf.dependency_hint)
+        files = catalog.require("kilix-file")
+        system = catalog.require("kilix-system-center")
+        self.assertEqual(files.install_id, "kilix-tui-utils")
+        self.assertEqual(system.install_id, "kilix-tui-utils")
+        self.assertEqual(files.require_action("open").argv, ("--open",))
+        self.assertIn("application/pdf", pdf.accepts)
+        self.assertTrue(catalog.require("kilix-session-center").lifecycle.degrades_inplace)
+        self.assertEqual(catalog.require("kilix-model-store").command,
+                         ("kilix", "bonsai"))
         for entry in catalog:
             if entry.source_type == "git":
                 self.assertEqual(len(entry.ref), 40)
             if entry.build[:1] == ("make",):
                 expected_target = (
-                    "runtime" if entry.content_id == "kilix-pdf-conversion" else "all"
+                    "runtime"
+                    if entry.content_id == "kilix-pdf-conversion"
+                    or entry.install_id == "kilix-tui-utils"
+                    else "all"
                 )
                 self.assertEqual(entry.build, ("make", expected_target))
         with self.assertRaises(TypeError):
@@ -329,6 +343,102 @@ class ContentTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(CatalogError, "does not match"):
             Catalog((flattened,), 2, packages=(direct,))
+
+    def test_schema_three_application_actions_inputs_and_lifecycle(self) -> None:
+        catalog = Catalog.from_mapping(
+            {
+                "schema_version": 3,
+                "content": [
+                    {
+                        "id": "system-center",
+                        "label": "System Center",
+                        "kind": "app",
+                        "source": {"type": "system"},
+                        "command": ["kilix-system-center"],
+                        "capabilities": ["system-read"],
+                        "actions": {
+                            "memory": {
+                                "argv": ["--place", "Memory"],
+                                "description": "Open memory status",
+                            },
+                            "open": {
+                                "argv": ["--open"],
+                                "accepts_input": True,
+                            },
+                        },
+                        "accepts": ["application/json", "directory"],
+                        "lifecycle": {
+                            "single_instance": True,
+                            "requires_kilix_session": False,
+                            "degrades_inplace": True,
+                            "preserve_on_failure": True,
+                            "startup_timeout_seconds": 15,
+                        },
+                    }
+                ],
+            }
+        )
+        spec = catalog.require("system-center")
+        self.assertEqual(spec.command, ("kilix-system-center",))
+        self.assertEqual(spec.accepts, ("application/json", "directory"))
+        self.assertEqual(spec.require_action("memory").argv, ("--place", "Memory"))
+        self.assertFalse(spec.require_action("memory").accepts_input)
+        self.assertTrue(spec.require_action("open").accepts_input)
+        self.assertEqual(
+            spec.lifecycle,
+            LifecycleSpec(
+                single_instance=True,
+                startup_timeout_seconds=15,
+            ),
+        )
+        self.assertIsInstance(spec.actions[0], ActionSpec)
+        with self.assertRaisesRegex(CatalogError, "unknown application action"):
+            spec.require_action("missing")
+
+    def test_schema_three_rejects_ambiguous_or_malformed_metadata(self) -> None:
+        base = {
+            "id": "fixture",
+            "label": "Fixture",
+            "kind": "app",
+            "source": {"type": "system"},
+            "command": ["fixture"],
+        }
+        invalid = (
+            {"schema_version": 2, "content": [base]},
+            {
+                "schema_version": 3,
+                "content": [{**base, "command": []}],
+            },
+            {
+                "schema_version": 3,
+                "content": [{**base, "binary": "fixture"}],
+            },
+            {
+                "schema_version": 3,
+                "content": [{**base, "actions": []}],
+            },
+            {
+                "schema_version": 3,
+                "content": [
+                    {**base, "actions": {"open": {"accepts_input": 1}}}
+                ],
+            },
+            {
+                "schema_version": 3,
+                "content": [
+                    {**base, "lifecycle": {"single_instance": "yes"}}
+                ],
+            },
+            {
+                "schema_version": 3,
+                "content": [
+                    {**base, "lifecycle": {"startup_timeout_seconds": 3601}}
+                ],
+            },
+        )
+        for payload in invalid:
+            with self.subTest(payload=payload), self.assertRaises(CatalogError):
+                Catalog.from_mapping(payload)
 
     def _git_fixture(self) -> tuple[Path, str]:
         dependency = self.root / "dependency"
@@ -910,7 +1020,7 @@ class ContentTests(unittest.TestCase):
 
     def test_json_loader_reports_malformed_catalog(self) -> None:
         path = self.root / "catalog.json"
-        path.write_text(json.dumps({"schema_version": 3, "content": []}))
+        path.write_text(json.dumps({"schema_version": 4, "content": []}))
         with self.assertRaises(CatalogError):
             Catalog.load(path)
 

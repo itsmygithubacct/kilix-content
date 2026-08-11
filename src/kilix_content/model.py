@@ -16,7 +16,7 @@ _HEX = frozenset("0123456789abcdef")
 _SOURCE_TYPES = frozenset(("git", "archive", "system", "custom"))
 _INSTALLABLE_SOURCE_TYPES = frozenset(("git", "archive"))
 _LAUNCH_MODES = frozenset(("terminal", "run", "xpane", "browse", "window", "custom"))
-_SCHEMA_VERSIONS = frozenset((1, 2))
+_SCHEMA_VERSIONS = frozenset((1, 2, 3))
 _ROOT_KEYS = frozenset(("schema_version", "packages", "content"))
 _PACKAGE_KEYS = frozenset(("id", "source", "build", "dependency_hint"))
 _ENTRY_KEYS = frozenset(
@@ -29,13 +29,30 @@ _ENTRY_KEYS = frozenset(
         "source",
         "package",
         "binary",
+        "command",
         "build",
         "dependency_hint",
         "capabilities",
+        "actions",
+        "accepts",
+        "lifecycle",
         "launch",
     )
 )
 _LAUNCH_KEYS = frozenset(("mode", "preferred_size"))
+_ACTION_KEYS = frozenset(("argv", "accepts_input", "description"))
+_LIFECYCLE_KEYS = frozenset(
+    (
+        "single_instance",
+        "requires_kilix_session",
+        "degrades_inplace",
+        "preserve_on_failure",
+        "startup_timeout_seconds",
+    )
+)
+_SCHEMA_THREE_ENTRY_KEYS = frozenset(
+    ("command", "actions", "accepts", "lifecycle")
+)
 _SOURCE_KEYS = {
     "git": frozenset(("type", "repository", "ref")),
     "archive": frozenset(("type", "urls", "sha256")),
@@ -44,6 +61,8 @@ _SOURCE_KEYS = {
 }
 _MAX_CATALOG_BYTES = 1024 * 1024
 _MAX_CONTENT_ENTRIES = 4096
+_MAX_ACTIONS = 64
+_MAX_ACCEPTED_INPUTS = 64
 
 
 class CatalogError(ValueError):
@@ -150,6 +169,86 @@ def _source_fields(
 
 
 @dataclass(frozen=True)
+class ActionSpec:
+    """One named, argv-only application action."""
+
+    action_id: str
+    argv: tuple[str, ...] = ()
+    accepts_input: bool = False
+    description: str = ""
+
+    @classmethod
+    def from_mapping(cls, action_id: str, raw: Mapping[str, Any]) -> ActionSpec:
+        action_id = _content_id(action_id, "action id")
+        raw = _mapping(raw, f"action {action_id!r}")
+        _known_keys(raw, _ACTION_KEYS, f"action {action_id!r}")
+        accepts_input = raw.get("accepts_input", False)
+        if type(accepts_input) is not bool:
+            raise CatalogError(
+                f"action {action_id!r}.accepts_input must be a boolean"
+            )
+        description = raw.get("description", "")
+        if not isinstance(description, str) or not _valid_text(description):
+            raise CatalogError(
+                f"action {action_id!r}.description must be a string"
+            )
+        return cls(
+            action_id=action_id,
+            argv=_string_tuple(raw.get("argv"), f"action {action_id!r}.argv"),
+            accepts_input=accepts_input,
+            description=description,
+        )
+
+
+@dataclass(frozen=True)
+class LifecycleSpec:
+    """Host-facing application lifetime and fallback policy."""
+
+    single_instance: bool = False
+    requires_kilix_session: bool = False
+    degrades_inplace: bool = True
+    preserve_on_failure: bool = True
+    startup_timeout_seconds: int = 0
+
+    @classmethod
+    def from_mapping(cls, raw: Mapping[str, Any] | None) -> LifecycleSpec:
+        if raw is None:
+            return cls()
+        raw = _mapping(raw, "lifecycle")
+        _known_keys(raw, _LIFECYCLE_KEYS, "lifecycle")
+        values: dict[str, bool] = {}
+        defaults = {
+            "single_instance": False,
+            "requires_kilix_session": False,
+            "degrades_inplace": True,
+            "preserve_on_failure": True,
+        }
+        for key, default in defaults.items():
+            value = raw.get(key, default)
+            if type(value) is not bool:
+                raise CatalogError(f"lifecycle.{key} must be a boolean")
+            values[key] = value
+        timeout = raw.get("startup_timeout_seconds", 0)
+        if type(timeout) is not int or not 0 <= timeout <= 3600:
+            raise CatalogError(
+                "lifecycle.startup_timeout_seconds must be an integer from 0 to 3600"
+            )
+        return cls(**values, startup_timeout_seconds=timeout)
+
+
+def _action_specs(value: Any, label: str) -> tuple[ActionSpec, ...]:
+    if value is None:
+        return ()
+    actions = _mapping(value, label)
+    if len(actions) > _MAX_ACTIONS:
+        raise CatalogError(f"{label} has more than {_MAX_ACTIONS} actions")
+    return tuple(
+        ActionSpec.from_mapping(action_id, raw)
+        for action_id, raw in actions.items()
+    )
+
+
+@dataclass(frozen=True)
 class PackageSpec:
     """One immutable installation that may provide several content entries."""
 
@@ -220,9 +319,13 @@ class ContentSpec:
     urls: tuple[str, ...] = ()
     sha256: str = ""
     binary: str = ""
+    command: tuple[str, ...] = ()
     build: tuple[str, ...] = ()
     dependency_hint: str = ""
     capabilities: tuple[str, ...] = ()
+    actions: tuple[ActionSpec, ...] = ()
+    accepts: tuple[str, ...] = ()
+    lifecycle: LifecycleSpec = LifecycleSpec()
     launch_mode: str = "terminal"
     preferred_size: str = ""
     package_id: str = ""
@@ -231,6 +334,20 @@ class ContentSpec:
     def install_id(self) -> str:
         """Directory/cache identity; shared by entries from the same package."""
         return self.package_id or self.content_id
+
+    def get_action(self, action_id: str) -> ActionSpec | None:
+        return next(
+            (action for action in self.actions if action.action_id == action_id),
+            None,
+        )
+
+    def require_action(self, action_id: str) -> ActionSpec:
+        action = self.get_action(action_id)
+        if action is None:
+            raise CatalogError(
+                f"{self.content_id}: unknown application action {action_id!r}"
+            )
+        return action
 
     @classmethod
     def from_mapping(
@@ -294,6 +411,9 @@ class ContentSpec:
         binary = raw.get("binary", "")
         if not isinstance(binary, str):
             raise CatalogError(f"{content_id}: binary must be a string")
+        command = _string_tuple(raw.get("command"), f"{content_id}.command")
+        if "command" in raw and not command:
+            raise CatalogError(f"{content_id}: command must not be empty")
         launch = raw.get("launch", {})
         launch = _mapping(launch, f"{content_id}.launch")
         _known_keys(launch, _LAUNCH_KEYS, f"{content_id}.launch")
@@ -309,6 +429,22 @@ class ContentSpec:
             raise CatalogError(
                 f"{content_id}: installable content requires a binary path"
             )
+        if source_type in ("git", "archive") and command:
+            raise CatalogError(
+                f"{content_id}: installable content cannot declare a system command"
+            )
+        if binary and command:
+            raise CatalogError(
+                f"{content_id}: binary and command are mutually exclusive"
+            )
+
+        actions = _action_specs(raw.get("actions"), f"{content_id}.actions")
+        accepts = _string_tuple(raw.get("accepts"), f"{content_id}.accepts")
+        if len(accepts) > _MAX_ACCEPTED_INPUTS:
+            raise CatalogError(
+                f"{content_id}.accepts has more than {_MAX_ACCEPTED_INPUTS} inputs"
+            )
+        lifecycle = LifecycleSpec.from_mapping(raw.get("lifecycle"))
 
         strings = {}
         for key in ("kind", "icon", "description"):
@@ -336,11 +472,15 @@ class ContentSpec:
             urls=urls,
             sha256=sha256,
             binary=binary,
+            command=command,
             build=build,
             dependency_hint=dependency_hint,
             capabilities=_string_tuple(
                 raw.get("capabilities"), f"{content_id}.capabilities"
             ),
+            actions=actions,
+            accepts=accepts,
+            lifecycle=lifecycle,
             launch_mode=launch_mode,
             preferred_size=preferred_size,
             package_id=package_id,
@@ -377,6 +517,15 @@ class Catalog:
         for entry in entries:
             if not isinstance(entry, ContentSpec):
                 raise CatalogError("catalog entries must be ContentSpec instances")
+            if schema_version < 3 and (
+                entry.command
+                or entry.actions
+                or entry.accepts
+                or entry.lifecycle != LifecycleSpec()
+            ):
+                raise CatalogError(
+                    f"{entry.content_id}: application metadata requires schema version 3"
+                )
             if entry.content_id in by_id:
                 raise CatalogError(f"duplicate content id: {entry.content_id}")
             if (
@@ -465,6 +614,17 @@ class Catalog:
             raise CatalogError("catalog schema_version must be an integer")
         if version not in _SCHEMA_VERSIONS:
             raise CatalogError(f"unsupported catalog schema version: {version!r}")
+        if version < 3:
+            for item in entries:
+                if isinstance(item, Mapping):
+                    newer = tuple(
+                        key for key in _SCHEMA_THREE_ENTRY_KEYS if key in item
+                    )
+                    if newer:
+                        raise CatalogError(
+                            "application metadata field(s) require schema version 3: "
+                            + ", ".join(sorted(newer))
+                        )
         raw_packages = raw.get("packages", [])
         if not isinstance(raw_packages, list):
             raise CatalogError("catalog packages must be an array")

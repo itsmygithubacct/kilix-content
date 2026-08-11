@@ -3,6 +3,23 @@
 All notable user-visible changes are recorded here. The public API remains
 pre-1.0.
 
+## 0.4.0 - 2026-08-10
+
+### Added
+
+- Add schema version 3 named argv actions, accepted input types, system command
+  vectors, and lifecycle/fallback metadata.
+- Catalog File Manager, System Center, Kilix Settings, Software Center,
+  Session Center, Model Store, Region Painter, Voice Studio, Camera Manager,
+  VirtualBox Manager, and the shared terminal accessories.
+- Install all TUI-provided applications from one immutable
+  `kilix-tui-utils` package and explicit `make runtime` build.
+
+### Changed
+
+- Describe PDF conversion input and its fixed conversion action through the
+  shared application contract.
+
 ## 0.3.0 - 2026-08-10
 
 ### Added

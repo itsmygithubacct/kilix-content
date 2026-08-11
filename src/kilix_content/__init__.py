@@ -12,9 +12,16 @@ from .install import (
     sha256_file,
     verify_git_checkout,
 )
-from .model import Catalog, CatalogError, ContentSpec, PackageSpec
+from .model import (
+    ActionSpec,
+    Catalog,
+    CatalogError,
+    ContentSpec,
+    LifecycleSpec,
+    PackageSpec,
+)
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 
 @lru_cache(maxsize=1)
@@ -25,11 +32,13 @@ def default_catalog() -> Catalog:
 
 
 __all__ = [
+    "ActionSpec",
     "Catalog",
     "CatalogError",
     "ContentSpec",
     "InstallError",
     "Installer",
+    "LifecycleSpec",
     "PackageSpec",
     "default_catalog",
     "download",

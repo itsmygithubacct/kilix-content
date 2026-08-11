@@ -1,5 +1,17 @@
 {
-  "schema_version": 1,
+  "schema_version": 3,
+  "packages": [
+    {
+      "id": "kilix-tui-utils",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-tui-utils",
+        "ref": "e669b130c6068566e6d890847b21855c3b3f08ba"
+      },
+      "build": ["make", "runtime"],
+      "dependency_hint": "needs Python 3.11 or newer and make"
+    }
+  ],
   "content": [
     {
       "id": "doom",
@@ -209,6 +221,341 @@
       "launch": {"mode": "terminal"}
     },
     {
+      "id": "kilix-file",
+      "label": "File Manager",
+      "kind": "app",
+      "icon": "folder",
+      "description": "Browse and open files without destructive file operations.",
+      "package": "kilix-tui-utils",
+      "binary": ".runtime/bin/kilix-file",
+      "capabilities": ["filesystem-read", "open-document"],
+      "actions": {
+        "browse": {"description": "Browse files and directories"},
+        "open": {
+          "argv": ["--open"],
+          "accepts_input": true,
+          "description": "Open a document through the shared host dispatcher"
+        }
+      },
+      "accepts": ["inode/directory", "text/plain", "application/pdf", "image/*"],
+      "launch": {"mode": "terminal", "preferred_size": "900x600"}
+    },
+    {
+      "id": "kilix-system-center",
+      "label": "System Center",
+      "kind": "app",
+      "icon": "computer",
+      "description": "CPU, memory, thermal, storage, network, audio, camera, package, and VM tools in one place.",
+      "package": "kilix-tui-utils",
+      "binary": ".runtime/bin/kilix-system-center",
+      "capabilities": ["system-read", "audio-control"],
+      "actions": {
+        "overview": {"argv": ["--action", "overview"]},
+        "cpu": {"argv": ["--action", "cpu"]},
+        "memory": {"argv": ["--action", "memory"]},
+        "thermal": {"argv": ["--action", "thermal"]},
+        "storage": {"argv": ["--action", "storage"]},
+        "network": {"argv": ["--action", "network"]},
+        "audio": {"argv": ["--action", "audio"]},
+        "packages": {"argv": ["--action", "packages"]},
+        "cameras": {"argv": ["--action", "cameras"]},
+        "virtualbox": {"argv": ["--action", "virtualbox"]}
+      },
+      "lifecycle": {"single_instance": true},
+      "launch": {"mode": "terminal", "preferred_size": "960x640"}
+    },
+    {
+      "id": "kilix-settings-center",
+      "label": "Kilix Settings",
+      "kind": "app",
+      "icon": "settings",
+      "description": "Portable audio, voice, display, desktop, and shared stack settings.",
+      "package": "kilix-tui-utils",
+      "binary": ".runtime/bin/kilix-settings-center",
+      "capabilities": ["settings-write", "audio-control"],
+      "actions": {
+        "overview": {"argv": ["--action", "overview"]},
+        "audio": {"argv": ["--action", "audio"]},
+        "display": {"argv": ["--action", "display"]},
+        "desktop": {"argv": ["--action", "desktop"]},
+        "voice": {"argv": ["--action", "voice"]}
+      },
+      "lifecycle": {"single_instance": true},
+      "launch": {"mode": "terminal", "preferred_size": "860x600"}
+    },
+    {
+      "id": "kilix-software-center",
+      "label": "Software Center",
+      "kind": "app",
+      "icon": "package",
+      "description": "Browse the shared immutable catalog and install through the Kilix installer.",
+      "package": "kilix-tui-utils",
+      "binary": ".runtime/bin/kilix-software-center",
+      "capabilities": ["network", "software-install", "storage-write"],
+      "actions": {
+        "browse": {"argv": ["--action", "browse"]},
+        "details": {
+          "argv": ["--action", "details"],
+          "accepts_input": true,
+          "description": "Select one catalog ID"
+        },
+        "install": {
+          "argv": ["--action", "install"],
+          "accepts_input": true,
+          "description": "Select one catalog ID and show the confirmation boundary"
+        }
+      },
+      "lifecycle": {"single_instance": true},
+      "launch": {"mode": "terminal", "preferred_size": "920x620"}
+    },
+    {
+      "id": "kilix-session-center",
+      "label": "Session Center",
+      "kind": "app",
+      "icon": "terminal",
+      "description": "Panes, PTYs, switcher, transcripts, and remote session tools.",
+      "package": "kilix-tui-utils",
+      "binary": ".runtime/bin/kilix-session-center",
+      "capabilities": ["kilix-control", "session-read", "session-write"],
+      "actions": {
+        "overview": {"argv": ["--action", "overview"]},
+        "panes": {"argv": ["--action", "panes"]},
+        "pty": {"argv": ["--action", "pty"]},
+        "logs": {"argv": ["--action", "logs"]},
+        "remote-sessions": {"argv": ["--action", "remote-sessions"]}
+      },
+      "lifecycle": {
+        "single_instance": true,
+        "requires_kilix_session": true,
+        "degrades_inplace": true
+      },
+      "launch": {"mode": "terminal", "preferred_size": "960x640"}
+    },
+    {
+      "id": "kilix-model-store",
+      "label": "Model Store",
+      "kind": "app",
+      "icon": "package",
+      "description": "Browse, install, and manage shared local AI and speech models.",
+      "source": {"type": "system"},
+      "command": ["kilix", "bonsai"],
+      "capabilities": ["network", "model-storage", "storage-write"],
+      "actions": {"browse": {"description": "Open the model catalog"}},
+      "lifecycle": {"single_instance": true, "startup_timeout_seconds": 30},
+      "launch": {"mode": "terminal", "preferred_size": "920x620"}
+    },
+    {
+      "id": "kilix-region-painter",
+      "label": "Region Painter",
+      "kind": "app",
+      "icon": "paint",
+      "description": "Paint and edit image masks with the shared Kilix region tool.",
+      "source": {"type": "system"},
+      "command": ["kilix", "mask"],
+      "capabilities": ["filesystem-read", "filesystem-write", "kitty-graphics"],
+      "actions": {
+        "new": {"description": "Create a new mask"},
+        "open": {"accepts_input": true, "description": "Open an image or mask"}
+      },
+      "accepts": ["image/png", "image/jpeg", "image/webp"],
+      "launch": {"mode": "terminal", "preferred_size": "960x700"}
+    },
+    {
+      "id": "kilix-voice-studio",
+      "label": "Voice Studio",
+      "kind": "app",
+      "icon": "microphone",
+      "description": "Speech tools, shared settings, models, status, and diagnostics.",
+      "package": "kilix-tui-utils",
+      "binary": ".runtime/bin/kilix-voice-studio",
+      "capabilities": ["audio-input", "audio-output", "model-storage", "settings-write"],
+      "actions": {
+        "overview": {"argv": ["--action", "overview"]},
+        "read-aloud": {"argv": ["--action", "read-aloud"]},
+        "dictation": {"argv": ["--action", "dictation"]},
+        "models": {"argv": ["--action", "models"]},
+        "settings": {"argv": ["--action", "settings"]},
+        "status": {"argv": ["--action", "status"]},
+        "doctor": {"argv": ["--action", "doctor"]}
+      },
+      "lifecycle": {"single_instance": true},
+      "launch": {"mode": "terminal", "preferred_size": "900x620"}
+    },
+    {
+      "id": "kilix-camera-manager",
+      "label": "Camera Manager",
+      "kind": "app",
+      "icon": "camera",
+      "description": "Manage safe camera profiles, groups, mosaics, and viewer launches.",
+      "package": "kilix-tui-utils",
+      "binary": ".runtime/bin/kilix-cameras",
+      "capabilities": ["network", "settings-write"],
+      "actions": {"manage": {"description": "Open camera profiles and groups"}},
+      "lifecycle": {"single_instance": true},
+      "launch": {"mode": "terminal", "preferred_size": "900x620"}
+    },
+    {
+      "id": "kilix-virtualbox-manager",
+      "label": "VirtualBox Manager",
+      "kind": "app",
+      "icon": "computer",
+      "description": "Discover, launch, focus, and control VirtualBox VPN machines.",
+      "package": "kilix-tui-utils",
+      "binary": ".runtime/bin/kilix-virtualbox-manager",
+      "capabilities": ["virtualization", "kilix-control"],
+      "actions": {
+        "manage": {"description": "Open the machine manager"},
+        "status": {"argv": ["--status"], "description": "Print machine status"},
+        "select": {
+          "argv": ["--vm"],
+          "accepts_input": true,
+          "description": "Preselect a machine name or UUID"
+        }
+      },
+      "lifecycle": {"single_instance": true, "degrades_inplace": true},
+      "launch": {"mode": "terminal", "preferred_size": "960x640"}
+    },
+    {
+      "id": "kilix-weather",
+      "label": "Weather",
+      "kind": "app",
+      "icon": "weather",
+      "description": "Current conditions and forecast from Open-Meteo.",
+      "package": "kilix-tui-utils",
+      "binary": ".runtime/bin/kilix-weather",
+      "capabilities": ["network"],
+      "actions": {"forecast": {"description": "Open the forecast"}},
+      "launch": {"mode": "terminal", "preferred_size": "780x560"}
+    },
+    {
+      "id": "kilix-calculator",
+      "label": "Calculator",
+      "kind": "app",
+      "icon": "calculator",
+      "description": "Safe arithmetic calculator with no arbitrary code evaluation.",
+      "package": "kilix-tui-utils",
+      "binary": ".runtime/bin/kilix-calculator",
+      "actions": {
+        "calculate": {
+          "accepts_input": true,
+          "description": "Evaluate one arithmetic expression and print the result"
+        }
+      },
+      "accepts": ["text/plain"],
+      "launch": {"mode": "terminal", "preferred_size": "640x480"}
+    },
+    {
+      "id": "kilix-music-control",
+      "label": "Music Control",
+      "kind": "app",
+      "icon": "music",
+      "description": "Control Kilix Amp through its local control socket.",
+      "package": "kilix-tui-utils",
+      "binary": ".runtime/bin/kilix-music",
+      "capabilities": ["audio-output", "headless-control"],
+      "actions": {"control": {"description": "Open playback controls"}},
+      "lifecycle": {"single_instance": true},
+      "launch": {"mode": "terminal", "preferred_size": "760x560"}
+    },
+    {
+      "id": "kilix-chawan",
+      "label": "Chawan Text Browser",
+      "kind": "app",
+      "icon": "web-browser",
+      "description": "Browse web pages in a text-native Kilix surface.",
+      "source": {"type": "system"},
+      "command": ["kilix", "chawan"],
+      "capabilities": ["network", "kilix-control"],
+      "actions": {
+        "browse": {"description": "Open the browser"},
+        "open": {"accepts_input": true, "description": "Open a URL"}
+      },
+      "accepts": ["text/html", "x-scheme-handler/http", "x-scheme-handler/https"],
+      "lifecycle": {"requires_kilix_session": true, "degrades_inplace": true},
+      "launch": {"mode": "terminal", "preferred_size": "960x700"}
+    },
+    {
+      "id": "kilix-rollout-resume",
+      "label": "Coding Session Recovery",
+      "kind": "app",
+      "icon": "terminal",
+      "description": "Recover and manage coding-agent sessions and installations.",
+      "package": "kilix-tui-utils",
+      "binary": ".runtime/bin/kilix-rollout-resume",
+      "capabilities": ["network", "session-read", "software-install"],
+      "actions": {"recover": {"description": "Open session recovery"}},
+      "lifecycle": {"single_instance": true},
+      "launch": {"mode": "terminal", "preferred_size": "960x640"}
+    },
+    {
+      "id": "kilix-character-map",
+      "label": "Character Map",
+      "kind": "app",
+      "icon": "font",
+      "description": "Search Unicode names and codepoints and copy through the terminal clipboard.",
+      "package": "kilix-tui-utils",
+      "binary": ".runtime/bin/kilix-character-map",
+      "capabilities": ["clipboard"],
+      "actions": {
+        "browse": {"description": "Browse useful Unicode blocks"},
+        "find": {
+          "argv": ["--find"],
+          "accepts_input": true,
+          "description": "Find a Unicode name or codepoint"
+        }
+      },
+      "accepts": ["text/plain"],
+      "launch": {"mode": "terminal", "preferred_size": "760x560"}
+    },
+    {
+      "id": "kilix-notepad",
+      "label": "Notepad",
+      "kind": "app",
+      "icon": "text-editor",
+      "description": "Portable UTF-8 editor with atomic saves and guarded discard.",
+      "package": "kilix-tui-utils",
+      "binary": ".runtime/bin/kilix-notepad",
+      "capabilities": ["filesystem-read", "filesystem-write"],
+      "actions": {
+        "new": {"description": "Create a new text document"},
+        "open": {"accepts_input": true, "description": "Open a UTF-8 text document"}
+      },
+      "accepts": ["text/plain", "text/markdown"],
+      "launch": {"mode": "terminal", "preferred_size": "860x620"}
+    },
+    {
+      "id": "kilix-find-files",
+      "label": "Find Files",
+      "kind": "app",
+      "icon": "search",
+      "description": "Bounded filename and glob search without following directory symlinks.",
+      "package": "kilix-tui-utils",
+      "binary": ".runtime/bin/kilix-find-files",
+      "capabilities": ["filesystem-read", "open-document"],
+      "actions": {
+        "find": {
+          "argv": ["--query"],
+          "accepts_input": true,
+          "description": "Search for a filename substring or glob"
+        }
+      },
+      "accepts": ["inode/directory", "text/plain"],
+      "launch": {"mode": "terminal", "preferred_size": "900x620"}
+    },
+    {
+      "id": "kilix-session-log",
+      "label": "Session Log Viewer",
+      "kind": "app",
+      "icon": "text-editor",
+      "description": "Read live and archived Kilix pane transcripts.",
+      "package": "kilix-tui-utils",
+      "binary": ".runtime/bin/kilix-session-log",
+      "capabilities": ["session-read", "filesystem-read"],
+      "actions": {"browse": {"description": "Browse pane transcripts"}},
+      "lifecycle": {"requires_kilix_session": true, "degrades_inplace": true},
+      "launch": {"mode": "terminal", "preferred_size": "900x620"}
+    },
+    {
       "id": "kilix-amp",
       "label": "Kilix Amp",
       "kind": "app",
@@ -239,7 +586,15 @@
       "binary": "kilix-pdf",
       "build": ["make", "runtime"],
       "dependency_hint": "needs Python 3.11 or newer, uv, make, and network access for the frozen runtime install",
-      "capabilities": ["network"],
+      "capabilities": ["network", "filesystem-read", "filesystem-write"],
+      "actions": {
+        "convert": {
+          "accepts_input": true,
+          "description": "Convert one PDF into a validated Markdown bundle"
+        }
+      },
+      "accepts": ["application/pdf"],
+      "lifecycle": {"preserve_on_failure": true},
       "launch": {"mode": "terminal", "preferred_size": "760x520"}
     },
     {

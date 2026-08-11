@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "kilix-content"
-version = "0.3.0"
+version = "0.4.0"
 description = "Pinned user-level content catalog and installer for Kilix"
 readme = "README.md"
 requires-python = ">=3.10"

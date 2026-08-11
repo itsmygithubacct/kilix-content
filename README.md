@@ -5,7 +5,9 @@ Kilix-hosted desktops. It gives games and applications one declarative record
 for identity, immutable source, build command, capabilities, launch mode, and
 preferred geometry. Schema version 2 can separate an immutable package from
 the applications it provides, so one checkout and build can expose several
-catalog IDs without duplicating source or installation state.
+catalog IDs without duplicating source or installation state. Schema version 3
+adds argv-only named actions, accepted input types, host command vectors, and
+lifecycle/fallback policy.
 
 The installer accepts only argument arrays; it never invokes a shell. Managed
 Git content is fetched at an exact 40-character commit into a private staging
@@ -51,6 +53,23 @@ files_executable = installer.ensure(files, print)
 system_executable = installer.ready(system)
 ```
 
+Schema-version-3 application metadata stays data all the way to the host:
+
+```python
+files = default_catalog().require("kilix-file")
+open_action = files.require_action("open")
+
+assert open_action.argv == ("--open",)
+assert open_action.accepts_input
+assert "application/pdf" in files.accepts
+assert files.lifecycle.degrades_inplace
+```
+
+`command` is an argv vector for a system-owned application such as
+`["kilix", "bonsai"]`; it is mutually exclusive with a package-relative
+`binary`. Actions add only trusted fixed argv and declare separately whether
+one caller-supplied input may be appended. They are never shell strings.
+
 Kilix Lander and Kilix Brokeout retain the catalog IDs `terminal-lander` and
 `kitty-brokeout`, respectively, so existing installations and preferences do
 not need migration.
@@ -66,14 +85,16 @@ destination symlink is replaced rather than followed.
 
 ## Catalog contract
 
-The packaged `plebian.json` catalog remains schema version 1. Schema version 2
-adds a top-level `packages` array. Each package owns an installable Git/archive
+The packaged `plebian.json` catalog uses schema version 3. Schema version 2
+added a top-level `packages` array. Each package owns an installable Git/archive
 source, build argv, and dependency hint. A content entry may reference it by
 `package` and owns its own ID, executable path, label, capabilities, launch
 mode, and geometry. Package references cannot override source/build fields;
 unknown, duplicate, unused, non-installable, or conflicting package identities
 are rejected. Schema version 1 and direct `ContentSpec` construction remain
-compatible.
+compatible. Schema version 3 adds `command`, `actions`, `accepts`, and
+`lifecycle`; older schemas reject those fields instead of silently dropping
+host policy.
 
 Installable Git entries and packages require an immutable commit, relative
 executable path, and optional build argv. Make-based entries always name their
@@ -82,6 +103,8 @@ become the build's default target. Most use `all`; Kilix PDF Conversion uses
 its pinned `runtime` target. Capabilities are
 declarative labels for the host; they are not commands or package names. Launch
 modes are `terminal`, `run`, `xpane`, `browse`, `window`, or `custom`.
+Lifecycle metadata covers single-instance intent, Kilix-session requirements,
+in-place degradation, failure preservation, and bounded startup timeouts.
 
 Catalog parsing rejects duplicate or unknown fields, unknown source/launch
 modes, duplicate or unsafe IDs, mismatched package metadata, wrong scalar
