@@ -19,6 +19,8 @@ pre-1.0.
 
 - Describe PDF conversion input and its fixed conversion action through the
   shared application contract.
+- Add `Installer.ready_provided()` so callers verify one shared package source
+  once while retaining independent executable readiness for every app.
 
 ## 0.3.0 - 2026-08-10
 

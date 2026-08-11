@@ -233,9 +233,30 @@ class ContentTests(unittest.TestCase):
         self.assertEqual(first_executable, str(data / "fixture-suite/fixture"))
         self.assertEqual(sibling_executable, str(data / "fixture-suite/second"))
         self.assertEqual(installer.destination(first), installer.destination(sibling))
+        with mock.patch(
+            "kilix_content.install.verify_git_checkout",
+            wraps=verify_git_checkout,
+        ) as verify:
+            readiness = installer.ready_provided(
+                catalog.provided_by("fixture-suite")
+            )
+        self.assertEqual(verify.call_count, 1)
+        self.assertEqual(readiness["fixture-first"], first_executable)
+        self.assertEqual(readiness["fixture-second"], sibling_executable)
         self.assertEqual(
             [path.name for path in data.iterdir()], ["fixture-suite"]
         )
+
+        unrelated = ContentSpec.from_mapping(
+            {
+                "id": "unrelated",
+                "label": "Unrelated",
+                "source": {"type": "system"},
+                "binary": "unrelated",
+            }
+        )
+        with self.assertRaisesRegex(InstallError, "shared installation identity"):
+            installer.ready_provided((first, unrelated))
 
     def test_schema_two_rejects_invalid_or_ambiguous_packages(self) -> None:
         package = {

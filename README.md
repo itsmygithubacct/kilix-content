@@ -51,6 +51,11 @@ assert shared_catalog.provided_by("kilix-tui-utils") == (files, system)
 
 files_executable = installer.ensure(files, print)
 system_executable = installer.ready(system)
+
+# One package verification, one independent executable result per app.
+readiness = installer.ready_provided(
+    shared_catalog.provided_by("kilix-tui-utils")
+)
 ```
 
 Schema-version-3 application metadata stays data all the way to the host:

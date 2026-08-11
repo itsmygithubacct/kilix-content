@@ -449,39 +449,95 @@ class Installer:
             return False
 
     def ready(self, spec: ContentSpec, directory: str | None = None) -> str | None:
-        selected = os.path.abspath(
-            os.path.normpath(directory or self.destination(spec))
+        return self.ready_provided((spec,), directory=directory).get(spec.content_id)
+
+    def ready_provided(
+        self,
+        specs: Iterable[ContentSpec],
+        *,
+        directory: str | None = None,
+    ) -> dict[str, str | None]:
+        """Check several entries from one package with one source verification.
+
+        Every binary is still checked independently. The expensive immutable
+        checkout/submodule verification is shared only when every flattened
+        spec declares the exact same installation identity.
+        """
+        provided = tuple(specs)
+        if not provided:
+            return {}
+        first = provided[0]
+        identity = (
+            first.install_id,
+            first.source_type,
+            first.repository,
+            first.ref,
+            first.urls,
+            first.sha256,
+            first.build,
         )
-        try:
-            executable = self.executable(spec, selected)
-        except InstallError:
-            return None
-        if os.path.islink(selected) or not self._executable_stays_within(
-            selected, executable
-        ):
-            return None
-        try:
-            file_stat = os.stat(executable, follow_symlinks=False)
-        except (OSError, ValueError):
-            return None
-        if not stat.S_ISREG(file_stat.st_mode) or not os.access(executable, os.X_OK):
-            return None
-        if spec.source_type == "git":
+        seen: set[str] = set()
+        for spec in provided:
+            candidate_identity = (
+                spec.install_id,
+                spec.source_type,
+                spec.repository,
+                spec.ref,
+                spec.urls,
+                spec.sha256,
+                spec.build,
+            )
+            if candidate_identity != identity:
+                raise InstallError(
+                    "provided readiness requires one shared installation identity"
+                )
+            if spec.content_id in seen:
+                raise InstallError(
+                    f"duplicate provided content id: {spec.content_id}"
+                )
+            seen.add(spec.content_id)
+
+        selected = os.path.abspath(
+            os.path.normpath(directory or self.destination(first))
+        )
+        results: dict[str, str | None] = {
+            spec.content_id: None for spec in provided
+        }
+        if os.path.islink(selected):
+            return results
+        candidates: dict[str, str] = {}
+        for spec in provided:
             try:
-                managed_destination = self.destination(spec)
+                executable = self.executable(spec, selected)
+            except InstallError:
+                continue
+            if not self._executable_stays_within(selected, executable):
+                continue
+            try:
+                file_stat = os.stat(executable, follow_symlinks=False)
+            except (OSError, ValueError):
+                continue
+            if stat.S_ISREG(file_stat.st_mode) and os.access(executable, os.X_OK):
+                candidates[spec.content_id] = executable
+        if not candidates:
+            return results
+        if first.source_type == "git":
+            try:
+                managed_destination = self.destination(first)
                 managed_selection = os.path.realpath(selected) == os.path.realpath(
                     managed_destination
                 ) or os.path.lexists(os.path.join(selected, ".git"))
             except (InstallError, OSError, ValueError):
-                return None
+                return results
             if managed_selection:
                 try:
                     verify_git_checkout(
-                        spec.repository, spec.ref, selected, env=self.env
+                        first.repository, first.ref, selected, env=self.env
                     )
                 except InstallError:
-                    return None
-        return executable
+                    return results
+        results.update(candidates)
+        return results
 
     def ensure(self, spec: ContentSpec, report: Report = lambda _message: None) -> str:
         self._ensure_root()
