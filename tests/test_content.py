@@ -81,6 +81,9 @@ class ContentTests(unittest.TestCase):
         system = catalog.require("kilix-system-center")
         self.assertEqual(files.install_id, "kilix-tui-utils")
         self.assertEqual(system.install_id, "kilix-tui-utils")
+        self.assertEqual(
+            files.ref, "f260792e3427c795387878cfa485d89fb16ff6db"
+        )
         self.assertEqual(files.require_action("open").argv, ("--open",))
         self.assertIn("application/pdf", pdf_conversion.accepts)
         self.assertTrue(catalog.require("kilix-session-center").lifecycle.degrades_inplace)

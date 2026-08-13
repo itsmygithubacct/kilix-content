@@ -3,6 +3,13 @@
 All notable user-visible changes are recorded here. The public API remains
 pre-1.0.
 
+## Unreleased
+
+### Fixed
+
+- Advance `kilix-tui-utils` to relocatable runtime launchers so atomic package
+  selection does not leave Start-menu applications pointing at staging paths.
+
 ## 0.4.0 - 2026-08-10
 
 ### Added
