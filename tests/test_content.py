@@ -982,6 +982,37 @@ class ContentTests(unittest.TestCase):
             download(source.as_uri(), str(destination), expected_sha256="0" * 64)
         self.assertEqual(destination.read_bytes(), b"preserve")
 
+    def test_download_advances_to_the_first_working_mirror(self) -> None:
+        good = self.root / "payload"
+        good.write_bytes(b"payload")
+        digest = hashlib.sha256(b"payload").hexdigest()
+        destination = self.root / "download"
+
+        unreachable = (self.root / "absent-mirror").as_uri()
+        download((unreachable, good.as_uri()), str(destination), expected_sha256=digest)
+        self.assertEqual(destination.read_bytes(), b"payload")
+        self.assertFalse(any(".download-" in path.name for path in self.root.iterdir()))
+
+        destination.unlink()
+        corrupt = self.root / "corrupt"
+        corrupt.write_bytes(b"corrupt")
+        download(
+            (corrupt.as_uri(), good.as_uri()), str(destination), expected_sha256=digest
+        )
+        self.assertEqual(destination.read_bytes(), b"payload")
+        self.assertFalse(any(".download-" in path.name for path in self.root.iterdir()))
+
+    def test_failing_mirrors_report_the_last_error_and_leave_no_residue(self) -> None:
+        first = (self.root / "first-absent").as_uri()
+        last = (self.root / "last-absent").as_uri()
+        destination = self.root / "download"
+        with self.assertRaises(InstallError) as raised:
+            download((first, last), str(destination))
+        self.assertIn("last-absent", str(raised.exception))
+        self.assertNotIn("first-absent", str(raised.exception))
+        self.assertFalse(destination.exists())
+        self.assertFalse(any(".download-" in path.name for path in self.root.iterdir()))
+
     def test_download_replaces_symlink_atomically_without_touching_target(self) -> None:
         source = self.root / "payload"
         source.write_bytes(b"payload")
