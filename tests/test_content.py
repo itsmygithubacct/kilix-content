@@ -970,6 +970,67 @@ class ContentTests(unittest.TestCase):
             any(path.name.startswith(".fixture.install-") for path in data.iterdir())
         )
 
+    def test_staging_failures_are_normalized_and_leave_no_residue(self) -> None:
+        archive_spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {
+                    "type": "archive",
+                    "urls": [(self.root / "unused.tar").as_uri()],
+                    "sha256": "0" * 64,
+                },
+                "binary": "fixture",
+            }
+        )
+        data = self.root / "data"
+        installer = Installer(str(data))
+
+        exhausted = OSError(errno.ENOSPC, "No space left on device")
+        with mock.patch(
+            "kilix_content.install.tempfile.mkdtemp", side_effect=exhausted
+        ):
+            with self.assertRaisesRegex(InstallError, "staging directory"):
+                installer.ensure(archive_spec)
+        self.assertFalse(
+            any(path.name.startswith(".fixture.install-") for path in data.iterdir())
+        )
+
+        real_mkdir = os.mkdir
+
+        def failing_mkdir(path: str, *args: object, **kwargs: object) -> None:
+            if os.path.basename(path) == "content":
+                raise OSError(errno.ENOSPC, "No space left on device")
+            real_mkdir(path, *args, **kwargs)
+
+        with mock.patch("kilix_content.install.os.mkdir", side_effect=failing_mkdir):
+            with self.assertRaises(InstallError):
+                installer.ensure(archive_spec)
+        self.assertFalse(
+            any(path.name.startswith(".fixture.install-") for path in data.iterdir())
+        )
+
+        git_spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {
+                    "type": "git",
+                    "repository": str(self.root / "unused-repository"),
+                    "ref": "a" * 40,
+                },
+                "binary": "fixture",
+            }
+        )
+        with mock.patch(
+            "kilix_content.install.tempfile.mkdtemp", side_effect=exhausted
+        ):
+            with self.assertRaisesRegex(InstallError, "staging directory"):
+                installer.ensure(git_spec)
+        self.assertFalse(
+            any(path.name.startswith(".fixture.install-") for path in data.iterdir())
+        )
+
     def test_download_validates_checksum(self) -> None:
         source = self.root / "payload"
         source.write_bytes(b"payload")

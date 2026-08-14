@@ -552,6 +552,16 @@ class Installer:
             f"{spec.content_id} uses a non-installable {spec.source_type} source"
         )
 
+    def _create_stage(self, spec: ContentSpec) -> str:
+        try:
+            return tempfile.mkdtemp(
+                prefix=f".{spec.install_id}.install-", dir=self.root
+            )
+        except OSError as exc:
+            raise InstallError(
+                f"could not create staging directory in {self.root}"
+            ) from exc
+
     def _replace_stage(self, stage: str, destination: str) -> None:
         if os.path.lexists(destination):
             if os.path.islink(destination) or not os.path.isdir(destination):
@@ -620,7 +630,7 @@ class Installer:
             raise InstallError("managed checkout identity is invalid")
         destination = self.destination(spec)
         self._existing_git_is_replaceable(spec, destination)
-        stage = tempfile.mkdtemp(prefix=f".{spec.install_id}.install-", dir=self.root)
+        stage = self._create_stage(spec)
         try:
             commands = (
                 ["git", "init", "--quiet"],
@@ -674,11 +684,11 @@ class Installer:
             raise InstallError(
                 f"refusing to replace existing archive content: {destination}"
             )
-        stage = tempfile.mkdtemp(prefix=f".{spec.install_id}.install-", dir=self.root)
+        stage = self._create_stage(spec)
         archive_path = os.path.join(stage, ".download")
         extracted = os.path.join(stage, "content")
-        os.mkdir(extracted)
         try:
+            os.mkdir(extracted)
             download(spec.urls, archive_path, report, spec.sha256)
             try:
                 with tarfile.open(archive_path, "r:*") as archive:
