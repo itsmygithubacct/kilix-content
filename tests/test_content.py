@@ -7,10 +7,12 @@ import json
 import os
 import re
 import shlex
+import signal
 import stat
 import subprocess
 import tarfile
 import tempfile
+import time
 import unittest
 import zipfile
 from pathlib import Path
@@ -37,7 +39,7 @@ from kilix_content import (
     safe_extract_zip,
     verify_git_checkout,
 )
-from kilix_content.install import _rename_exchange
+from kilix_content.install import _rename_exchange, _run_with_tail
 
 
 def run(*argv: str, cwd: Path) -> str:
@@ -1137,6 +1139,113 @@ class ContentTests(unittest.TestCase):
         message = str(raised.exception)
         self.assertLessEqual(len(message), 1024)
         self.assertIn("tail marker", message)
+
+    def test_command_timeout_is_validated_and_bounds_stalled_builds(self) -> None:
+        data = self.root / "data"
+        for invalid in (0, -5, float("nan"), float("inf"), True, "60"):
+            with self.assertRaises(InstallError):
+                Installer(str(data), command_timeout=invalid)
+        self.assertIsNone(Installer(str(data), command_timeout=None).command_timeout)
+        self.assertEqual(Installer(str(data)).command_timeout, 3600.0)
+
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {"type": "system"},
+                "binary": "fixture",
+                "build": [
+                    sys.executable,
+                    "-c",
+                    "import time; print('tail marker', flush=True); time.sleep(60)",
+                ],
+            }
+        )
+        installer = Installer(str(data), command_timeout=0.5)
+        started = time.monotonic()
+        with self.assertRaisesRegex(InstallError, "timed out") as raised:
+            installer._build(spec, str(self.root), lambda _message: None)
+        self.assertLess(time.monotonic() - started, 30)
+        self.assertIn("tail marker", str(raised.exception))
+
+    def test_timeout_kills_the_whole_build_process_group(self) -> None:
+        script = (
+            "import subprocess, sys, time\n"
+            "child = subprocess.Popen(\n"
+            "    [sys.executable, '-c', 'import time; time.sleep(120)']\n"
+            ")\n"
+            "print(child.pid, flush=True)\n"
+            "time.sleep(120)\n"
+        )
+        started = time.monotonic()
+        with self.assertRaisesRegex(InstallError, "timed out") as raised:
+            _run_with_tail(
+                [sys.executable, "-c", script],
+                cwd=str(self.root),
+                env=dict(os.environ),
+                timeout=2,
+            )
+        self.assertLess(time.monotonic() - started, 60)
+        grandchild = int(str(raised.exception).rsplit(":", 1)[-1].split()[-1])
+        for _ in range(100):
+            try:
+                os.kill(grandchild, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.1)
+        else:
+            self.fail("a build child survived the timeout")
+
+    def test_build_completes_when_a_background_child_keeps_the_pipe(self) -> None:
+        script = (
+            "import subprocess, sys\n"
+            "child = subprocess.Popen(\n"
+            "    [sys.executable, '-c', 'import time; time.sleep(30)']\n"
+            ")\n"
+            "print(child.pid, flush=True)\n"
+        )
+        started = time.monotonic()
+        returncode, tail = _run_with_tail(
+            [sys.executable, "-c", script],
+            cwd=str(self.root),
+            env=dict(os.environ),
+            timeout=60,
+        )
+        self.assertEqual(returncode, 0)
+        self.assertLess(time.monotonic() - started, 15)
+        os.kill(int(tail.split()[-1]), signal.SIGKILL)
+
+    def test_stalled_source_setup_is_bounded_and_leaves_no_residue(self) -> None:
+        stub_bin = self.root / "bin"
+        stub_bin.mkdir()
+        stub = stub_bin / "git"
+        stub.write_text("#!/bin/sh\nsleep 60\n", encoding="utf-8")
+        stub.chmod(0o755)
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {
+                    "type": "git",
+                    "repository": str(self.root / "unused-repository"),
+                    "ref": "a" * 40,
+                },
+                "binary": "fixture",
+            }
+        )
+        data = self.root / "data"
+        environment = dict(
+            os.environ,
+            PATH=str(stub_bin) + os.pathsep + os.environ.get("PATH", os.defpath),
+        )
+        installer = Installer(str(data), env=environment, command_timeout=0.5)
+        started = time.monotonic()
+        with self.assertRaisesRegex(InstallError, "timed out"):
+            installer.ensure(spec)
+        self.assertLess(time.monotonic() - started, 30)
+        self.assertFalse(
+            any(path.name.startswith(".fixture.install-") for path in data.iterdir())
+        )
 
     def test_json_loader_reports_malformed_catalog(self) -> None:
         path = self.root / "catalog.json"

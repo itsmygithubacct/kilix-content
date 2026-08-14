@@ -5,14 +5,18 @@ from __future__ import annotations
 import ctypes
 import errno
 import hashlib
+import math
 import os
+import selectors
 import shutil
+import signal
 import stat
 
 # Child processes always receive an argv array and never invoke a shell.
 import subprocess  # nosec B404
 import tarfile
 import tempfile
+import time
 import urllib.request
 import zipfile
 from collections.abc import Callable, Iterable
@@ -212,7 +216,11 @@ def download(
 
 
 def _run(
-    argv: list[str], *, cwd: str, env: dict[str, str] | None = None
+    argv: list[str],
+    *,
+    cwd: str,
+    env: dict[str, str] | None = None,
+    timeout: float | None = None,
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         argv,
@@ -222,14 +230,33 @@ def _run(
         text=True,
         errors="replace",
         check=False,
+        timeout=timeout,
     )  # nosec B603
 
 
+def _kill_process_group(process: subprocess.Popen[bytes]) -> None:
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except OSError:
+        process.kill()
+    process.wait()
+
+
 def _run_with_tail(
-    argv: list[str], *, cwd: str, env: dict[str, str], tail_bytes: int = 16 * 1024
+    argv: list[str],
+    *,
+    cwd: str,
+    env: dict[str, str],
+    tail_bytes: int = 16 * 1024,
+    timeout: float | None = None,
 ) -> tuple[int, str]:
     process = subprocess.Popen(
-        argv, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+        argv,
+        cwd=cwd,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
     )  # nosec B603
     tail = bytearray()
     output = process.stdout
@@ -237,12 +264,57 @@ def _run_with_tail(
         process.kill()
         process.wait()
         raise RuntimeError("could not capture build output")
-    with output:
-        while block := output.read(64 * 1024):
-            tail.extend(block)
-            if len(tail) > tail_bytes:
-                del tail[:-tail_bytes]
-    return process.wait(), tail.decode("utf-8", errors="replace").strip()
+
+    def decoded() -> str:
+        return tail.decode("utf-8", errors="replace").strip()
+
+    def timed_out() -> InstallError:
+        _kill_process_group(process)
+        detail = decoded()
+        suffix = f": {detail}" if detail else ""
+        return InstallError(
+            f"{argv[0]} timed out after {timeout:g} seconds{suffix}"
+        )
+
+    descriptor = output.fileno()
+
+    def absorb() -> bool:
+        """Move one ready block into the bounded tail; report False at EOF."""
+        block = os.read(descriptor, 64 * 1024)
+        if not block:
+            return False
+        tail.extend(block)
+        if len(tail) > tail_bytes:
+            del tail[:-tail_bytes]
+        return True
+
+    deadline = None if timeout is None else time.monotonic() + timeout
+    with output, selectors.DefaultSelector() as poller:
+        poller.register(descriptor, selectors.EVENT_READ)
+        while True:
+            if deadline is None:
+                interval = 1.0
+            else:
+                interval = min(1.0, deadline - time.monotonic())
+                if interval <= 0:
+                    raise timed_out()
+            if poller.select(interval):
+                if not absorb():
+                    break  # Every writer closed the pipe: output is complete.
+            elif process.poll() is not None:
+                # The command has exited but a child it started still holds
+                # the pipe open. Keep what has arrived and stop waiting.
+                while poller.select(0) and absorb():
+                    pass
+                break
+    try:
+        remaining = (
+            None if deadline is None else max(0.0, deadline - time.monotonic())
+        )
+        returncode = process.wait(timeout=remaining)
+    except subprocess.TimeoutExpired:
+        raise timed_out() from None
+    return returncode, decoded()
 
 
 def _git_environment(env: dict[str, str] | None = None) -> dict[str, str]:
@@ -391,17 +463,41 @@ def _valid_git_identity(repository: object, ref: object) -> bool:
 
 
 class Installer:
-    """Install catalog entries below one caller-owned data directory."""
+    """Install catalog entries below one caller-owned data directory.
 
-    def __init__(self, root: str, *, env: dict[str, str] | None = None):
+    Every fetch and build command an installation spawns is bounded by
+    ``command_timeout`` seconds so a stalled network peer or wedged build
+    cannot block ``ensure()`` forever. The generous default accommodates
+    long legitimate builds; pass ``None`` to wait without bound.
+    """
+
+    def __init__(
+        self,
+        root: str,
+        *,
+        env: dict[str, str] | None = None,
+        command_timeout: float | None = 3600.0,
+    ):
         try:
             root = os.fspath(root)
         except TypeError as exc:
             raise InstallError("content root must be a filesystem path") from exc
         if not isinstance(root, str) or "\x00" in root or not os.path.isabs(root):
             raise InstallError("content root must be an absolute path")
+        if command_timeout is not None and (
+            isinstance(command_timeout, bool)
+            or not isinstance(command_timeout, (int, float))
+            or not math.isfinite(command_timeout)
+            or command_timeout <= 0
+        ):
+            raise InstallError(
+                "command timeout must be a positive number of seconds or None"
+            )
         self.root = os.path.normpath(root)
         self.env = dict(os.environ if env is None else env)
+        self.command_timeout = (
+            None if command_timeout is None else float(command_timeout)
+        )
         self._ensure_root()
 
     def _ensure_root(self) -> None:
@@ -652,10 +748,16 @@ class Installer:
             git_env = _git_environment(self.env)
             for argv in commands:
                 try:
-                    result = _run(argv, cwd=stage, env=git_env)
+                    result = _run(
+                        argv, cwd=stage, env=git_env, timeout=self.command_timeout
+                    )
                 except OSError as exc:
                     raise InstallError(
                         f"source setup could not start {' '.join(argv[:3])}"
+                    ) from exc
+                except subprocess.TimeoutExpired as exc:
+                    raise InstallError(
+                        f"source setup timed out ({' '.join(argv[:3])})"
                     ) from exc
                 if result.returncode != 0:
                     detail = (result.stderr or result.stdout).strip()[-600:]
@@ -727,7 +829,10 @@ class Installer:
             report(f"building {spec.label} …")
             try:
                 returncode, detail = _run_with_tail(
-                    list(spec.build), cwd=directory, env=self.env
+                    list(spec.build),
+                    cwd=directory,
+                    env=self.env,
+                    timeout=self.command_timeout,
                 )
             except (OSError, ValueError) as exc:
                 hint = f" ({spec.dependency_hint})" if spec.dependency_hint else ""
