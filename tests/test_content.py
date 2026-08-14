@@ -12,6 +12,7 @@ import stat
 import subprocess
 import tarfile
 import tempfile
+import threading
 import time
 import unittest
 import zipfile
@@ -971,6 +972,115 @@ class ContentTests(unittest.TestCase):
         self.assertFalse(
             any(path.name.startswith(".fixture.install-") for path in data.iterdir())
         )
+
+    def _archive_fixture_spec(self) -> ContentSpec:
+        payload = self.root / "fixture.tar"
+        body = b"#!/bin/sh\nexit 0\n"
+        with tarfile.open(payload, "w") as archive:
+            info = tarfile.TarInfo("fixture")
+            info.mode = 0o755
+            info.size = len(body)
+            archive.addfile(info, io.BytesIO(body))
+        digest = hashlib.sha256(payload.read_bytes()).hexdigest()
+        return ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {
+                    "type": "archive",
+                    "urls": [payload.as_uri()],
+                    "sha256": digest,
+                },
+                "binary": "fixture",
+            }
+        )
+
+    def test_install_lock_excludes_other_processes_and_reenters(self) -> None:
+        data = self.root / "data"
+        installer = Installer(str(data))
+        lock_path = data / ".fixture.lock"
+        probe = [
+            sys.executable,
+            "-c",
+            (
+                "import fcntl, os, sys\n"
+                "descriptor = os.open(sys.argv[1], os.O_RDWR)\n"
+                "try:\n"
+                "    fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)\n"
+                "except OSError:\n"
+                "    raise SystemExit(3)\n"
+                "raise SystemExit(0)\n"
+            ),
+            str(lock_path),
+        ]
+        with installer._install_lock("fixture"):
+            with installer._install_lock("fixture"):  # re-entry must not deadlock
+                held = subprocess.run(probe, check=False)
+        self.assertEqual(held.returncode, 3)
+        self.assertFalse(lock_path.exists())  # released locks leave no residue
+
+    def test_ensure_adopts_content_selected_while_awaiting_the_lock(self) -> None:
+        spec = self._archive_fixture_spec()
+        data = self.root / "data"
+        installer = Installer(str(data))
+        selected = str(data / "fixture" / "fixture")
+        with (
+            mock.patch.object(installer, "ready", side_effect=[None, selected]),
+            mock.patch.object(
+                installer,
+                "_ensure_archive",
+                side_effect=AssertionError("rebuilt an installation another "
+                                           "process already selected"),
+            ),
+        ):
+            self.assertEqual(installer.ensure(spec), selected)
+
+    def test_concurrent_ensures_share_one_installation(self) -> None:
+        spec = self._archive_fixture_spec()
+        data = self.root / "data"
+        installer = Installer(str(data))
+        results: list[str] = []
+        failures: list[BaseException] = []
+
+        def ensure() -> None:
+            try:
+                results.append(installer.ensure(spec))
+            except BaseException as exc:  # noqa: BLE001 -- surfaced by the test
+                failures.append(exc)
+
+        threads = [threading.Thread(target=ensure) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertEqual(failures, [])
+        self.assertEqual(results, [str(data / "fixture" / "fixture")] * 2)
+        self.assertFalse(
+            any(path.name.startswith(".fixture.install-") for path in data.iterdir())
+        )
+
+    def test_selection_retries_as_exchange_when_the_destination_appears(self) -> None:
+        data = self.root / "data"
+        destination = data / "fixture"
+        stage = data / ".fixture.install-test"
+        destination.mkdir(parents=True)
+        stage.mkdir()
+        (destination / "value").write_text("old")
+        (stage / "value").write_text("new")
+        installer = Installer(str(data))
+        real_lexists = os.path.lexists
+
+        def racing_lexists(path: str) -> bool:
+            if path == str(destination):
+                return False  # the concurrent selection has not landed yet
+            return real_lexists(path)
+
+        with mock.patch(
+            "kilix_content.install.os.path.lexists", side_effect=racing_lexists
+        ):
+            installer._replace_stage(str(stage), str(destination))
+        self.assertEqual((destination / "value").read_text(), "new")
+        self.assertFalse(stage.exists())
 
     def test_staging_failures_are_normalized_and_leave_no_residue(self) -> None:
         archive_spec = ContentSpec.from_mapping(

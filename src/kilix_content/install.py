@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ctypes
 import errno
+import fcntl
 import hashlib
 import math
 import os
@@ -16,10 +17,12 @@ import stat
 import subprocess  # nosec B404
 import tarfile
 import tempfile
+import threading
 import time
 import urllib.request
 import zipfile
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
+from contextlib import contextmanager
 
 from .model import ContentSpec
 
@@ -34,6 +37,43 @@ _SAFE_GIT_PROTOCOLS = frozenset(("file", "git", "http", "https", "ssh"))
 
 class InstallError(RuntimeError):
     """A content install failed without selecting a partial result."""
+
+
+_held_install_locks = threading.local()
+
+
+def _acquire_install_lock(lock_path: str) -> int:
+    """Open and exclusively lock the live inode at lock_path.
+
+    A finished installation unlinks its lock file while still holding the
+    lock, so an acquired descriptor is only valid while it still names the
+    path; otherwise the wait is repeated on the recreated file.
+    """
+    try:
+        while True:
+            descriptor = os.open(
+                lock_path,
+                os.O_RDWR | os.O_CREAT | os.O_CLOEXEC | os.O_NOFOLLOW,
+                0o600,
+            )
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX)
+                try:
+                    current = os.stat(lock_path)
+                except FileNotFoundError:
+                    current = None
+                owned = os.fstat(descriptor)
+                if current is not None and (
+                    (current.st_dev, current.st_ino)
+                    == (owned.st_dev, owned.st_ino)
+                ):
+                    return descriptor
+            except OSError:
+                os.close(descriptor)
+                raise
+            os.close(descriptor)
+    except OSError as exc:
+        raise InstallError(f"could not lock installation: {lock_path}") from exc
 
 
 def _rename_exchange(first: str, second: str) -> None:
@@ -640,13 +680,52 @@ class Installer:
         ready = self.ready(spec)
         if ready:
             return ready
-        if spec.source_type == "git":
-            return self._ensure_git(spec, report)
-        if spec.source_type == "archive":
+        if spec.source_type not in ("git", "archive"):
+            raise InstallError(
+                f"{spec.content_id} uses a non-installable {spec.source_type} source"
+            )
+        self.destination(spec)
+        with self._install_lock(spec.install_id):
+            # Another process may have completed this same installation while
+            # this one waited for the lock; adopt its selected result instead
+            # of duplicating the fetch and build.
+            ready = self.ready(spec)
+            if ready:
+                return ready
+            if spec.source_type == "git":
+                return self._ensure_git(spec, report)
             return self._ensure_archive(spec, report)
-        raise InstallError(
-            f"{spec.content_id} uses a non-installable {spec.source_type} source"
-        )
+
+    @contextmanager
+    def _install_lock(self, install_id: str) -> Iterator[None]:
+        """Serialize one installation identity across processes and threads.
+
+        The lock is re-entrant within a thread, so a nested ``ensure()`` for
+        the same identity (for example from a report callback) can never
+        deadlock against its own caller.
+        """
+        key = (self.root, install_id)
+        held = getattr(_held_install_locks, "keys", None)
+        if held is None:
+            held = _held_install_locks.keys = set()
+        if key in held:
+            yield
+            return
+        lock_path = os.path.join(self.root, f".{install_id}.lock")
+        descriptor = _acquire_install_lock(lock_path)
+        held.add(key)
+        try:
+            yield
+        finally:
+            held.discard(key)
+            # Remove the lock file while its lock is still held; a waiter
+            # that acquires the orphaned inode detects the mismatch below
+            # and retries on the fresh path.
+            try:
+                os.unlink(lock_path)
+            except OSError:
+                pass
+            os.close(descriptor)
 
     def _create_stage(self, spec: ContentSpec) -> str:
         try:
@@ -659,32 +738,36 @@ class Installer:
             ) from exc
 
     def _replace_stage(self, stage: str, destination: str) -> None:
-        if os.path.lexists(destination):
-            if os.path.islink(destination) or not os.path.isdir(destination):
-                raise InstallError(
-                    f"refusing to replace non-directory content path: {destination}"
-                )
-            try:
-                _rename_exchange(stage, destination)
-            except OSError as exc:
-                raise InstallError(
-                    f"could not atomically replace content path: {destination}"
-                ) from exc
-            # The destination is never absent: stage now names the superseded
-            # tree, which can be removed after the atomic exchange.
-            try:
-                shutil.rmtree(stage)
-            except OSError as exc:
-                raise InstallError(
-                    f"selected content but could not remove its superseded tree: {stage}"
-                ) from exc
-        else:
+        if not os.path.lexists(destination):
             try:
                 os.rename(stage, destination)
+                return
             except OSError as exc:
-                raise InstallError(
-                    f"could not atomically select content path: {destination}"
-                ) from exc
+                if exc.errno not in (errno.EEXIST, errno.ENOTEMPTY):
+                    raise InstallError(
+                        f"could not atomically select content path: {destination}"
+                    ) from exc
+                # A concurrent installer selected the destination between the
+                # existence check and the rename; exchange with the freshly
+                # selected tree instead of failing.
+        if os.path.islink(destination) or not os.path.isdir(destination):
+            raise InstallError(
+                f"refusing to replace non-directory content path: {destination}"
+            )
+        try:
+            _rename_exchange(stage, destination)
+        except OSError as exc:
+            raise InstallError(
+                f"could not atomically replace content path: {destination}"
+            ) from exc
+        # The destination is never absent: stage now names the superseded
+        # tree, which can be removed after the atomic exchange.
+        try:
+            shutil.rmtree(stage)
+        except OSError as exc:
+            raise InstallError(
+                f"selected content but could not remove its superseded tree: {stage}"
+            ) from exc
 
     def _existing_git_is_replaceable(self, spec: ContentSpec, destination: str) -> None:
         if not os.path.lexists(destination):
