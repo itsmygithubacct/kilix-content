@@ -3,6 +3,13 @@
 All notable user-visible changes are recorded here. The public API remains
 pre-1.0.
 
+## Unreleased
+
+### Added
+
+- Catalog Kilix Land, the cross-game conversation room and training range,
+  at an immutable commit with the shared `make all` game build.
+
 ## 0.4.0 - 2026-08-10
 
 ### Added

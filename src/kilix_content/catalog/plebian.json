@@ -221,6 +221,23 @@
       "launch": {"mode": "terminal"}
     },
     {
+      "id": "kilix-land",
+      "label": "Kilix Land",
+      "kind": "game",
+      "icon": "kilix-land",
+      "description": "A cross-game conversation room and training range for the Kilix cast.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-land",
+        "ref": "8fa063d9b4db18019a79282d5b0c106a458ac85b"
+      },
+      "binary": "kilix-land",
+      "build": ["make", "all"],
+      "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
+      "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
+      "launch": {"mode": "terminal"}
+    },
+    {
       "id": "kilix-file",
       "label": "File Manager",
       "kind": "app",

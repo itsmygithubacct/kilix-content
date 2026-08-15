@@ -86,6 +86,11 @@ class ContentTests(unittest.TestCase):
         self.assertTrue(catalog.require("kilix-session-center").lifecycle.degrades_inplace)
         self.assertEqual(catalog.require("kilix-model-store").command,
                          ("kilix", "bonsai"))
+        land = catalog.require("kilix-land")
+        self.assertEqual(land.binary, "kilix-land")
+        self.assertEqual(land.build, ("make", "all"))
+        self.assertEqual(land.kind, "game")
+        self.assertIn("kitty-graphics", land.capabilities)
         for entry in catalog:
             if entry.source_type == "git":
                 self.assertEqual(len(entry.ref), 40)
