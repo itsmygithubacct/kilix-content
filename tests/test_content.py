@@ -91,6 +91,12 @@ class ContentTests(unittest.TestCase):
         self.assertEqual(land.build, ("make", "all"))
         self.assertEqual(land.kind, "game")
         self.assertIn("kitty-graphics", land.capabilities)
+        tmux_manager = catalog.require("kilix-tmux-manager")
+        self.assertEqual(tmux_manager.command, ("kilix", "tmux"))
+        self.assertEqual(tmux_manager.source_type, "system")
+        self.assertTrue(tmux_manager.lifecycle.single_instance)
+        self.assertEqual(tmux_manager.lifecycle.startup_timeout_seconds, 30)
+        self.assertEqual(tmux_manager.preferred_size, "900x620")
         for entry in catalog:
             if entry.source_type == "git":
                 self.assertEqual(len(entry.ref), 40)

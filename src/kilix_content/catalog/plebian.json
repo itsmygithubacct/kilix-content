@@ -704,6 +704,19 @@
       "dependency_hint": "needs zlib development files to build, the ffmpeg binary at run time, and `kilix install yolo` for a model",
       "capabilities": ["network"],
       "launch": {"mode": "terminal"}
+    },
+    {
+      "id": "kilix-tmux-manager",
+      "label": "Tmux Sessions",
+      "kind": "app",
+      "icon": "terminal",
+      "description": "Manage tmux sessions, windows, and panes in a text-native surface.",
+      "source": {"type": "system"},
+      "command": ["kilix", "tmux"],
+      "capabilities": ["network", "session-read", "session-write"],
+      "actions": {"manage": {"description": "Open the tmux session manager"}},
+      "lifecycle": {"single_instance": true, "startup_timeout_seconds": 30},
+      "launch": {"mode": "terminal", "preferred_size": "900x620"}
     }
   ]
 }

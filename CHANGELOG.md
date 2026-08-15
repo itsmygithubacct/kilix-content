@@ -9,6 +9,8 @@ pre-1.0.
 
 - Catalog Kilix Land, the cross-game conversation room and training range,
   at an immutable commit with the shared `make all` game build.
+- Catalog the Tmux Sessions manager as a system entry dispatched through
+  `kilix tmux`, with its pinned first-run install timeout.
 
 ## 0.4.0 - 2026-08-10
 
