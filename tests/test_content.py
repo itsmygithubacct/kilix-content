@@ -111,6 +111,48 @@ class ContentTests(unittest.TestCase):
         with self.assertRaises(TypeError):
             catalog._by_id["replacement"] = catalog.require("kilix-jpak")
 
+    def test_staged_entries_merge_into_the_packaged_catalog(self) -> None:
+        """Finished entries staged until their pinned builds are public.
+
+        Every entry in the packaged catalog is installable exactly as
+        written, so an entry whose build only works at a commit that has
+        not reached its public repository yet cannot ship there. Each
+        fixture below is the exact object destined for the packaged
+        catalog's content array, with its ref pinned to the entry
+        repository's current public commit. Promotion advances that pin
+        to the public commit that carries the entry's build and moves
+        the object into plebian.json unchanged.
+        """
+        staged_dir = Path(__file__).resolve().parent / "staged"
+        staged = {
+            path.stem: json.loads(path.read_text(encoding="utf-8"))
+            for path in sorted(staged_dir.glob("*.json"))
+        }
+        self.assertEqual(sorted(staged), ["dosbox-kilix"])
+        shipped = default_catalog()
+        for content_id, entry in staged.items():
+            self.assertEqual(entry["id"], content_id)
+            self.assertIsNone(shipped.get(content_id))
+        packaged = json.loads(
+            (ROOT / "src/kilix_content/catalog/plebian.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        merged = Catalog.from_mapping(
+            {**packaged, "content": packaged["content"] + list(staged.values())}
+        )
+        self.assertEqual(len(merged), len(shipped) + len(staged))
+        dosbox = merged.require("dosbox-kilix")
+        self.assertEqual(
+            dosbox.repository, "https://github.com/itsmygithubacct/dosbox-kilix"
+        )
+        self.assertEqual(len(dosbox.ref), 40)
+        self.assertEqual(dosbox.binary, "src/dosbox-x")
+        self.assertEqual(dosbox.build, ("make", "-j8", "all"))
+        self.assertEqual(dosbox.kind, "app")
+        self.assertEqual(dosbox.launch_mode, "terminal")
+        self.assertIn("kitty-graphics", dosbox.capabilities)
+
     def test_runtime_and_package_versions_match(self) -> None:
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
         declared = re.search(r'^version = "([^"]+)"$', pyproject, re.MULTILINE)

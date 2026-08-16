@@ -1,0 +1,17 @@
+{
+  "id": "dosbox-kilix",
+  "label": "DOSBox Kilix",
+  "kind": "app",
+  "icon": "dosbox",
+  "description": "DOSBox-X with Kitty graphics and ANSI terminal output backends.",
+  "source": {
+    "type": "git",
+    "repository": "https://github.com/itsmygithubacct/dosbox-kilix",
+    "ref": "8912750fdce4fe77035e82c30f82ede7ceca86c6"
+  },
+  "binary": "src/dosbox-x",
+  "build": ["make", "-j8", "all"],
+  "dependency_hint": "needs GNU Autotools, a C++ compiler, make, and SDL2 development files",
+  "capabilities": ["kitty-graphics", "kitty-keyboard", "kitty-mouse", "audio"],
+  "launch": {"mode": "terminal", "preferred_size": "640x400"}
+}
