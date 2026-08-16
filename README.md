@@ -12,7 +12,13 @@ lifecycle/fallback policy.
 The installer accepts only argument arrays; it never invokes a shell. Managed
 Git content is fetched at an exact 40-character commit into a private staging
 directory, checked out detached, initialized recursively, built, verified, and
-atomically selected. Readiness checks bind the default managed directory and
+atomically selected. Every fetch and build command is bounded by the
+installer's `command_timeout` (an hour by default), so a stalled network peer
+or wedged build fails with a diagnostic instead of blocking forever; pass
+`command_timeout=None` to wait without bound. Concurrent installations of one
+package are serialized through a transient lock file below the content root,
+so simultaneous launchers share a single fetch and build: the waiter adopts
+the winner's selected result instead of repeating it. Readiness checks bind the default managed directory and
 any configured Git checkout to the expected origin, commit, detached state,
 clean tracked state, and initialized submodules. An explicitly different plain
 directory remains a trusted user-managed executable override. Archive helpers

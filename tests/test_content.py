@@ -7,10 +7,13 @@ import json
 import os
 import re
 import shlex
+import signal
 import stat
 import subprocess
 import tarfile
 import tempfile
+import threading
+import time
 import unittest
 import zipfile
 from pathlib import Path
@@ -37,7 +40,7 @@ from kilix_content import (
     safe_extract_zip,
     verify_git_checkout,
 )
-from kilix_content.install import _rename_exchange
+from kilix_content.install import _rename_exchange, _run_with_tail
 
 
 def run(*argv: str, cwd: Path) -> str:
@@ -973,6 +976,176 @@ class ContentTests(unittest.TestCase):
             any(path.name.startswith(".fixture.install-") for path in data.iterdir())
         )
 
+    def _archive_fixture_spec(self) -> ContentSpec:
+        payload = self.root / "fixture.tar"
+        body = b"#!/bin/sh\nexit 0\n"
+        with tarfile.open(payload, "w") as archive:
+            info = tarfile.TarInfo("fixture")
+            info.mode = 0o755
+            info.size = len(body)
+            archive.addfile(info, io.BytesIO(body))
+        digest = hashlib.sha256(payload.read_bytes()).hexdigest()
+        return ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {
+                    "type": "archive",
+                    "urls": [payload.as_uri()],
+                    "sha256": digest,
+                },
+                "binary": "fixture",
+            }
+        )
+
+    def test_install_lock_excludes_other_processes_and_reenters(self) -> None:
+        data = self.root / "data"
+        installer = Installer(str(data))
+        lock_path = data / ".fixture.lock"
+        probe = [
+            sys.executable,
+            "-c",
+            (
+                "import fcntl, os, sys\n"
+                "descriptor = os.open(sys.argv[1], os.O_RDWR)\n"
+                "try:\n"
+                "    fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)\n"
+                "except OSError:\n"
+                "    raise SystemExit(3)\n"
+                "raise SystemExit(0)\n"
+            ),
+            str(lock_path),
+        ]
+        with installer._install_lock("fixture"):
+            with installer._install_lock("fixture"):  # re-entry must not deadlock
+                held = subprocess.run(probe, check=False)
+        self.assertEqual(held.returncode, 3)
+        self.assertFalse(lock_path.exists())  # released locks leave no residue
+
+    def test_ensure_adopts_content_selected_while_awaiting_the_lock(self) -> None:
+        spec = self._archive_fixture_spec()
+        data = self.root / "data"
+        installer = Installer(str(data))
+        selected = str(data / "fixture" / "fixture")
+        with (
+            mock.patch.object(installer, "ready", side_effect=[None, selected]),
+            mock.patch.object(
+                installer,
+                "_ensure_archive",
+                side_effect=AssertionError("rebuilt an installation another "
+                                           "process already selected"),
+            ),
+        ):
+            self.assertEqual(installer.ensure(spec), selected)
+
+    def test_concurrent_ensures_share_one_installation(self) -> None:
+        spec = self._archive_fixture_spec()
+        data = self.root / "data"
+        installer = Installer(str(data))
+        results: list[str] = []
+        failures: list[BaseException] = []
+
+        def ensure() -> None:
+            try:
+                results.append(installer.ensure(spec))
+            except BaseException as exc:  # noqa: BLE001 -- surfaced by the test
+                failures.append(exc)
+
+        threads = [threading.Thread(target=ensure) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertEqual(failures, [])
+        self.assertEqual(results, [str(data / "fixture" / "fixture")] * 2)
+        self.assertFalse(
+            any(path.name.startswith(".fixture.install-") for path in data.iterdir())
+        )
+
+    def test_selection_retries_as_exchange_when_the_destination_appears(self) -> None:
+        data = self.root / "data"
+        destination = data / "fixture"
+        stage = data / ".fixture.install-test"
+        destination.mkdir(parents=True)
+        stage.mkdir()
+        (destination / "value").write_text("old")
+        (stage / "value").write_text("new")
+        installer = Installer(str(data))
+        real_lexists = os.path.lexists
+
+        def racing_lexists(path: str) -> bool:
+            if path == str(destination):
+                return False  # the concurrent selection has not landed yet
+            return real_lexists(path)
+
+        with mock.patch(
+            "kilix_content.install.os.path.lexists", side_effect=racing_lexists
+        ):
+            installer._replace_stage(str(stage), str(destination))
+        self.assertEqual((destination / "value").read_text(), "new")
+        self.assertFalse(stage.exists())
+
+    def test_staging_failures_are_normalized_and_leave_no_residue(self) -> None:
+        archive_spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {
+                    "type": "archive",
+                    "urls": [(self.root / "unused.tar").as_uri()],
+                    "sha256": "0" * 64,
+                },
+                "binary": "fixture",
+            }
+        )
+        data = self.root / "data"
+        installer = Installer(str(data))
+
+        exhausted = OSError(errno.ENOSPC, "No space left on device")
+        with mock.patch(
+            "kilix_content.install.tempfile.mkdtemp", side_effect=exhausted
+        ):
+            with self.assertRaisesRegex(InstallError, "staging directory"):
+                installer.ensure(archive_spec)
+        self.assertFalse(
+            any(path.name.startswith(".fixture.install-") for path in data.iterdir())
+        )
+
+        real_mkdir = os.mkdir
+
+        def failing_mkdir(path: str, *args: object, **kwargs: object) -> None:
+            if os.path.basename(path) == "content":
+                raise OSError(errno.ENOSPC, "No space left on device")
+            real_mkdir(path, *args, **kwargs)
+
+        with mock.patch("kilix_content.install.os.mkdir", side_effect=failing_mkdir):
+            with self.assertRaises(InstallError):
+                installer.ensure(archive_spec)
+        self.assertFalse(
+            any(path.name.startswith(".fixture.install-") for path in data.iterdir())
+        )
+
+        git_spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {
+                    "type": "git",
+                    "repository": str(self.root / "unused-repository"),
+                    "ref": "a" * 40,
+                },
+                "binary": "fixture",
+            }
+        )
+        with mock.patch(
+            "kilix_content.install.tempfile.mkdtemp", side_effect=exhausted
+        ):
+            with self.assertRaisesRegex(InstallError, "staging directory"):
+                installer.ensure(git_spec)
+        self.assertFalse(
+            any(path.name.startswith(".fixture.install-") for path in data.iterdir())
+        )
+
     def test_download_validates_checksum(self) -> None:
         source = self.root / "payload"
         source.write_bytes(b"payload")
@@ -984,6 +1157,37 @@ class ContentTests(unittest.TestCase):
         with self.assertRaises(InstallError):
             download(source.as_uri(), str(destination), expected_sha256="0" * 64)
         self.assertEqual(destination.read_bytes(), b"preserve")
+
+    def test_download_advances_to_the_first_working_mirror(self) -> None:
+        good = self.root / "payload"
+        good.write_bytes(b"payload")
+        digest = hashlib.sha256(b"payload").hexdigest()
+        destination = self.root / "download"
+
+        unreachable = (self.root / "absent-mirror").as_uri()
+        download((unreachable, good.as_uri()), str(destination), expected_sha256=digest)
+        self.assertEqual(destination.read_bytes(), b"payload")
+        self.assertFalse(any(".download-" in path.name for path in self.root.iterdir()))
+
+        destination.unlink()
+        corrupt = self.root / "corrupt"
+        corrupt.write_bytes(b"corrupt")
+        download(
+            (corrupt.as_uri(), good.as_uri()), str(destination), expected_sha256=digest
+        )
+        self.assertEqual(destination.read_bytes(), b"payload")
+        self.assertFalse(any(".download-" in path.name for path in self.root.iterdir()))
+
+    def test_failing_mirrors_report_the_last_error_and_leave_no_residue(self) -> None:
+        first = (self.root / "first-absent").as_uri()
+        last = (self.root / "last-absent").as_uri()
+        destination = self.root / "download"
+        with self.assertRaises(InstallError) as raised:
+            download((first, last), str(destination))
+        self.assertIn("last-absent", str(raised.exception))
+        self.assertNotIn("first-absent", str(raised.exception))
+        self.assertFalse(destination.exists())
+        self.assertFalse(any(".download-" in path.name for path in self.root.iterdir()))
 
     def test_download_replaces_symlink_atomically_without_touching_target(self) -> None:
         source = self.root / "payload"
@@ -1048,6 +1252,113 @@ class ContentTests(unittest.TestCase):
         message = str(raised.exception)
         self.assertLessEqual(len(message), 1024)
         self.assertIn("tail marker", message)
+
+    def test_command_timeout_is_validated_and_bounds_stalled_builds(self) -> None:
+        data = self.root / "data"
+        for invalid in (0, -5, float("nan"), float("inf"), True, "60"):
+            with self.assertRaises(InstallError):
+                Installer(str(data), command_timeout=invalid)
+        self.assertIsNone(Installer(str(data), command_timeout=None).command_timeout)
+        self.assertEqual(Installer(str(data)).command_timeout, 3600.0)
+
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {"type": "system"},
+                "binary": "fixture",
+                "build": [
+                    sys.executable,
+                    "-c",
+                    "import time; print('tail marker', flush=True); time.sleep(60)",
+                ],
+            }
+        )
+        installer = Installer(str(data), command_timeout=0.5)
+        started = time.monotonic()
+        with self.assertRaisesRegex(InstallError, "timed out") as raised:
+            installer._build(spec, str(self.root), lambda _message: None)
+        self.assertLess(time.monotonic() - started, 30)
+        self.assertIn("tail marker", str(raised.exception))
+
+    def test_timeout_kills_the_whole_build_process_group(self) -> None:
+        script = (
+            "import subprocess, sys, time\n"
+            "child = subprocess.Popen(\n"
+            "    [sys.executable, '-c', 'import time; time.sleep(120)']\n"
+            ")\n"
+            "print(child.pid, flush=True)\n"
+            "time.sleep(120)\n"
+        )
+        started = time.monotonic()
+        with self.assertRaisesRegex(InstallError, "timed out") as raised:
+            _run_with_tail(
+                [sys.executable, "-c", script],
+                cwd=str(self.root),
+                env=dict(os.environ),
+                timeout=2,
+            )
+        self.assertLess(time.monotonic() - started, 60)
+        grandchild = int(str(raised.exception).rsplit(":", 1)[-1].split()[-1])
+        for _ in range(100):
+            try:
+                os.kill(grandchild, 0)
+            except ProcessLookupError:
+                break
+            time.sleep(0.1)
+        else:
+            self.fail("a build child survived the timeout")
+
+    def test_build_completes_when_a_background_child_keeps_the_pipe(self) -> None:
+        script = (
+            "import subprocess, sys\n"
+            "child = subprocess.Popen(\n"
+            "    [sys.executable, '-c', 'import time; time.sleep(30)']\n"
+            ")\n"
+            "print(child.pid, flush=True)\n"
+        )
+        started = time.monotonic()
+        returncode, tail = _run_with_tail(
+            [sys.executable, "-c", script],
+            cwd=str(self.root),
+            env=dict(os.environ),
+            timeout=60,
+        )
+        self.assertEqual(returncode, 0)
+        self.assertLess(time.monotonic() - started, 15)
+        os.kill(int(tail.split()[-1]), signal.SIGKILL)
+
+    def test_stalled_source_setup_is_bounded_and_leaves_no_residue(self) -> None:
+        stub_bin = self.root / "bin"
+        stub_bin.mkdir()
+        stub = stub_bin / "git"
+        stub.write_text("#!/bin/sh\nsleep 60\n", encoding="utf-8")
+        stub.chmod(0o755)
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {
+                    "type": "git",
+                    "repository": str(self.root / "unused-repository"),
+                    "ref": "a" * 40,
+                },
+                "binary": "fixture",
+            }
+        )
+        data = self.root / "data"
+        environment = dict(
+            os.environ,
+            PATH=str(stub_bin) + os.pathsep + os.environ.get("PATH", os.defpath),
+        )
+        installer = Installer(str(data), env=environment, command_timeout=0.5)
+        started = time.monotonic()
+        with self.assertRaisesRegex(InstallError, "timed out"):
+            installer.ensure(spec)
+        self.assertLess(time.monotonic() - started, 30)
+        self.assertFalse(
+            any(path.name.startswith(".fixture.install-") for path in data.iterdir())
+        )
 
     def test_json_loader_reports_malformed_catalog(self) -> None:
         path = self.root / "catalog.json"
