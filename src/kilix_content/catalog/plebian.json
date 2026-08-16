@@ -221,6 +221,23 @@
       "launch": {"mode": "terminal"}
     },
     {
+      "id": "kilix-land",
+      "label": "Kilix Land",
+      "kind": "game",
+      "icon": "kilix-land",
+      "description": "A cross-game conversation room and training range for the Kilix cast.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-land",
+        "ref": "8fa063d9b4db18019a79282d5b0c106a458ac85b"
+      },
+      "binary": "kilix-land",
+      "build": ["make", "all"],
+      "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
+      "capabilities": ["kitty-graphics", "kitty-keyboard", "audio"],
+      "launch": {"mode": "terminal"}
+    },
+    {
       "id": "kilix-file",
       "label": "File Manager",
       "kind": "app",
@@ -687,6 +704,19 @@
       "dependency_hint": "needs zlib development files to build, the ffmpeg binary at run time, and `kilix install yolo` for a model",
       "capabilities": ["network"],
       "launch": {"mode": "terminal"}
+    },
+    {
+      "id": "kilix-tmux-manager",
+      "label": "Tmux Sessions",
+      "kind": "app",
+      "icon": "terminal",
+      "description": "Manage tmux sessions, windows, and panes in a text-native surface.",
+      "source": {"type": "system"},
+      "command": ["kilix", "tmux"],
+      "capabilities": ["network", "session-read", "session-write"],
+      "actions": {"manage": {"description": "Open the tmux session manager"}},
+      "lifecycle": {"single_instance": true, "startup_timeout_seconds": 30},
+      "launch": {"mode": "terminal", "preferred_size": "900x620"}
     }
   ]
 }

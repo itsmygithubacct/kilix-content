@@ -92,6 +92,17 @@ class ContentTests(unittest.TestCase):
         self.assertTrue(catalog.require("kilix-session-center").lifecycle.degrades_inplace)
         self.assertEqual(catalog.require("kilix-model-store").command,
                          ("kilix", "bonsai"))
+        land = catalog.require("kilix-land")
+        self.assertEqual(land.binary, "kilix-land")
+        self.assertEqual(land.build, ("make", "all"))
+        self.assertEqual(land.kind, "game")
+        self.assertIn("kitty-graphics", land.capabilities)
+        tmux_manager = catalog.require("kilix-tmux-manager")
+        self.assertEqual(tmux_manager.command, ("kilix", "tmux"))
+        self.assertEqual(tmux_manager.source_type, "system")
+        self.assertTrue(tmux_manager.lifecycle.single_instance)
+        self.assertEqual(tmux_manager.lifecycle.startup_timeout_seconds, 30)
+        self.assertEqual(tmux_manager.preferred_size, "900x620")
         for entry in catalog:
             if entry.source_type == "git":
                 self.assertEqual(len(entry.ref), 40)
@@ -105,6 +116,61 @@ class ContentTests(unittest.TestCase):
                 self.assertEqual(entry.build, ("make", expected_target))
         with self.assertRaises(TypeError):
             catalog._by_id["replacement"] = catalog.require("kilix-jpak")
+
+    def test_staged_entries_merge_into_the_packaged_catalog(self) -> None:
+        """Finished entries staged until their pinned builds are public.
+
+        Every entry in the packaged catalog is installable exactly as
+        written, so an entry whose build only works at a commit that has
+        not reached its public repository yet cannot ship there. Each
+        fixture below is the exact object destined for the packaged
+        catalog's content array, with its ref pinned to the entry
+        repository's current public commit. Promotion advances that pin
+        to the public commit that carries the entry's build and moves
+        the object into plebian.json unchanged.
+        """
+        staged_dir = Path(__file__).resolve().parent / "staged"
+        staged = {
+            path.stem: json.loads(path.read_text(encoding="utf-8"))
+            for path in sorted(staged_dir.glob("*.json"))
+        }
+        self.assertEqual(sorted(staged), ["dosbox-kilix", "tmux-browse"])
+        shipped = default_catalog()
+        for content_id, entry in staged.items():
+            self.assertEqual(entry["id"], content_id)
+            self.assertIsNone(shipped.get(content_id))
+        packaged = json.loads(
+            (ROOT / "src/kilix_content/catalog/plebian.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        merged = Catalog.from_mapping(
+            {**packaged, "content": packaged["content"] + list(staged.values())}
+        )
+        self.assertEqual(len(merged), len(shipped) + len(staged))
+        dosbox = merged.require("dosbox-kilix")
+        self.assertEqual(
+            dosbox.repository, "https://github.com/itsmygithubacct/dosbox-kilix"
+        )
+        self.assertEqual(len(dosbox.ref), 40)
+        self.assertEqual(dosbox.binary, "src/dosbox-x")
+        self.assertEqual(dosbox.build, ("make", "-j8", "all"))
+        self.assertEqual(dosbox.kind, "app")
+        self.assertEqual(dosbox.launch_mode, "terminal")
+        self.assertIn("kitty-graphics", dosbox.capabilities)
+        browse = merged.require("tmux-browse")
+        self.assertEqual(
+            browse.repository, "https://github.com/itsmygithubacct/tmux-browse"
+        )
+        self.assertEqual(len(browse.ref), 40)
+        self.assertEqual(browse.binary, "bin/serve_local.sh")
+        self.assertEqual(
+            browse.build, ("git", "submodule", "update", "--init", "tmux-cli")
+        )
+        self.assertEqual(browse.kind, "app")
+        self.assertEqual(browse.launch_mode, "terminal")
+        self.assertTrue(browse.lifecycle.single_instance)
+        self.assertIn("session-read", browse.capabilities)
 
     def test_runtime_and_package_versions_match(self) -> None:
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")

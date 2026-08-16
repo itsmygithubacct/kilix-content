@@ -5,6 +5,17 @@ pre-1.0.
 
 ## Unreleased
 
+### Added
+
+- Catalog Kilix Land, the cross-game conversation room and training range,
+  at an immutable commit with the shared `make all` game build.
+- Catalog the Tmux Sessions manager as a system entry dispatched through
+  `kilix tmux`, with its pinned first-run install timeout.
+- Stage a DOSBox Kilix entry as a validated test fixture: it ships in the
+  catalog once its pinned one-command terminal build is public.
+- Stage a Tmux Browse entry as a validated test fixture: it ships in the
+  catalog once its pinned loopback-only launcher is public.
+
 ### Fixed
 
 - Advance `kilix-tui-utils` to relocatable runtime launchers so atomic package
