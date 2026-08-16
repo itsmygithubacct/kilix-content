@@ -16,6 +16,13 @@ pre-1.0.
 - Stage a Tmux Browse entry as a validated test fixture: it ships in the
   catalog once its pinned loopback-only launcher is public.
 
+### Changed
+
+- Advance `kilix-tui-utils` to the desktop wave that derives the Games place
+  from the host catalog, remembers recent and pinned Home rows, adds the
+  Launchers and Manual places, and gives the Tmux manager row a `kilix`
+  fallback.
+
 ### Fixed
 
 - Advance `kilix-tui-utils` to relocatable runtime launchers so atomic package
