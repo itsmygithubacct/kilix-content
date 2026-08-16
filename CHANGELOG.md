@@ -13,6 +13,8 @@ pre-1.0.
   `kilix tmux`, with its pinned first-run install timeout.
 - Stage a DOSBox Kilix entry as a validated test fixture: it ships in the
   catalog once its pinned one-command terminal build is public.
+- Stage a Tmux Browse entry as a validated test fixture: it ships in the
+  catalog once its pinned loopback-only launcher is public.
 
 ## 0.4.0 - 2026-08-10
 

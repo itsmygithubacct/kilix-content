@@ -128,7 +128,7 @@ class ContentTests(unittest.TestCase):
             path.stem: json.loads(path.read_text(encoding="utf-8"))
             for path in sorted(staged_dir.glob("*.json"))
         }
-        self.assertEqual(sorted(staged), ["dosbox-kilix"])
+        self.assertEqual(sorted(staged), ["dosbox-kilix", "tmux-browse"])
         shipped = default_catalog()
         for content_id, entry in staged.items():
             self.assertEqual(entry["id"], content_id)
@@ -152,6 +152,19 @@ class ContentTests(unittest.TestCase):
         self.assertEqual(dosbox.kind, "app")
         self.assertEqual(dosbox.launch_mode, "terminal")
         self.assertIn("kitty-graphics", dosbox.capabilities)
+        browse = merged.require("tmux-browse")
+        self.assertEqual(
+            browse.repository, "https://github.com/itsmygithubacct/tmux-browse"
+        )
+        self.assertEqual(len(browse.ref), 40)
+        self.assertEqual(browse.binary, "bin/serve_local.sh")
+        self.assertEqual(
+            browse.build, ("git", "submodule", "update", "--init", "tmux-cli")
+        )
+        self.assertEqual(browse.kind, "app")
+        self.assertEqual(browse.launch_mode, "terminal")
+        self.assertTrue(browse.lifecycle.single_instance)
+        self.assertIn("session-read", browse.capabilities)
 
     def test_runtime_and_package_versions_match(self) -> None:
         pyproject = (ROOT / "pyproject.toml").read_text(encoding="utf-8")

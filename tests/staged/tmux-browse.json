@@ -1,0 +1,18 @@
+{
+  "id": "tmux-browse",
+  "label": "Tmux Browse",
+  "kind": "app",
+  "icon": "terminal",
+  "description": "Serve local tmux sessions as a loopback-only web dashboard.",
+  "source": {
+    "type": "git",
+    "repository": "https://github.com/itsmygithubacct/tmux-browse",
+    "ref": "80e2d8eb90aa2f6c1a4abc32b827693da650efb1"
+  },
+  "binary": "bin/serve_local.sh",
+  "build": ["git", "submodule", "update", "--init", "tmux-cli"],
+  "dependency_hint": "needs git and python3, plus tmux and ttyd at run time",
+  "capabilities": ["network", "session-read", "session-write"],
+  "lifecycle": {"single_instance": true},
+  "launch": {"mode": "terminal", "preferred_size": "900x620"}
+}
