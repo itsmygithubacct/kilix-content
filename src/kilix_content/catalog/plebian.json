@@ -663,7 +663,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-nvr",
-        "ref": "fef6004a8a25fb608e6bf328571d5e10631a9135"
+        "ref": "f61337589bb130e796ead18fd9fca4a8850fae25"
       },
       "binary": "build/kilix-nvr",
       "build": ["make", "all"],
