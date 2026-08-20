@@ -1,7 +1,6 @@
 """Pinned content catalog and user-level installer."""
 
 from functools import lru_cache
-from importlib.resources import files
 
 from .install import (
     AcquisitionRequired,
@@ -41,6 +40,7 @@ from .receipt import (
     UnsafeStore,
     VerifiedInput,
     VerifiedReceipt,
+    verified_packaged_catalog,
 )
 
 __version__ = "0.4.0"
@@ -48,9 +48,8 @@ __version__ = "0.4.0"
 
 @lru_cache(maxsize=1)
 def default_catalog() -> Catalog:
-    resource = files("kilix_content").joinpath("catalog/plebian.json")
-    with resource.open(encoding="utf-8") as stream:
-        return Catalog.loads(stream.read(), label="packaged catalog")
+    """Return the packaged catalog after verifying its exact frozen bytes."""
+    return verified_packaged_catalog()
 
 
 __all__ = [
@@ -82,6 +81,7 @@ __all__ = [
     "UnsafeStore",
     "VerifiedInput",
     "VerifiedReceipt",
+    "verified_packaged_catalog",
     "default_catalog",
     "download",
     "safe_extract_tar",

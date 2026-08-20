@@ -733,7 +733,7 @@ class Installer:
         if not isinstance(spec, AssetSpec):
             raise InstallError("operation needs a validated asset record")
         try:
-            validated = AssetSpec.from_mapping(spec.to_mapping())
+            validated = AssetSpec.canonicalized(spec)
         except (CatalogError, AttributeError, TypeError, ValueError) as exc:
             raise InstallError("asset record failed canonical validation") from exc
         if validated != spec:

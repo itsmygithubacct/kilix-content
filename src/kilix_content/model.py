@@ -426,6 +426,17 @@ class AssetSpec:
             "version": self.version,
         }
 
+    def canonicalized(self) -> AssetSpec:
+        """Reparse every public field into a base-class validated record.
+
+        A caller may hand in an `AssetSpec` subclass whose `to_mapping` returns
+        a genuine catalog record while its own fields say something else. Every
+        later decision — membership, licences, source mode — must read the
+        reparsed object, never the caller's. Call the base implementations
+        explicitly so neither side of this trust boundary can be overridden.
+        """
+        return AssetSpec.from_mapping(AssetSpec.to_mapping(self))
+
     @classmethod
     def from_mapping(cls, raw: Mapping[str, Any]) -> AssetSpec:
         raw = _mapping(raw, "asset entry")
@@ -1100,6 +1111,14 @@ class Catalog:
                 )
             if entry.content_id in by_id:
                 raise CatalogError(f"duplicate content id: {entry.content_id}")
+            if entry.content_id in by_asset:
+                # Assets and content live in separate namespaces but share one
+                # id grammar. A colliding id makes "which record is this?"
+                # ambiguous for every consumer that resolves by name, so refuse
+                # the catalog rather than let resolution order decide.
+                raise CatalogError(
+                    f"{entry.content_id}: content id conflicts with an asset id"
+                )
             if (
                 entry.content_id in by_package
                 and entry.package_id != entry.content_id

@@ -23,6 +23,7 @@ from kilix_content import (
     AssetSpec,
     BindingMismatch,
     Catalog,
+    CatalogError,
     ContentSpec,
     InstallError,
     Installer,
@@ -948,6 +949,11 @@ cp "$2" "$3/game/data.pak"
                     str(input_path),
                 )
 
+        # A self-referential conversion tool means one id names both an asset
+        # and a content entry. Step 5 refuses that collision when the catalog is
+        # built, which is strictly earlier than the installer's own
+        # self-referential guard and makes the ambiguous catalog unusable at
+        # all, so the guarantee is proven here rather than at resolution time.
         self_ref = self.spec(
             payload,
             asset_id="game.self-tool",
@@ -955,16 +961,8 @@ cp "$2" "$3/game/data.pak"
             tool_id="game.self-tool",
         )
         self_tool = self.tool("game.self-tool", "#!/bin/sh\nexit 1\n")
-        with self.open_store("self-tool-receipts") as store:
-            self.authorize(store, self_ref, input_path)
-            with self.assertRaisesRegex(InstallError, "self-referential"):
-                self.installer.ensure_user_supplied_asset(
-                    self_ref,
-                    self.catalog(self_ref, self_tool),
-                    store,
-                    self.release,
-                    str(input_path),
-                )
+        with self.assertRaisesRegex(CatalogError, "conflicts with an asset id"):
+            self.catalog(self_ref, self_tool)
 
         escaping = ContentSpec(
             content_id="game.extractor",

@@ -25,18 +25,31 @@ import time
 import unicodedata
 from collections.abc import Iterable, Mapping
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from importlib import resources
 from typing import Any
 from urllib.parse import urlsplit
 
-from .model import AssetSpec
+from .model import AssetSpec, Catalog, CatalogError
 
 _PUBLIC_SCHEMA = "kilix.install.license/v1"
 _PUBLIC_SCHEMA_SHA256 = (
     "2f352856b4bd712e6030b2c74a690f7c0ed250e5730a69aa04b601643dbf1736"
 )
+_ASSET_SCHEMA_SHA256 = (
+    "89d4865d11d6a537328965a8a903ac07d7dcf0ea14e1b360888f22af7ba5a1a8"
+)
+# The production trust root. These pin the packaged bytes this build shipped;
+# their provenance is the release closure's pin of this component's commit.
+# Nothing here consults host state, /etc/pleb/session.env, or a release lock.
+_CATALOG_RESOURCE = "catalog/plebian.json"
+_CATALOG_SHA256 = (
+    "fbe59346441cc98a556cd11975642472af09d67612a0e297601c67e477cdac97"
+)
+_RELEASE_ID = "0.2.1"
+# Handed out only by ReleaseContext.packaged(), only after verification.
+_PACKAGED_PROVENANCE = object()
 _STORE_SCHEMA = "kilix.install.license-store/v1"
 _PENDING_SCHEMA = "kilix.install.license-pending/v1"
 _KEY_DOMAIN = b"kilix-content license authorization v1\x00"
@@ -255,6 +268,38 @@ class ReleaseContext:
 
     release_id: str
     catalog_sha256: str
+    # Provenance is an object identity this class hands out only from
+    # ``packaged()`` after verification. It is deliberately not an ``__init__``
+    # parameter and not part of equality, so no ordinary construction path can
+    # supply it: not a caller literal, not ``from_catalog`` with the real
+    # packaged bytes, and not ``dataclasses.replace`` of a packaged context,
+    # which rebuilds through ``__init__`` and therefore drops it. Authority is
+    # never inferred from public field equality.
+    _provenance: object | None = field(
+        default=None, init=False, compare=False, repr=False
+    )
+
+    @classmethod
+    def packaged(cls) -> ReleaseContext:
+        """Build the sole production context from verified packaged bytes.
+
+        Takes no caller input of any kind: no bytes, path, digest or release
+        string. The catalog is read through ``importlib.resources`` and its
+        digest is checked before parsing, and the release identity is the
+        constant this component was built with.
+        """
+        if cls is not ReleaseContext:
+            raise BindingMismatch(
+                "the packaged release context cannot be subclass-constructed"
+            )
+        # Both frozen contracts, then the catalog. A build missing or altering
+        # either schema must refuse here rather than hand out a context that
+        # only fails later at the first authority call.
+        _verify_frozen_schema()
+        verified_packaged_catalog()
+        context = cls(_RELEASE_ID, _CATALOG_SHA256)
+        object.__setattr__(context, "_provenance", _PACKAGED_PROVENANCE)
+        return context
 
     @classmethod
     def from_catalog(cls, release_id: str, catalog_bytes: bytes) -> ReleaseContext:
@@ -326,21 +371,50 @@ class ArtifactBinding:
 
 
 def _asset_mapping(spec: AssetSpec) -> dict[str, Any]:
-    return spec.to_mapping()
+    # Explicit base implementation: an ``AssetSpec`` subclass must not be able
+    # to choose the bytes this binding digests.
+    return AssetSpec.to_mapping(spec)
+
+
+def _packaged_bytes(relative: str, label: str) -> bytes:
+    """Read one packaged resource as bytes, never as decoded text."""
+    try:
+        return resources.files("kilix_content").joinpath(relative).read_bytes()
+    except (FileNotFoundError, OSError, ModuleNotFoundError) as exc:
+        raise ReceiptError(f"the frozen {label} is unavailable") from exc
 
 
 def _verify_frozen_schema() -> None:
-    """Refuse operation if the packaged public contract is not the frozen one."""
-    try:
-        schema = (
-            resources.files("kilix_content")
-            .joinpath("contracts/kilix.install.license-v1.schema.json")
-            .read_bytes()
+    """Refuse operation unless both packaged contracts are the frozen ones."""
+    for relative, expected, label in (
+        ("contracts/kilix.install.license-v1.schema.json", _PUBLIC_SCHEMA_SHA256, "license schema"),
+        ("contracts/kilix.content.asset-v1.schema.json", _ASSET_SCHEMA_SHA256, "asset schema"),
+    ):
+        if hashlib.sha256(_packaged_bytes(relative, label)).hexdigest() != expected:
+            raise ReceiptError(f"the packaged {label} does not match its frozen digest")
+
+
+def verified_packaged_catalog() -> Catalog:
+    """Return the packaged catalog only after its exact bytes verify.
+
+    The digest is checked against the code-pinned constant *before* the bytes
+    are parsed, so nothing unauthenticated ever reaches the parser. This is the
+    sole production trust root: packaged bytes plus a constant compiled into
+    the same pinned component.
+    """
+    payload = _packaged_bytes(_CATALOG_RESOURCE, "release catalog")
+    if hashlib.sha256(payload).hexdigest() != _CATALOG_SHA256:
+        raise BindingMismatch(
+            "the packaged release catalog does not match its frozen digest"
         )
-    except (FileNotFoundError, OSError) as exc:
-        raise ReceiptError("the frozen license schema is unavailable") from exc
-    if hashlib.sha256(schema).hexdigest() != _PUBLIC_SCHEMA_SHA256:
-        raise ReceiptError("the packaged license schema does not match its frozen digest")
+    try:
+        text = payload.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise BindingMismatch("the packaged release catalog is not valid UTF-8") from exc
+    try:
+        return Catalog.loads(text, label="packaged release catalog")
+    except CatalogError as exc:
+        raise BindingMismatch(f"the packaged release catalog is unusable: {exc}") from exc
 
 
 @dataclass(frozen=True)
@@ -1109,13 +1183,65 @@ class ReceiptStore:
     def __exit__(self, *_exc: object) -> None:
         self.close()
 
-    def _require_release_authority(self, release: ReleaseContext) -> None:
-        if not isinstance(release, ReleaseContext):
+    def _require_release_authority(self, release: ReleaseContext) -> Catalog:
+        """Return the verified packaged catalog, or refuse.
+
+        Authority derives from bytes on disk re-verified on every call, never
+        from the caller's object: a context is only an assertion of *which*
+        release and catalog, and it must agree exactly with what this component
+        was built with. Provenance is what separates them, not field values —
+        a synthetic ``from_catalog`` context built from the exact packaged
+        bytes carries the identical release id and digest, and is still refused
+        here, permanently, because it has no packaged provenance marker.
+        """
+        if type(release) is not ReleaseContext:
             raise BindingMismatch("an exact release context is required")
-        raise BindingMismatch(
-            "production authorization is disabled until the immutable "
-            "release-catalog snapshot loader supplies catalog-bound artifacts"
-        )
+        # Provenance first, and by identity. A context that merely *looks*
+        # right — including from_catalog() over the exact packaged bytes, a
+        # hand-built context carrying both real constants, or a replace() of a
+        # packaged one — has no marker and is refused here, permanently.
+        if release._provenance is not _PACKAGED_PROVENANCE:
+            raise BindingMismatch(
+                "production authorization requires a verified packaged release "
+                "context; synthetic and caller-constructed contexts are refused"
+            )
+        catalog = verified_packaged_catalog()
+        if (
+            release.release_id != _RELEASE_ID
+            or release.catalog_sha256 != _CATALOG_SHA256
+        ):
+            raise BindingMismatch(
+                "release context does not match the packaged release identity"
+            )
+        return catalog
+
+    @staticmethod
+    def _require_catalog_membership(catalog: Catalog, spec: AssetSpec) -> AssetSpec:
+        """Prove one caller record byte/field-exact against the packaged catalog.
+
+        A verified release context proves the *catalog* is authentic. It says
+        nothing about the ``AssetSpec`` the caller handed in, so on its own it
+        would let any well-formed record authorize. Reparse the caller's record
+        through the base implementations, resolve the same id in the verified
+        catalog, and require the two canonical bindings to be identical.
+        """
+        if not isinstance(spec, AssetSpec):
+            raise BindingMismatch("an exact asset record is required")
+        try:
+            canonical = AssetSpec.canonicalized(spec)
+        except (CatalogError, AttributeError, TypeError, ValueError) as exc:
+            raise BindingMismatch("asset record failed canonical validation") from exc
+        try:
+            published = catalog.require_asset(canonical.asset_id)
+        except (CatalogError, KeyError) as exc:
+            raise BindingMismatch(
+                "asset record is not published by the packaged release catalog"
+            ) from exc
+        if ArtifactBinding.from_spec(canonical) != ArtifactBinding.from_spec(published):
+            raise BindingMismatch(
+                "asset record does not match the packaged release catalog record"
+            )
+        return canonical
 
     def _require_current_identity(self) -> None:
         if (
@@ -1582,13 +1708,17 @@ class ReceiptStore:
     ) -> RecordResult:
         """Derive, durably create, and reopen one immutable authorization."""
         _verify_frozen_schema()
-        self._require_release_authority(release)
+        catalog = self._require_release_authority(release)
         if not isinstance(decision, LicenseDecision):
             raise DecisionInvalid("record requires a LicenseDecision")
         # The frozen dataclass is convenient for callers, but construction is
         # never validation. Reparse its complete public representation here.
         decision = LicenseDecision.from_mapping(decision.to_mapping())
-        specs = tuple(artifacts)
+        # Every record must be the packaged catalog's own, proven before any
+        # state is derived or written. Only the canonical objects continue.
+        specs = tuple(
+            self._require_catalog_membership(catalog, item) for item in artifacts
+        )
         bindings = self._validate_record_request(
             decision, presented_license_text, release, specs, verified_input
         )
@@ -1754,7 +1884,11 @@ class ReceiptStore:
     ) -> tuple[VerifiedReceipt, ...]:
         """Require exact coverage for every license before returning asset paths."""
         _verify_frozen_schema()
-        self._require_release_authority(release)
+        catalog = self._require_release_authority(release)
+        # Prove the caller's record is the packaged catalog's own before any
+        # licence, source or receipt logic reads it, and continue with the
+        # canonical object only.
+        spec = self._require_catalog_membership(catalog, spec)
         with self._locked():
             self._cleanup_temporaries()
             self._require_no_pending()

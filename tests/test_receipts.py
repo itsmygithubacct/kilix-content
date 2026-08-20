@@ -160,7 +160,12 @@ class ReceiptStoreTests(unittest.TestCase):
                 "schema": "kilix.install.license/v1",
             }
         )
-        with self.open_store() as store, self.assertRaises(DecisionDeclined):
+        # Step 5 canonicalizes every caller record before any licence logic
+        # reads it, and the asset schema has no "restricted" decision class, so
+        # the refusal now happens at canonicalization rather than at outcome
+        # mapping. It is earlier and stricter; the guarantee under test — no
+        # authority and no state — is unchanged.
+        with self.open_store() as store, self.assertRaises(BindingMismatch):
             store.record(decision, self.license_text, self.release, [spec])
         self.assertEqual(tuple((self.root / "state").glob("*.json")), ())
 

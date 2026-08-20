@@ -7,7 +7,10 @@ preferred geometry. Schema version 2 can separate an immutable package from
 the applications it provides, so one checkout and build can expose several
 catalog IDs without duplicating source or installation state. Schema version 3
 adds argv-only named actions, accepted input types, host command vectors, and
-lifecycle/fallback policy.
+lifecycle/fallback policy. Schema version 4 adds immutable non-executable asset
+records; the packaged catalog ships at version 4 in canonical form with an
+explicit empty `assets` array, and the release's first real assets arrive later
+with the F101 hand-in.
 
 The installer accepts only argument arrays; it never invokes a shell. Managed
 Git content is fetched at an exact 40-character commit into a private staging
@@ -107,10 +110,30 @@ The 0.2.1 trust boundary includes processes already running as the same UID;
 hashes bind official callers and detect corruption, but are not a MAC against a
 compromised desktop account. Synthetic authority exists only in test-suite code
 that is excluded from the installed wheel; the runtime module ships no test
-store or authority-enabling factory. `ReceiptStore.open_default()` keeps
-production authorization disabled with no authority-minting factory or mutable
-mode flag until the F106-backed immutable catalog-snapshot loader can return
-catalog-bound artifact handles. There is no legacy import or
+store or synthetic-authority factory.
+
+Production authorization is rooted in the packaged bytes this component
+shipped. The packaged catalog is canonical schema-v4 JSON pinned by a code
+digest constant, alongside a packaged release-ID constant, and both frozen
+schemas ship as importable package resources whose digests the runtime
+self-check verifies on every authority call. `ReleaseContext.packaged()` is the
+only construction path that production accepts: it verifies both schemas, then
+verifies the catalog digest *before* parsing, and stamps a provenance marker no
+other constructor can set. `ReleaseContext.from_catalog()` remains synthetic and
+is refused permanently — including a context built from the exact packaged
+bytes, which carries an identical release ID and digest and is still denied,
+because provenance rather than field equality is what separates them.
+
+A verified context is not by itself authorization. `ReceiptStore.record()` and
+`ReceiptStore.require_asset()` each additionally require the caller's
+`AssetSpec` to be byte- and field-identical to the packaged catalog's record for
+the same id; an absent id or any difference fails closed without writing state.
+Records are reparsed through the base implementations, so an `AssetSpec`
+subclass cannot present one mapping for the membership check and different
+fields to everything downstream.
+
+F106 is neither the authority nor a dependency of this path: it supplies asset
+record *content* as a later build-time input. There is no legacy import or
 implicit migration: v1 is the first store generation, and a future generation
 must copy forward under the stable lock without deleting v1.
 
@@ -173,9 +196,15 @@ destination symlink is replaced rather than followed.
 
 ## Catalog contract
 
-The packaged `plebian.json` catalog remains schema version 3. Readers support
-schema version 4 for catalogs that add a top-level `assets` array. Schema version 2
-added a top-level `packages` array. Each package owns an installable Git/archive
+The packaged `plebian.json` catalog ships at schema version 4, in canonical
+form — sorted keys, compact separators, UTF-8 — with an explicit empty top-level
+`assets` array. Canonical bytes are what the code-pinned digest constant
+covers, so the shipped file can be verified before it is parsed. The empty
+array is deliberate: the asset record type is available to readers now, and the
+release's first real assets arrive later with the F101 hand-in. Readers accept
+schema versions 1 through 4; a catalog that declares assets below version 4 is
+rejected rather than reinterpreted. Schema version 2 added a top-level
+`packages` array. Each package owns an installable Git/archive
 source, build argv, and dependency hint. A content entry may reference it by
 `package` and owns its own ID, executable path, label, capabilities, launch
 mode, and geometry. Package references cannot override source/build fields;

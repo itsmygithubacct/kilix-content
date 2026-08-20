@@ -29,7 +29,11 @@ Frozen schema SHA-256 values:
 - `kilix.content.asset/v1`: `89d4865d11d6a537328965a8a903ac07d7dcf0ea14e1b360888f22af7ba5a1a8`
 - `kilix.install.license/v1`: `2f352856b4bd712e6030b2c74a690f7c0ed250e5730a69aa04b601643dbf1736`
 
-Built wheels install the schemas below `share/kilix-content/contracts`; source
+Built wheels install the schemas below `share/kilix-content/contracts` for
+external consumers, and additionally carry importable package-resource copies
+at `kilix_content/contracts/`. The importable copies are byte-identical to the
+frozen sources in this directory and are the ones the runtime self-check reads:
+authorization refuses unless both match the digests recorded above. Source
 archives retain this complete `contracts/` directory.
 
 `tests/fixtures/contracts/valid` contains canonical accepted instances;

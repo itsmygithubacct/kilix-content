@@ -5,4 +5,5 @@ recursive-include contracts *.json *.md
 recursive-include benchmarks *.py
 recursive-include tests *.py
 recursive-include tests/fixtures/contracts *.json
+recursive-include tests/fixtures/catalogs *.json
 include tests/fixtures/contracts/SHA256SUMS

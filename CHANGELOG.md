@@ -22,8 +22,28 @@ pre-1.0.
   explicit one-file identity path for records that require no conversion.
 - Add canonical `AssetSpec.to_mapping()` serialization so public acquisition
   inputs can be round-tripped through the frozen parser before use.
+- Add code-pinned packaged release authority: the packaged catalog ships as
+  canonical schema-v4 bytes pinned by a digest constant, alongside a packaged
+  release-ID constant, and `ReleaseContext.packaged()` is the only construction
+  path that production authorization accepts.
+- Add `verified_packaged_catalog()`, which verifies the packaged catalog digest
+  before parsing so unauthenticated bytes never reach the parser, and extend the
+  frozen self-check to cover the packaged asset schema as well as the license
+  schema.
+- Add exact catalog-membership proof at both `record()` and `require_asset()`:
+  a caller's asset record must be byte/field-identical to the packaged
+  catalog's record for the same id, so a verified release context alone never
+  authorizes.
+- Add `AssetSpec.canonicalized()`, which reparses through the base
+  implementations so a subclass cannot substitute a different mapping for the
+  record actually being authorized.
 
 ### Changed
+
+- Refuse a catalog in which one id names both an asset and a content entry;
+  resolution order must never decide which record a name means.
+- Refuse production authorization for synthetic `ReleaseContext.from_catalog()`
+  contexts permanently, including one built from the exact packaged bytes.
 
 - Require exact receipt authorization for every public asset readiness and
   installation path, including informational licenses, and recheck immediately
