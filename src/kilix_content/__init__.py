@@ -4,6 +4,7 @@ from functools import lru_cache
 from importlib.resources import files
 
 from .install import (
+    AcquisitionRequired,
     Installer,
     InstallError,
     download,
@@ -53,6 +54,7 @@ def default_catalog() -> Catalog:
 
 
 __all__ = [
+    "AcquisitionRequired",
     "ActionSpec",
     "AssetFileSpec",
     "AssetLicenseSpec",

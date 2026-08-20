@@ -18,7 +18,8 @@ normative v1 requirements and every implementation must enforce them:
 - `sizes.installed_bytes` equals the sum of manifest file sizes;
 - `compatibility.minimum` is not greater than `maximum`;
 - conversion argv contains `{input}` and `{output}` exactly once each, as
-  separate argv elements; substitution never invokes a shell; and
+  separate argv elements; no other element contains a brace, and substitution
+  never invokes a shell; and
 - a user-supplied source links at least one `user-supplied` license decision.
 
 The fixture suite executes these rules independently of structural schema

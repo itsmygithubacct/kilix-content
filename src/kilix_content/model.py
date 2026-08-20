@@ -7,7 +7,7 @@ import os
 import re
 import unicodedata
 from collections.abc import Iterable, Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from types import MappingProxyType
 from typing import Any
 from urllib.parse import urlsplit
@@ -366,6 +366,66 @@ class AssetSpec:
     compatibility_minimum: int
     compatibility_maximum: int
 
+    def to_mapping(self) -> dict[str, Any]:
+        """Return the canonical language-neutral asset record mapping."""
+        provenance = {
+            "original_url": self.provenance_url,
+            "project": self.provenance_project,
+            "revision": self.provenance_revision,
+        }
+        if self.source_mode == "mirrored":
+            source: dict[str, Any] = {
+                "archive_sha256": self.archive_sha256,
+                "mirrors": list(self.mirrors),
+                "mode": "mirrored",
+                "provenance": provenance,
+            }
+        else:
+            source = {
+                "input_bytes": self.input_bytes,
+                "input_sha256": self.input_sha256,
+                "mode": self.source_mode,
+                "official_url": self.official_url,
+                "provenance": provenance,
+                "reason": self.reason,
+            }
+            if self.conversion_argv:
+                source["conversion"] = {
+                    "argv": list(self.conversion_argv),
+                    "tool_asset_id": self.conversion_tool_asset_id,
+                }
+        return {
+            "compatibility": {
+                "consumer_schema": self.consumer_schema,
+                "maximum": self.compatibility_maximum,
+                "minimum": self.compatibility_minimum,
+            },
+            "files": [
+                {"bytes": item.bytes, "path": item.path, "sha256": item.sha256}
+                for item in self.files
+            ],
+            "id": self.asset_id,
+            "label": self.label,
+            "licenses": [
+                {
+                    "decision": item.decision,
+                    "id": item.license_id,
+                    "text_sha256": item.text_sha256,
+                }
+                for item in self.licenses
+            ],
+            "provider": self.provider,
+            "schema": "kilix.content.asset/v1",
+            "sizes": {
+                "download_bytes": self.download_bytes,
+                "installed_bytes": self.installed_bytes,
+                "temporary_bytes": self.temporary_bytes,
+            },
+            "source": source,
+            "stream": self.stream,
+            "version": self.version,
+        }
+
     @classmethod
     def from_mapping(cls, raw: Mapping[str, Any]) -> AssetSpec:
         raw = _mapping(raw, "asset entry")
@@ -505,6 +565,14 @@ class AssetSpec:
                 )
                 if conversion_argv.count("{input}") != 1 or conversion_argv.count("{output}") != 1:
                     raise CatalogError(f"{asset_id}.source.conversion.argv requires one {{input}} and one {{output}}")
+                if any(
+                    ("{" in argument or "}" in argument)
+                    and argument not in ("{input}", "{output}")
+                    for argument in conversion_argv
+                ):
+                    raise CatalogError(
+                        f"{asset_id}.source.conversion.argv placeholders must be whole arguments"
+                    )
         else:
             raise CatalogError(f"{asset_id}.source has unsupported mode {source_mode!r}")
 
@@ -728,6 +796,77 @@ class ContentSpec:
     launch_mode: str = "terminal"
     preferred_size: str = ""
     package_id: str = ""
+
+    def to_mapping(self) -> dict[str, Any]:
+        """Return a canonical flattened content-entry mapping.
+
+        Package-provided entries deliberately serialize their resolved source
+        fields.  This lets an execution boundary validate the complete object
+        without trusting a directly constructed ``PackageSpec``.  The package
+        install identity is restored separately by :meth:`canonicalized`.
+        """
+        if self.source_type == "git":
+            source: dict[str, Any] = {
+                "ref": self.ref,
+                "repository": self.repository,
+                "type": "git",
+            }
+        elif self.source_type == "archive":
+            source = {
+                "sha256": self.sha256,
+                "type": "archive",
+                "urls": list(self.urls),
+            }
+        else:
+            source = {"type": self.source_type}
+
+        raw: dict[str, Any] = {
+            "accepts": list(self.accepts),
+            "actions": {
+                action.action_id: {
+                    "accepts_input": action.accepts_input,
+                    "argv": list(action.argv),
+                    "description": action.description,
+                }
+                for action in self.actions
+            },
+            "binary": self.binary,
+            "build": list(self.build),
+            "capabilities": list(self.capabilities),
+            "dependency_hint": self.dependency_hint,
+            "description": self.description,
+            "icon": self.icon,
+            "id": self.content_id,
+            "kind": self.kind,
+            "label": self.label,
+            "launch": {
+                "mode": self.launch_mode,
+                "preferred_size": self.preferred_size,
+            },
+            "lifecycle": {
+                "degrades_inplace": self.lifecycle.degrades_inplace,
+                "preserve_on_failure": self.lifecycle.preserve_on_failure,
+                "requires_kilix_session": self.lifecycle.requires_kilix_session,
+                "single_instance": self.lifecycle.single_instance,
+                "startup_timeout_seconds": self.lifecycle.startup_timeout_seconds,
+            },
+            "source": source,
+        }
+        if self.command:
+            raw["command"] = list(self.command)
+        return raw
+
+    def canonicalized(self) -> ContentSpec:
+        """Reparse every public field and restore a validated package id."""
+        package_id = self.package_id
+        if package_id:
+            _content_id(package_id, "package id")
+        # Call the base implementations explicitly: a directly constructed
+        # subclass must not override either side of this trust boundary.
+        validated = ContentSpec.from_mapping(ContentSpec.to_mapping(self))
+        if package_id:
+            validated = replace(validated, package_id=package_id)
+        return validated
 
     @property
     def install_id(self) -> str:

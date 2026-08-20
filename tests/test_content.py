@@ -57,6 +57,8 @@ class ContentTests(unittest.TestCase):
         catalog = default_catalog()
         self.assertIs(catalog, default_catalog())
         self.assertGreaterEqual(len(catalog), 12)
+        for entry in catalog:
+            self.assertEqual(entry.canonicalized(), entry)
         self.assertEqual(catalog.require("kilix-jpak").launch_mode, "terminal")
         self.assertEqual(catalog.require("kilix-rancher").binary, "kilix-rancher")
         self.assertEqual(catalog.require("kilix-pong").icon, "pong")
@@ -278,6 +280,8 @@ class ContentTests(unittest.TestCase):
         self.assertEqual(first.build, package.build)
         self.assertEqual(first.dependency_hint, "needs the fixture runtime")
         self.assertTrue(package.supplies(first))
+        self.assertEqual(first.canonicalized(), first)
+        self.assertEqual(sibling.canonicalized(), sibling)
         self.assertEqual(
             catalog.provided_by("fixture-suite"), (first, sibling)
         )

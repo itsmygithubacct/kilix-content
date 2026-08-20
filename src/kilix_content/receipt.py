@@ -326,64 +326,7 @@ class ArtifactBinding:
 
 
 def _asset_mapping(spec: AssetSpec) -> dict[str, Any]:
-    source: dict[str, Any]
-    provenance = {
-        "original_url": spec.provenance_url,
-        "project": spec.provenance_project,
-        "revision": spec.provenance_revision,
-    }
-    if spec.source_mode == "mirrored":
-        source = {
-            "archive_sha256": spec.archive_sha256,
-            "mirrors": list(spec.mirrors),
-            "mode": "mirrored",
-            "provenance": provenance,
-        }
-    else:
-        source = {
-            "input_bytes": spec.input_bytes,
-            "input_sha256": spec.input_sha256,
-            "mode": "user-supplied",
-            "official_url": spec.official_url,
-            "provenance": provenance,
-            "reason": spec.reason,
-        }
-        if spec.conversion_argv:
-            source["conversion"] = {
-                "argv": list(spec.conversion_argv),
-                "tool_asset_id": spec.conversion_tool_asset_id,
-            }
-    return {
-        "compatibility": {
-            "consumer_schema": spec.consumer_schema,
-            "maximum": spec.compatibility_maximum,
-            "minimum": spec.compatibility_minimum,
-        },
-        "files": [
-            {"bytes": item.bytes, "path": item.path, "sha256": item.sha256}
-            for item in spec.files
-        ],
-        "id": spec.asset_id,
-        "label": spec.label,
-        "licenses": [
-            {
-                "decision": item.decision,
-                "id": item.license_id,
-                "text_sha256": item.text_sha256,
-            }
-            for item in spec.licenses
-        ],
-        "provider": spec.provider,
-        "schema": "kilix.content.asset/v1",
-        "sizes": {
-            "download_bytes": spec.download_bytes,
-            "installed_bytes": spec.installed_bytes,
-            "temporary_bytes": spec.temporary_bytes,
-        },
-        "source": source,
-        "stream": spec.stream,
-        "version": spec.version,
-    }
+    return spec.to_mapping()
 
 
 def _verify_frozen_schema() -> None:
@@ -683,7 +626,8 @@ class VerifiedInput:
         try:
             path = os.path.abspath(os.fspath(path))
             descriptor = os.open(
-                path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC
+                path,
+                os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW | os.O_CLOEXEC,
             )
         except (OSError, TypeError, ValueError) as exc:
             raise BindingMismatch("could not securely open user-supplied input") from exc

@@ -119,6 +119,40 @@ budgets equivalent to the one-MiB JSON boundary. Runtime validation also
 enforces frozen asset-schema uniqueness and maximums, including unique mirrors
 and at most 256 bounded conversion arguments.
 
+For a `user-supplied` asset, `Installer.required_input()` returns a frozen
+`AcquisitionRequired` value containing only catalog-derived URL, reason, size,
+digest and conversion facts. The spec is first serialized canonically and
+round-tripped through the frozen parser, so direct unvalidated dataclass
+construction cannot spoof those UI facts. After a presenting UI has recorded
+the exact license decision, it calls `ensure_user_supplied_asset()` with the
+same catalog, receipt store, release context and a user-selected path. The
+installer opens that path once without following its final symlink, refuses
+non-regular files,
+hashes and copies from the pinned descriptor, and never passes the original
+path or descriptor to the converter. Replacing the pathname after it is opened
+therefore does not change the consumed bytes; mutating the opened inode blocks
+selection at the final revalidation.
+
+Conversion tools resolve only through `Catalog.require()` to pinned Git or
+archive `ContentSpec` entries. Every resolved content object is serialized as a
+flattened canonical mapping and reparsed before readiness, acquisition, build,
+attestation, or execution; archive digests and Git commits remain exact
+lowercase 64- and 40-hex pins even for directly constructed dataclasses. Their
+argv begins with the resolved absolute program and substitutes only whole
+`{input}` and `{output}` elements. A private source-and-binary attestation covers
+build outputs that Git itself treats as untracked and is checked again
+immediately before execution. Converters receive an empty stdin, closed
+inherited descriptors, a private working directory and minimal environment;
+output diagnostics retain only a sanitized bounded tail. The process leader is
+observed without reaping so its process-group identity cannot be reused, then
+TERM/KILL cleanup removes descendants after every parent exit, including
+successful and ordinary failing exits whose descendants close captured stdio.
+One private lock per asset version prevents duplicate conversion. Both receipt
+checks and the final input check precede atomic selection. A record without
+conversion is accepted only when its one declared output is byte-identical to
+the input; archives are never expanded implicitly. Manifest files must also
+remain caller-owned, non-executable regular files with one link.
+
 `command` is an argv vector for a system-owned application such as
 `["kilix", "bonsai"]`; it is mutually exclusive with a package-relative
 `binary`. Actions add only trusted fixed argv and declare separately whether
@@ -186,9 +220,12 @@ bindings, mandatory authorization, malformed/private-store attacks, input path
 swaps, same-instance and multi-process no-overwrite concurrency, killed lock
 holders, post-fork refusal, crash-atomic initialization, persistent durability
 fault injection and reconciliation, bounded hostile JSON, safe diagnostics,
-private redacted export and production-context refusal. The benchmark records cached and
-cold catalog cost, indexed lookup, managed Git verification/readiness, and a
-verified 32 MiB download.
+private redacted export, production-context refusal, pinned user-input
+conversion, malformed direct tool pins, converter replacement, descendant
+cleanup after timeout/success/failure, lock serialization and abrupt failure at
+every staging boundary. The benchmark records cached and cold
+catalog cost, indexed lookup, managed Git verification/readiness, and a verified
+32 MiB download.
 
 F100's language-neutral JSON Schema contracts live in [`contracts/`](contracts/).
 Their canonical valid and intentionally invalid examples are under

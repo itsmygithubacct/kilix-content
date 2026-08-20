@@ -17,6 +17,11 @@ pre-1.0.
   atomic private redacted-export output.
 - Add operator-only whole-guest power-loss and real-filesystem storage-error
   acceptance runners with atomic machine-readable evidence.
+- Add typed user-supplied acquisition requirements, descriptor-pinned input
+  staging, bounded local conversion through pinned catalog tools, and the
+  explicit one-file identity path for records that require no conversion.
+- Add canonical `AssetSpec.to_mapping()` serialization so public acquisition
+  inputs can be round-tripped through the frozen parser before use.
 
 ### Changed
 
@@ -30,6 +35,12 @@ pre-1.0.
 - Bound every catalog construction path by explicit text, sequence, nesting
   and aggregate limits; enforce unique mirrors and the frozen conversion-argv
   maximum at runtime.
+- Serialize each asset version through a private install lock, recheck input
+  and receipt bindings before selection, and bind conversion executables to a
+  private source-and-binary install attestation checked immediately before use.
+- Canonicalize every resolved `ContentSpec` before readiness or acquisition and
+  retain the unreaped converter leader until all same-group descendants stop,
+  preventing process-group identity reuse during lifecycle cleanup.
 
 ### Fixed
 
@@ -46,6 +57,16 @@ pre-1.0.
   fixed-category refusals.
 - Advance `kilix-tui-utils` to relocatable runtime launchers so atomic package
   selection does not leave Start-menu applications pointing at staging paths.
+- Refuse special-file user inputs without blocking, partial placeholder
+  substitution, unpinned conversion providers, inherited converter state and
+  descriptors, unbounded or terminal-active diagnostics, and timed-out process
+  groups including descendants.
+- Refuse empty, short, uppercase, or non-hex archive pins and missing, mutable,
+  short, uppercase, or non-hex Git refs from directly constructed converter
+  records before acquisition; terminate closed-stdio descendants after zero or
+  nonzero converter-parent exits as well as timeouts.
+- Reject asset-manifest files with foreign ownership or multiple hard links so
+  a selected tree cannot retain an undeclared mutable alias.
 
 ## 0.4.0 - 2026-08-10
 

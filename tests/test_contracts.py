@@ -113,6 +113,12 @@ def asset_semantic_errors(value: dict) -> set[str]:
         argv = conversion["argv"]
         if argv.count("{input}") != 1 or argv.count("{output}") != 1:
             errors.add("conversion-placeholders")
+        if any(
+            ("{" in argument or "}" in argument)
+            and argument not in ("{input}", "{output}")
+            for argument in argv
+        ):
+            errors.add("conversion-placeholders")
     if source["mode"] == "user-supplied" and not any(
         license_entry["decision"] == "user-supplied"
         for license_entry in value["licenses"]
@@ -222,6 +228,24 @@ class ContractFixtureTests(unittest.TestCase):
         supplied = load_json(FIXTURES / "valid" / "asset-user-supplied.json")
         supplied["source"]["conversion"]["argv"][0] = "x" * 4097
         with self.assertRaises(CatalogError):
+            AssetSpec.from_mapping(supplied)
+
+    def test_conversion_placeholders_must_be_exact_argv_elements(self) -> None:
+        supplied = load_json(FIXTURES / "valid" / "asset-user-supplied.json")
+        supplied["source"]["conversion"]["argv"] = [
+            "pre{input}post",
+            "{input}",
+            "{output}",
+        ]
+        with self.assertRaisesRegex(CatalogError, "whole arguments"):
+            AssetSpec.from_mapping(supplied)
+
+        supplied["source"]["conversion"]["argv"] = [
+            "{input}",
+            "{output}",
+            "unmatched}",
+        ]
+        with self.assertRaisesRegex(CatalogError, "whole arguments"):
             AssetSpec.from_mapping(supplied)
 
     def test_assets_require_schema_four_and_unique_ids(self) -> None:
