@@ -1,3 +1,8 @@
 include CHANGELOG.md
 include Makefile
+include uv.lock
+recursive-include contracts *.json *.md
 recursive-include benchmarks *.py
+recursive-include tests *.py
+recursive-include tests/fixtures/contracts *.json
+include tests/fixtures/contracts/SHA256SUMS

@@ -1,0 +1,51 @@
+{
+  "compatibility": {
+    "consumer_schema": "fixture",
+    "maximum": 1,
+    "minimum": 1
+  },
+  "files": [
+    {
+      "bytes": 4,
+      "path": "data.bin",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  ],
+  "id": "fixture.bad-conversion",
+  "label": "Bad conversion placeholders",
+  "licenses": [
+    {
+      "decision": "user-supplied",
+      "id": "NOASSERTION",
+      "text_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  ],
+  "provider": "fixture",
+  "schema": "kilix.content.asset/v1",
+  "sizes": {
+    "download_bytes": 4,
+    "installed_bytes": 4,
+    "temporary_bytes": 8
+  },
+  "source": {
+    "conversion": {
+      "argv": [
+        "convert",
+        "{input}"
+      ],
+      "tool_asset_id": "fixture.converter"
+    },
+    "input_bytes": 4,
+    "input_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+    "mode": "user-supplied",
+    "official_url": "https://example.org/data",
+    "provenance": {
+      "original_url": "https://example.org/data",
+      "project": "fixture",
+      "revision": "1"
+    },
+    "reason": "Not redistributable"
+  },
+  "stream": "F100",
+  "version": "1"
+}

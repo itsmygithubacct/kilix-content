@@ -16,8 +16,10 @@ import tempfile
 import urllib.request
 import zipfile
 from collections.abc import Callable, Iterable
+from urllib.parse import urlsplit
 
-from .model import ContentSpec
+from .model import AssetSpec, ContentSpec
+from .receipt import ReceiptError, ReceiptStore, ReleaseContext
 
 Report = Callable[[str], None]
 
@@ -172,7 +174,22 @@ def download(
     for url in candidates:
         temporary = ""
         try:
-            report(f"downloading {url.rsplit('/', 1)[-1]} …")
+            try:
+                parsed = urlsplit(url)
+                display_name = os.path.basename(parsed.path.rstrip("/")) or "content"
+            except (TypeError, ValueError):
+                display_name = "content"
+            if (
+                len(display_name) > 128
+                or not isinstance(display_name, str)
+                or not display_name.isprintable()
+                or any(
+                    ord(character) < 0x20 or ord(character) == 0x7F
+                    for character in display_name
+                )
+            ):
+                display_name = "content"
+            report(f"downloading {display_name} …")
             request = urllib.request.Request(
                 url, headers={"User-Agent": "kilix-content/0.3"}
             )
@@ -195,7 +212,7 @@ def download(
                 actual = digest.hexdigest()
                 if actual != expected_sha256:
                     raise InstallError(
-                        f"sha256 mismatch for {url}: expected {expected_sha256}, got {actual}"
+                        "downloaded content failed SHA-256 verification"
                     )
             os.replace(temporary, destination)
             temporary = ""
@@ -208,7 +225,10 @@ def download(
                     os.unlink(temporary)
                 except OSError:
                     pass
-    raise InstallError(f"all content downloads failed: {last_error}")
+    error_type = type(last_error).__name__ if last_error is not None else "unknown"
+    raise InstallError(
+        f"all {len(candidates)} content download candidates failed ({error_type})"
+    )
 
 
 def _run(
@@ -425,6 +445,138 @@ class Installer:
                 f"install id is not a safe path component: {install_id!r}"
             )
         return destination
+
+    def asset_destination(self, spec: AssetSpec) -> str:
+        """Return the version-qualified selection directory for an asset."""
+        try:
+            destination = os.path.abspath(
+                os.path.join(self.root, spec.asset_id, spec.version)
+            )
+            parent = os.path.abspath(os.path.join(self.root, spec.asset_id))
+        except (TypeError, ValueError) as exc:
+            raise InstallError("asset identity is not a safe path") from exc
+        if (
+            parent == self.root
+            or os.path.dirname(parent) != self.root
+            or destination == parent
+            or os.path.dirname(destination) != parent
+        ):
+            raise InstallError("asset identity is not a safe path")
+        return destination
+
+    def asset_ready(
+        self, spec: AssetSpec, store: ReceiptStore, release: ReleaseContext
+    ) -> tuple[str, ...] | None:
+        """Return exact paths only after license authorization and integrity checks."""
+        store.require_asset(spec, release)
+        return self._asset_integrity_ready(spec)
+
+    def _asset_integrity_ready(self, spec: AssetSpec) -> tuple[str, ...] | None:
+        """Probe exact bytes without creating a usable, authorization-bypassing API."""
+        selected = self.asset_destination(spec)
+        return self._verify_asset_directory(spec, selected)
+
+    def _verify_asset_directory(
+        self, spec: AssetSpec, selected: str
+    ) -> tuple[str, ...] | None:
+        if os.path.islink(selected) or not os.path.isdir(selected):
+            return None
+        expected = {item.path: item for item in spec.files}
+        observed: set[str] = set()
+        try:
+            for directory, names, files in os.walk(selected, followlinks=False):
+                for name in names:
+                    if os.path.islink(os.path.join(directory, name)):
+                        return None
+                for name in files:
+                    path = os.path.join(directory, name)
+                    relative = os.path.relpath(path, selected).replace(os.sep, "/")
+                    item = expected.get(relative)
+                    if item is None or os.path.islink(path):
+                        return None
+                    info = os.stat(path, follow_symlinks=False)
+                    if (
+                        not stat.S_ISREG(info.st_mode)
+                        or info.st_mode & 0o111
+                        or info.st_size != item.bytes
+                        or sha256_file(path) != item.sha256
+                    ):
+                        return None
+                    observed.add(relative)
+        except (OSError, ValueError):
+            return None
+        if observed != set(expected):
+            return None
+        return tuple(os.path.join(selected, item.path) for item in spec.files)
+
+    def ensure_asset(
+        self,
+        spec: AssetSpec,
+        store: ReceiptStore,
+        release: ReleaseContext,
+        report: Report = lambda _message: None,
+    ) -> tuple[str, ...]:
+        """Install one exact mirrored asset after every license is authorized."""
+        self._ensure_root()
+        store.require_asset(spec, release)
+        ready = self._asset_integrity_ready(spec)
+        if ready is not None:
+            return ready
+        if spec.source_mode != "mirrored":
+            raise InstallError(
+                f"{spec.asset_id} requires user-supplied acquisition support"
+            )
+        destination = self.asset_destination(spec)
+        if os.path.lexists(destination):
+            raise InstallError(
+                f"refusing to replace an unverified asset selection: {destination}"
+            )
+        parent = os.path.dirname(destination)
+        try:
+            os.makedirs(parent, mode=0o700, exist_ok=True)
+        except OSError as exc:
+            raise InstallError(f"could not create asset root: {parent}") from exc
+        stage = tempfile.mkdtemp(prefix=f".{spec.version}.install-", dir=parent)
+        archive_path = os.path.join(stage, ".download")
+        extracted = os.path.join(stage, "content")
+        os.mkdir(extracted)
+        try:
+            download(
+                spec.mirrors,
+                archive_path,
+                report,
+                spec.archive_sha256,
+            )
+            try:
+                with tarfile.open(archive_path, "r:*") as archive:
+                    safe_extract_tar(archive, extracted)
+            except tarfile.ReadError:
+                try:
+                    with zipfile.ZipFile(archive_path) as archive:
+                        safe_extract_zip(archive, extracted)
+                except zipfile.BadZipFile as exc:
+                    raise InstallError(
+                        "asset download is neither a supported tar nor ZIP archive"
+                    ) from exc
+            if self._verify_asset_directory(spec, extracted) is None:
+                raise InstallError(
+                    f"{spec.asset_id} extracted tree does not match its manifest"
+                )
+            # Authorization can be removed or corrupted during a long download.
+            # Recheck the same exact bindings immediately before selection.
+            store.require_asset(spec, release)
+            self._replace_stage(extracted, destination)
+            extracted = ""
+        except (InstallError, ReceiptError):
+            raise
+        except (OSError, tarfile.TarError, zipfile.BadZipFile, RuntimeError) as exc:
+            raise InstallError(f"asset installation failed: {exc}") from exc
+        finally:
+            shutil.rmtree(stage, ignore_errors=True)
+        selected = self.asset_ready(spec, store, release)
+        if selected is None:
+            raise InstallError(f"installed asset failed final verification: {spec.asset_id}")
+        return selected
 
     def executable(self, spec: ContentSpec, directory: str | None = None) -> str:
         selected = os.path.abspath(directory or self.destination(spec))

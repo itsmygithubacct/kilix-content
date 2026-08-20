@@ -70,6 +70,55 @@ assert "application/pdf" in files.accepts
 assert files.lifecycle.degrades_inplace
 ```
 
+Schema version 4 adds immutable non-executable assets alongside applications.
+Assets have version-qualified manifests, per-file SHA-256 and size, mirrored or
+user-supplied acquisition, exact license decisions, compatibility bounds, and
+explicit stream/provider ownership. `Catalog.require_asset()` returns the typed
+record; `Installer.asset_ready()` performs an offline, side-effect-free check
+of the exact non-executable installed tree and returns resolved file paths only
+after `ReceiptStore.require_asset()` proves every license requirement against
+the exact release-catalog and asset binding. `Installer.ensure_asset()` has the
+same mandatory store/context parameters and repeats authorization immediately
+before atomic selection; informational licenses are not a bypass.
+
+The frozen public `kilix.install.license/v1` decision/receipt contract is
+packaged with the library and verified against its pinned SHA-256 at runtime.
+`LicenseDecision.loads()` provides bounded UTF-8 JSON parsing with duplicate-key
+rejection. A `ReceiptStore` derives account, UID and time itself, hashes the
+exact rendered license bytes, and retains the public receipt inside a private
+`kilix.install.license-store/v1` envelope bound to canonical asset records,
+manifests, release ID and catalog digest. Receipts are immutable, mode `0600`,
+created without overwrite below a mode-`0700`
+`${XDG_STATE_HOME}/kilix-content/license-receipts/v1` directory, and made
+durable before success is reported. The store refuses root, UID transitions,
+post-fork reuse, links, wrong ownership/modes, unknown generations and
+visible-but-unconfirmed writes. A durable `.pending` marker keeps an
+interrupted publication non-authorizing across fresh reopen; callers must run
+`ReceiptStore.reconcile()` successfully before retrying. One store instance
+serializes its threads in addition to using `flock` across independent opens.
+`export_redacted()` omits account, presenter, time, URLs, input fingerprints
+and private envelope digests while retaining the release, license-text digest
+and exact asset record/manifest binding digests required for a useful audit;
+it lists every removed field. `export_redacted_to()` creates a new mode-`0600`
+file atomically inside an exact mode-`0700` caller-owned directory and refuses
+every existing destination, including links and unsafe files.
+
+The 0.2.1 trust boundary includes processes already running as the same UID;
+hashes bind official callers and detect corruption, but are not a MAC against a
+compromised desktop account. Synthetic authority exists only in test-suite code
+that is excluded from the installed wheel; the runtime module ships no test
+store or authority-enabling factory. `ReceiptStore.open_default()` keeps
+production authorization disabled with no authority-minting factory or mutable
+mode flag until the F106-backed immutable catalog-snapshot loader can return
+catalog-bound artifact handles. There is no legacy import or
+implicit migration: v1 is the first store generation, and a future generation
+must copy forward under the stable lock without deleting v1.
+
+Catalog text, arrays, nesting and direct mappings have explicit semantic
+budgets equivalent to the one-MiB JSON boundary. Runtime validation also
+enforces frozen asset-schema uniqueness and maximums, including unique mirrors
+and at most 256 bounded conversion arguments.
+
 `command` is an argv vector for a system-owned application such as
 `["kilix", "bonsai"]`; it is mutually exclusive with a package-relative
 `binary`. Actions add only trusted fixed argv and declare separately whether
@@ -90,7 +139,8 @@ destination symlink is replaced rather than followed.
 
 ## Catalog contract
 
-The packaged `plebian.json` catalog uses schema version 3. Schema version 2
+The packaged `plebian.json` catalog remains schema version 3. Readers support
+schema version 4 for catalogs that add a top-level `assets` array. Schema version 2
 added a top-level `packages` array. Each package owns an installable Git/archive
 source, build argv, and dependency hint. A content entry may reference it by
 `package` and owns its own ID, executable path, label, capabilities, launch
@@ -121,17 +171,39 @@ immutable and cached after its first validated load.
 ## Test
 
 ```sh
-make test
-make benchmark
+uv sync --locked --group test --no-install-project
+uv run --locked --no-sync python -m unittest discover -s tests -v
+uv run --locked --no-sync python benchmarks/benchmark_content.py
 ```
 
-Tests use local Git repositories and in-memory archives. They cover catalog
-validation, shared-package installation/readiness, fragmented installation
+Tests use local Git repositories, private temporary stores, and in-memory
+archives. They cover catalog validation, shared-package installation/readiness,
+fragmented installation
 failures, recursive dependency checkout, dirty/wrong-origin refusal, atomic
 replacement, traversal and symlink rejection, checksum enforcement, bounded
-child diagnostics, and executable readiness. The benchmark records cached and
+child diagnostics, executable readiness, exact receipt/release/artifact
+bindings, mandatory authorization, malformed/private-store attacks, input path
+swaps, same-instance and multi-process no-overwrite concurrency, killed lock
+holders, post-fork refusal, crash-atomic initialization, persistent durability
+fault injection and reconciliation, bounded hostile JSON, safe diagnostics,
+private redacted export and production-context refusal. The benchmark records cached and
 cold catalog cost, indexed lookup, managed Git verification/readiness, and a
 verified 32 MiB download.
+
+F100's language-neutral JSON Schema contracts live in [`contracts/`](contracts/).
+Their canonical valid and intentionally invalid examples are under
+`tests/fixtures/contracts/`; the tests validate every example with Draft
+2020-12 plus format checking, reject unknown fixture classes, require canonical
+JSON serialization, and verify the byte-for-byte `SHA256SUMS` manifest.
+
+Operator-run receipt durability qualification lives in
+`tests/receipt_storage_acceptance.py` and
+`tests/run_receipt_storage_errors.py`. It is intentionally separate from unit
+discovery because it removes power from a disposable QEMU guest and creates
+isolated loop/FUSE/device-mapper filesystems with passwordless test-VM sudo.
+The host controller is the `kilix-storage-acceptance` entry point in the local
+`kilix-benchmark` development project. Run it only against a validated
+disposable image; it refuses root, reused run paths and an unverified QEMU PID.
 
 ## Scope
 

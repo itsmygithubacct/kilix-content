@@ -1,0 +1,52 @@
+{
+  "compatibility": {
+    "consumer_schema": "kilix-content-catalog",
+    "maximum": 3,
+    "minimum": 2
+  },
+  "files": [
+    {
+      "bytes": 7,
+      "path": "game/data.pak",
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+    }
+  ],
+  "id": "game.user-data",
+  "label": "User-provided game data",
+  "licenses": [
+    {
+      "decision": "user-supplied",
+      "id": "commercial-user-copy",
+      "text_sha256": "5555555555555555555555555555555555555555555555555555555555555555"
+    }
+  ],
+  "provider": "kilix-games-sdk",
+  "schema": "kilix.content.asset/v1",
+  "sizes": {
+    "download_bytes": 0,
+    "installed_bytes": 7,
+    "temporary_bytes": 14
+  },
+  "source": {
+    "conversion": {
+      "argv": [
+        "extract",
+        "{input}",
+        "{output}"
+      ],
+      "tool_asset_id": "game.extractor"
+    },
+    "input_bytes": 9,
+    "input_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+    "mode": "user-supplied",
+    "official_url": "https://example.org/store/game",
+    "provenance": {
+      "original_url": "https://example.org/store/game",
+      "project": "Example Game",
+      "revision": "retail-1"
+    },
+    "reason": "Redistribution is not permitted; select a legally acquired archive."
+  },
+  "stream": "F100",
+  "version": "retail-1"
+}

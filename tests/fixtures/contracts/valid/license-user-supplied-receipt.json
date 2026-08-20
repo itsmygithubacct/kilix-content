@@ -1,0 +1,16 @@
+{
+  "artifact_ids": [
+    "game.user-data"
+  ],
+  "decision_class": "user-supplied",
+  "input_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+  "kind": "receipt",
+  "license_id": "commercial-user-copy",
+  "license_text_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+  "local_user": "alice",
+  "outcome": "supplied",
+  "recorded_at": "2026-08-19T12:00:00Z",
+  "release": "0.2.1",
+  "schema": "kilix.install.license/v1",
+  "upstream_url": "https://example.org/store/game"
+}

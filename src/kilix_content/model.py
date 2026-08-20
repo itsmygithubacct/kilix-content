@@ -5,10 +5,12 @@ from __future__ import annotations
 import json
 import os
 import re
+import unicodedata
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any
+from urllib.parse import urlsplit
 
 _ID = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 _PREFERRED_SIZE = re.compile(r"^[1-9][0-9]{0,4}x[1-9][0-9]{0,4}$")
@@ -16,8 +18,8 @@ _HEX = frozenset("0123456789abcdef")
 _SOURCE_TYPES = frozenset(("git", "archive", "system", "custom"))
 _INSTALLABLE_SOURCE_TYPES = frozenset(("git", "archive"))
 _LAUNCH_MODES = frozenset(("terminal", "run", "xpane", "browse", "window", "custom"))
-_SCHEMA_VERSIONS = frozenset((1, 2, 3))
-_ROOT_KEYS = frozenset(("schema_version", "packages", "content"))
+_SCHEMA_VERSIONS = frozenset((1, 2, 3, 4))
+_ROOT_KEYS = frozenset(("schema_version", "packages", "content", "assets"))
 _PACKAGE_KEYS = frozenset(("id", "source", "build", "dependency_hint"))
 _ENTRY_KEYS = frozenset(
     (
@@ -63,6 +65,11 @@ _MAX_CATALOG_BYTES = 1024 * 1024
 _MAX_CONTENT_ENTRIES = 4096
 _MAX_ACTIONS = 64
 _MAX_ACCEPTED_INPUTS = 64
+_MAX_ASSETS = 4096
+_MAX_ASSET_FILES = 100000
+_MAX_SEQUENCE_ITEMS = 256
+_MAX_TEXT_LENGTH = 4096
+_MAX_CATALOG_DEPTH = 64
 
 
 class CatalogError(ValueError):
@@ -78,17 +85,80 @@ def _mapping(value: Any, label: str) -> Mapping[str, Any]:
 def _known_keys(raw: Mapping[str, Any], allowed: frozenset[str], label: str) -> None:
     unknown = tuple(key for key in raw if key not in allowed)
     if unknown:
-        names = ", ".join(sorted(repr(key) for key in unknown))
-        raise CatalogError(f"{label} has unknown field(s): {names}")
+        raise CatalogError(f"{label} has unknown field(s)")
 
 
 def _json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
         if key in result:
-            raise CatalogError(f"catalog JSON contains duplicate field {key!r}")
+            raise CatalogError("catalog JSON contains a duplicate field")
         result[key] = value
     return result
+
+
+def _json_integer(token: str) -> int:
+    if len(token.removeprefix("-")) > 20:
+        raise CatalogError("catalog JSON integer exceeds the numeric limit")
+    try:
+        return int(token)
+    except ValueError as exc:
+        raise CatalogError("catalog JSON integer is invalid") from exc
+
+
+def _reject_json_number(_token: str) -> float:
+    raise CatalogError("catalog JSON floating-point values are unsupported")
+
+
+def _catalog_json_size(value: Any, *, depth: int = 0) -> int:
+    """Return compact UTF-8 JSON size for a direct mapping, within hard bounds."""
+
+    if depth > _MAX_CATALOG_DEPTH:
+        raise CatalogError("catalog mapping exceeds the nesting limit")
+    if isinstance(value, Mapping):
+        total = 2
+        for index, (key, item) in enumerate(value.items()):
+            if not isinstance(key, str):
+                raise CatalogError("catalog mapping field names must be strings")
+            try:
+                key_bytes = json.dumps(key, ensure_ascii=False).encode("utf-8")
+            except (TypeError, UnicodeError, ValueError) as exc:
+                raise CatalogError("catalog mapping has an invalid field name") from exc
+            total += (1 if index else 0) + len(key_bytes) + 1
+            total += _catalog_json_size(item, depth=depth + 1)
+            if total > _MAX_CATALOG_BYTES:
+                raise CatalogError("catalog mapping exceeds the 1 MiB size limit")
+        return total
+    if isinstance(value, list):
+        total = 2
+        for index, item in enumerate(value):
+            total += (1 if index else 0) + _catalog_json_size(
+                item, depth=depth + 1
+            )
+            if total > _MAX_CATALOG_BYTES:
+                raise CatalogError("catalog mapping exceeds the 1 MiB size limit")
+        return total
+    if isinstance(value, str):
+        try:
+            size = len(json.dumps(value, ensure_ascii=False).encode("utf-8"))
+        except (TypeError, UnicodeError, ValueError) as exc:
+            raise CatalogError("catalog mapping contains invalid text") from exc
+    elif value is None:
+        size = 4
+    elif type(value) is bool:
+        size = 4 if value else 5
+    elif type(value) is int:
+        if value.bit_length() > 67:
+            raise CatalogError("catalog mapping integer exceeds the numeric limit")
+        token = str(value)
+        if len(token.removeprefix("-")) > 20:
+            raise CatalogError("catalog mapping integer exceeds the numeric limit")
+        size = len(token)
+    else:
+        raise CatalogError("catalog mapping contains a non-JSON value")
+    if size > _MAX_CATALOG_BYTES:
+        raise CatalogError("catalog mapping exceeds the 1 MiB size limit")
+    return size
 
 
 def _valid_text(value: str) -> bool:
@@ -110,7 +180,13 @@ def _exact_hex(value: str, length: int, label: str) -> str:
 
 
 def _relative_path(value: str, label: str) -> str:
-    if not value or not _valid_text(value) or os.path.isabs(value):
+    if (
+        not isinstance(value, str)
+        or not value
+        or len(value) > _MAX_TEXT_LENGTH
+        or not _valid_text(value)
+        or os.path.isabs(value)
+    ):
         raise CatalogError(f"{label} must be a non-empty relative path")
     normalized = os.path.normpath(value)
     if normalized in (".", "..") or normalized.startswith("../"):
@@ -118,20 +194,334 @@ def _relative_path(value: str, label: str) -> str:
     return normalized
 
 
-def _string_tuple(value: Any, label: str) -> tuple[str, ...]:
+def _asset_relative_path(value: str, label: str) -> str:
+    """Return one canonical POSIX asset path without normalization aliases."""
+    value = _nonempty_text(value, label)
+    parts = value.split("/")
+    if (
+        value.startswith("/")
+        or "\\" in value
+        or any(part in ("", ".", "..") for part in parts)
+    ):
+        raise CatalogError(f"{label} must be a canonical relative POSIX path")
+    return value
+
+
+def _string_tuple(
+    value: Any,
+    label: str,
+    *,
+    maximum: int = _MAX_SEQUENCE_ITEMS,
+    unique: bool = False,
+) -> tuple[str, ...]:
     if value is None:
         return ()
-    if not isinstance(value, list) or any(
-        not isinstance(item, str) or not item or not _valid_text(item) for item in value
-    ):
-        raise CatalogError(f"{label} must be an array of non-empty strings")
-    return tuple(value)
+    if not isinstance(value, list) or len(value) > maximum:
+        raise CatalogError(
+            f"{label} must be an array of at most {maximum} non-empty strings"
+        )
+    result = tuple(
+        _nonempty_text(item, f"{label} item", maximum=_MAX_TEXT_LENGTH)
+        for item in value
+    )
+    if unique and len(result) != len(set(result)):
+        raise CatalogError(f"{label} must not contain duplicates")
+    return result
 
 
 def _content_id(value: Any, label: str) -> str:
     if not isinstance(value, str) or not _ID.fullmatch(value):
         raise CatalogError(f"invalid {label}: {value!r}")
     return value
+
+
+def _nonempty_text(value: Any, label: str, *, maximum: int = 4096) -> str:
+    if (
+        not isinstance(value, str)
+        or not value
+        or len(value) > maximum
+        or not _valid_text(value)
+    ):
+        raise CatalogError(f"{label} must be a non-empty string")
+    return value
+
+
+def _diagnostic_identifier(value: Any, label: str, *, maximum: int = 128) -> str:
+    value = _nonempty_text(value, label, maximum=maximum)
+    if any(unicodedata.category(character) in ("Cc", "Cf", "Zl", "Zp") for character in value):
+        raise CatalogError(f"{label} contains control or formatting characters")
+    return value
+
+
+def _byte_count(value: Any, label: str) -> int:
+    if type(value) is not int or not 0 <= value <= 2**63 - 1:
+        raise CatalogError(f"{label} must be a non-negative 64-bit integer")
+    return value
+
+
+def _https_url(value: Any, label: str) -> str:
+    value = _nonempty_text(value, label)
+    if any(ord(character) <= 0x20 or ord(character) == 0x7F for character in value):
+        raise CatalogError(f"{label} contains whitespace or control characters")
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except ValueError as exc:
+        raise CatalogError(f"{label} has an invalid port") from exc
+    if (
+        parsed.scheme != "https"
+        or not parsed.netloc
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or (port is not None and not 1 <= port <= 65535)
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise CatalogError(f"{label} must be a public HTTPS URL")
+    return value
+
+
+@dataclass(frozen=True)
+class AssetFileSpec:
+    """One immutable regular file in an asset manifest."""
+
+    path: str
+    bytes: int
+    sha256: str
+
+    @classmethod
+    def from_mapping(cls, raw: Mapping[str, Any], label: str) -> AssetFileSpec:
+        raw = _mapping(raw, label)
+        _known_keys(raw, frozenset(("path", "bytes", "sha256")), label)
+        try:
+            path = _asset_relative_path(raw["path"], f"{label}.path")
+            size = _byte_count(raw["bytes"], f"{label}.bytes")
+            digest = raw["sha256"]
+        except KeyError as exc:
+            raise CatalogError(f"{label} is missing {exc.args[0]!r}") from exc
+        if not isinstance(digest, str):
+            raise CatalogError(f"{label}.sha256 must be a string")
+        return cls(path, size, _exact_hex(digest, 64, f"{label}.sha256"))
+
+
+@dataclass(frozen=True)
+class AssetLicenseSpec:
+    """Exact license text and required decision class for an asset."""
+
+    license_id: str
+    text_sha256: str
+    decision: str
+
+    @classmethod
+    def from_mapping(cls, raw: Mapping[str, Any], label: str) -> AssetLicenseSpec:
+        raw = _mapping(raw, label)
+        _known_keys(raw, frozenset(("id", "text_sha256", "decision")), label)
+        try:
+            license_id = _diagnostic_identifier(
+                raw["id"], f"{label}.id", maximum=128
+            )
+            digest = raw["text_sha256"]
+            decision = raw["decision"]
+        except KeyError as exc:
+            raise CatalogError(f"{label} is missing {exc.args[0]!r}") from exc
+        if not isinstance(digest, str):
+            raise CatalogError(f"{label}.text_sha256 must be a string")
+        if decision not in ("informational", "affirmative", "user-supplied"):
+            raise CatalogError(f"{label}.decision is unsupported")
+        return cls(
+            license_id,
+            _exact_hex(digest, 64, f"{label}.text_sha256"),
+            decision,
+        )
+
+
+@dataclass(frozen=True)
+class AssetSpec:
+    """A validated immutable non-executable asset record."""
+
+    asset_id: str
+    label: str
+    provider: str
+    stream: str
+    version: str
+    files: tuple[AssetFileSpec, ...]
+    source_mode: str
+    mirrors: tuple[str, ...]
+    official_url: str
+    archive_sha256: str
+    input_bytes: int
+    input_sha256: str
+    reason: str
+    conversion_tool_asset_id: str
+    conversion_argv: tuple[str, ...]
+    provenance_project: str
+    provenance_revision: str
+    provenance_url: str
+    download_bytes: int
+    installed_bytes: int
+    temporary_bytes: int
+    licenses: tuple[AssetLicenseSpec, ...]
+    consumer_schema: str
+    compatibility_minimum: int
+    compatibility_maximum: int
+
+    @classmethod
+    def from_mapping(cls, raw: Mapping[str, Any]) -> AssetSpec:
+        raw = _mapping(raw, "asset entry")
+        _known_keys(
+            raw,
+            frozenset(
+                (
+                    "schema", "id", "label", "provider", "stream", "version",
+                    "files", "source", "sizes", "licenses", "compatibility",
+                )
+            ),
+            "asset entry",
+        )
+        required = (
+            "schema", "id", "label", "provider", "stream", "version", "files",
+            "source", "sizes", "licenses", "compatibility",
+        )
+        missing = next((key for key in required if key not in raw), None)
+        if missing is not None:
+            raise CatalogError(f"asset entry is missing {missing!r}")
+        if raw["schema"] != "kilix.content.asset/v1":
+            raise CatalogError("asset entry has unsupported schema")
+        asset_id = _content_id(raw["id"], "asset id")
+        label = _nonempty_text(raw["label"], f"{asset_id}.label", maximum=256)
+        provider = _content_id(raw["provider"], f"{asset_id}.provider")
+        stream = raw["stream"]
+        if not isinstance(stream, str) or not re.fullmatch(r"F[0-9]{3}", stream):
+            raise CatalogError(f"{asset_id}.stream must be an FNNN identifier")
+        version = _nonempty_text(raw["version"], f"{asset_id}.version", maximum=128)
+
+        raw_files = raw["files"]
+        if not isinstance(raw_files, list) or not raw_files:
+            raise CatalogError(f"{asset_id}.files must be a non-empty array")
+        if len(raw_files) > _MAX_ASSET_FILES:
+            raise CatalogError(f"{asset_id}.files exceeds {_MAX_ASSET_FILES} entries")
+        files = tuple(
+            AssetFileSpec.from_mapping(item, f"{asset_id}.files[{index}]")
+            for index, item in enumerate(raw_files)
+        )
+        paths = tuple(item.path for item in files)
+        if len(paths) != len(set(paths)):
+            raise CatalogError(f"{asset_id}.files contains duplicate paths")
+
+        sizes = _mapping(raw["sizes"], f"{asset_id}.sizes")
+        _known_keys(
+            sizes,
+            frozenset(("download_bytes", "installed_bytes", "temporary_bytes")),
+            f"{asset_id}.sizes",
+        )
+        try:
+            download_bytes = _byte_count(sizes["download_bytes"], f"{asset_id}.sizes.download_bytes")
+            installed_bytes = _byte_count(sizes["installed_bytes"], f"{asset_id}.sizes.installed_bytes")
+            temporary_bytes = _byte_count(sizes["temporary_bytes"], f"{asset_id}.sizes.temporary_bytes")
+        except KeyError as exc:
+            raise CatalogError(f"{asset_id}.sizes is missing {exc.args[0]!r}") from exc
+        if installed_bytes != sum(item.bytes for item in files):
+            raise CatalogError(f"{asset_id}.sizes.installed_bytes does not match files")
+
+        raw_licenses = raw["licenses"]
+        if not isinstance(raw_licenses, list) or not raw_licenses:
+            raise CatalogError(f"{asset_id}.licenses must be a non-empty array")
+        licenses = tuple(
+            AssetLicenseSpec.from_mapping(item, f"{asset_id}.licenses[{index}]")
+            for index, item in enumerate(raw_licenses)
+        )
+        license_ids = tuple(item.license_id for item in licenses)
+        if len(license_ids) != len(set(license_ids)):
+            raise CatalogError(
+                f"{asset_id}.licenses contains a duplicate license id"
+            )
+
+        compatibility = _mapping(raw["compatibility"], f"{asset_id}.compatibility")
+        _known_keys(
+            compatibility,
+            frozenset(("consumer_schema", "minimum", "maximum")),
+            f"{asset_id}.compatibility",
+        )
+        try:
+            consumer_schema = _nonempty_text(
+                compatibility["consumer_schema"],
+                f"{asset_id}.compatibility.consumer_schema",
+                maximum=128,
+            )
+            compatibility_minimum = compatibility["minimum"]
+            compatibility_maximum = compatibility["maximum"]
+        except KeyError as exc:
+            raise CatalogError(f"{asset_id}.compatibility is missing {exc.args[0]!r}") from exc
+        if (
+            type(compatibility_minimum) is not int
+            or type(compatibility_maximum) is not int
+            or compatibility_minimum < 1
+            or compatibility_minimum > compatibility_maximum
+        ):
+            raise CatalogError(f"{asset_id}.compatibility range is invalid")
+
+        source = _mapping(raw["source"], f"{asset_id}.source")
+        source_mode = source.get("mode")
+        mirrors: tuple[str, ...] = ()
+        official_url = archive_sha256 = input_sha256 = reason = ""
+        input_bytes = 0
+        conversion_tool_asset_id = ""
+        conversion_argv: tuple[str, ...] = ()
+        if source_mode == "mirrored":
+            _known_keys(source, frozenset(("mode", "mirrors", "archive_sha256", "provenance")), f"{asset_id}.source")
+            mirrors = _string_tuple(
+                source.get("mirrors"),
+                f"{asset_id}.source.mirrors",
+                unique=True,
+            )
+            if not mirrors:
+                raise CatalogError(f"{asset_id}.source.mirrors must not be empty")
+            mirrors = tuple(_https_url(url, f"{asset_id}.source.mirrors") for url in mirrors)
+            digest = source.get("archive_sha256")
+            if not isinstance(digest, str):
+                raise CatalogError(f"{asset_id}.source.archive_sha256 must be a string")
+            archive_sha256 = _exact_hex(digest, 64, f"{asset_id}.source.archive_sha256")
+        elif source_mode == "user-supplied":
+            _known_keys(source, frozenset(("mode", "official_url", "reason", "input_bytes", "input_sha256", "conversion", "provenance")), f"{asset_id}.source")
+            official_url = _https_url(source.get("official_url"), f"{asset_id}.source.official_url")
+            reason = _nonempty_text(source.get("reason"), f"{asset_id}.source.reason", maximum=2048)
+            input_bytes = _byte_count(source.get("input_bytes"), f"{asset_id}.source.input_bytes")
+            digest = source.get("input_sha256")
+            if not isinstance(digest, str):
+                raise CatalogError(f"{asset_id}.source.input_sha256 must be a string")
+            input_sha256 = _exact_hex(digest, 64, f"{asset_id}.source.input_sha256")
+            if not any(item.decision == "user-supplied" for item in licenses):
+                raise CatalogError(f"{asset_id}: user-supplied source requires a user-supplied license decision")
+            conversion = source.get("conversion")
+            if conversion is not None:
+                conversion = _mapping(conversion, f"{asset_id}.source.conversion")
+                _known_keys(conversion, frozenset(("tool_asset_id", "argv")), f"{asset_id}.source.conversion")
+                conversion_tool_asset_id = _content_id(conversion.get("tool_asset_id"), "conversion tool asset id")
+                conversion_argv = _string_tuple(
+                    conversion.get("argv"),
+                    f"{asset_id}.source.conversion.argv",
+                    maximum=256,
+                )
+                if conversion_argv.count("{input}") != 1 or conversion_argv.count("{output}") != 1:
+                    raise CatalogError(f"{asset_id}.source.conversion.argv requires one {{input}} and one {{output}}")
+        else:
+            raise CatalogError(f"{asset_id}.source has unsupported mode {source_mode!r}")
+
+        provenance = _mapping(source.get("provenance"), f"{asset_id}.source.provenance")
+        _known_keys(provenance, frozenset(("project", "revision", "original_url")), f"{asset_id}.source.provenance")
+        provenance_project = _nonempty_text(provenance.get("project"), f"{asset_id}.source.provenance.project", maximum=256)
+        provenance_revision = _nonempty_text(provenance.get("revision"), f"{asset_id}.source.provenance.revision", maximum=256)
+        provenance_url = _https_url(provenance.get("original_url"), f"{asset_id}.source.provenance.original_url")
+
+        return cls(
+            asset_id, label, provider, stream, version, files, source_mode,
+            mirrors, official_url, archive_sha256, input_bytes, input_sha256,
+            reason, conversion_tool_asset_id, conversion_argv,
+            provenance_project, provenance_revision, provenance_url,
+            download_bytes, installed_bytes, temporary_bytes, licenses,
+            consumer_schema, compatibility_minimum, compatibility_maximum,
+        )
 
 
 def _source_fields(
@@ -147,12 +537,13 @@ def _source_fields(
 
     repository = source.get("repository", "")
     ref = source.get("ref", "")
-    urls = _string_tuple(source.get("urls"), f"{label}.urls")
+    urls = _string_tuple(source.get("urls"), f"{label}.urls", unique=True)
     sha256 = source.get("sha256", "")
     if source_type == "git":
         if (
             not isinstance(repository, str)
             or not repository
+            or len(repository) > _MAX_TEXT_LENGTH
             or not _valid_text(repository)
         ):
             raise CatalogError(f"{label} git repository is required")
@@ -188,7 +579,11 @@ class ActionSpec:
                 f"action {action_id!r}.accepts_input must be a boolean"
             )
         description = raw.get("description", "")
-        if not isinstance(description, str) or not _valid_text(description):
+        if (
+            not isinstance(description, str)
+            or len(description) > _MAX_TEXT_LENGTH
+            or not _valid_text(description)
+        ):
             raise CatalogError(
                 f"action {action_id!r}.description must be a string"
             )
@@ -279,7 +674,11 @@ class PackageSpec:
                 f"{source_type!r}"
             )
         dependency_hint = raw.get("dependency_hint", "")
-        if not isinstance(dependency_hint, str) or not _valid_text(dependency_hint):
+        if (
+            not isinstance(dependency_hint, str)
+            or len(dependency_hint) > _MAX_TEXT_LENGTH
+            or not _valid_text(dependency_hint)
+        ):
             raise CatalogError(f"{package_id}: dependency_hint must be a string")
         return cls(
             package_id=package_id,
@@ -363,7 +762,12 @@ class ContentSpec:
             label = raw["label"]
         except KeyError as exc:
             raise CatalogError(f"content entry is missing {exc.args[0]!r}") from exc
-        if not isinstance(label, str) or not label.strip() or not _valid_text(label):
+        if (
+            not isinstance(label, str)
+            or not label.strip()
+            or len(label) > 256
+            or not _valid_text(label)
+        ):
             raise CatalogError(f"{content_id}: label must be a non-empty string")
 
         package_id = raw.get("package", "")
@@ -403,8 +807,10 @@ class ContentSpec:
             )
             build = _string_tuple(raw.get("build"), f"{content_id}.build")
             dependency_hint = raw.get("dependency_hint", "")
-            if not isinstance(dependency_hint, str) or not _valid_text(
-                dependency_hint
+            if (
+                not isinstance(dependency_hint, str)
+                or len(dependency_hint) > _MAX_TEXT_LENGTH
+                or not _valid_text(dependency_hint)
             ):
                 raise CatalogError(f"{content_id}: dependency_hint must be a string")
 
@@ -439,17 +845,22 @@ class ContentSpec:
             )
 
         actions = _action_specs(raw.get("actions"), f"{content_id}.actions")
-        accepts = _string_tuple(raw.get("accepts"), f"{content_id}.accepts")
-        if len(accepts) > _MAX_ACCEPTED_INPUTS:
-            raise CatalogError(
-                f"{content_id}.accepts has more than {_MAX_ACCEPTED_INPUTS} inputs"
-            )
+        accepts = _string_tuple(
+            raw.get("accepts"),
+            f"{content_id}.accepts",
+            maximum=_MAX_ACCEPTED_INPUTS,
+            unique=True,
+        )
         lifecycle = LifecycleSpec.from_mapping(raw.get("lifecycle"))
 
         strings = {}
         for key in ("kind", "icon", "description"):
             value = raw.get(key, "")
-            if not isinstance(value, str) or not _valid_text(value):
+            if (
+                not isinstance(value, str)
+                or len(value) > _MAX_TEXT_LENGTH
+                or not _valid_text(value)
+            ):
                 raise CatalogError(f"{content_id}: {key} must be a string")
             strings[key] = value
         preferred_size = launch.get("preferred_size", "")
@@ -476,7 +887,9 @@ class ContentSpec:
             build=build,
             dependency_hint=dependency_hint,
             capabilities=_string_tuple(
-                raw.get("capabilities"), f"{content_id}.capabilities"
+                raw.get("capabilities"),
+                f"{content_id}.capabilities",
+                unique=True,
             ),
             actions=actions,
             accepts=accepts,
@@ -496,6 +909,7 @@ class Catalog:
         schema_version: int = 1,
         *,
         packages: Iterable[PackageSpec] = (),
+        assets: Iterable[AssetSpec] = (),
     ):
         if type(schema_version) is not int or schema_version not in _SCHEMA_VERSIONS:
             raise CatalogError(
@@ -503,6 +917,10 @@ class Catalog:
             )
         by_package: dict[str, PackageSpec] = {}
         for package in packages:
+            if len(by_package) >= _MAX_CONTENT_ENTRIES:
+                raise CatalogError(
+                    f"catalog has more than {_MAX_CONTENT_ENTRIES} packages"
+                )
             if not isinstance(package, PackageSpec):
                 raise CatalogError("catalog packages must be PackageSpec instances")
             if package.package_id in by_package:
@@ -510,11 +928,26 @@ class Catalog:
             by_package[package.package_id] = package
         if schema_version == 1 and by_package:
             raise CatalogError("catalog schema version 1 cannot define packages")
+        by_asset: dict[str, AssetSpec] = {}
+        for asset in assets:
+            if len(by_asset) >= _MAX_ASSETS:
+                raise CatalogError(f"catalog has more than {_MAX_ASSETS} assets")
+            if not isinstance(asset, AssetSpec):
+                raise CatalogError("catalog assets must be AssetSpec instances")
+            if asset.asset_id in by_asset:
+                raise CatalogError(f"duplicate asset id: {asset.asset_id}")
+            by_asset[asset.asset_id] = asset
+        if schema_version < 4 and by_asset:
+            raise CatalogError("catalog assets require schema version 4")
 
         by_id: dict[str, ContentSpec] = {}
         provided: dict[str, list[ContentSpec]] = {}
         used_packages: set[str] = set()
         for entry in entries:
+            if len(by_id) >= _MAX_CONTENT_ENTRIES:
+                raise CatalogError(
+                    f"catalog has more than {_MAX_CONTENT_ENTRIES} content entries"
+                )
             if not isinstance(entry, ContentSpec):
                 raise CatalogError("catalog entries must be ContentSpec instances")
             if schema_version < 3 and (
@@ -565,10 +998,16 @@ class Catalog:
         self._provided = MappingProxyType(
             {package_id: tuple(items) for package_id, items in provided.items()}
         )
+        self._assets = tuple(by_asset.values())
+        self._by_asset = MappingProxyType(by_asset)
 
     @property
     def packages(self) -> tuple[PackageSpec, ...]:
         return self._packages
+
+    @property
+    def assets(self) -> tuple[AssetSpec, ...]:
+        return self._assets
 
     def __iter__(self) -> Iterator[ContentSpec]:
         return iter(self._entries)
@@ -598,9 +1037,19 @@ class Catalog:
         """Every entry sharing one installation/cache identity."""
         return self._provided.get(install_id, ())
 
+    def get_asset(self, asset_id: str) -> AssetSpec | None:
+        return self._by_asset.get(asset_id)
+
+    def require_asset(self, asset_id: str) -> AssetSpec:
+        try:
+            return self._by_asset[asset_id]
+        except KeyError as exc:
+            raise CatalogError(f"unknown asset id: {asset_id}") from exc
+
     @classmethod
     def from_mapping(cls, raw: Mapping[str, Any]) -> Catalog:
         raw = _mapping(raw, "catalog root")
+        _catalog_json_size(raw)
         _known_keys(raw, _ROOT_KEYS, "catalog root")
         entries = raw.get("content")
         if not isinstance(entries, list):
@@ -625,6 +1074,13 @@ class Catalog:
                             "application metadata field(s) require schema version 3: "
                             + ", ".join(sorted(newer))
                         )
+        raw_assets = raw.get("assets", [])
+        if not isinstance(raw_assets, list):
+            raise CatalogError("catalog assets must be an array")
+        if len(raw_assets) > _MAX_ASSETS:
+            raise CatalogError(f"catalog has more than {_MAX_ASSETS} asset entries")
+        if version < 4 and raw_assets:
+            raise CatalogError("catalog assets require schema version 4")
         raw_packages = raw.get("packages", [])
         if not isinstance(raw_packages, list):
             raise CatalogError("catalog packages must be an array")
@@ -643,7 +1099,8 @@ class Catalog:
         parsed = tuple(
             ContentSpec.from_mapping(item, packages=by_package) for item in entries
         )
-        return cls(parsed, version, packages=packages)
+        assets = tuple(AssetSpec.from_mapping(item) for item in raw_assets)
+        return cls(parsed, version, packages=packages, assets=assets)
 
     @classmethod
     def loads(cls, payload: str, *, label: str = "catalog") -> Catalog:
@@ -658,10 +1115,16 @@ class Catalog:
         if payload_size > _MAX_CATALOG_BYTES:
             raise CatalogError(f"{label} exceeds the 1 MiB size limit")
         try:
-            raw = json.loads(payload, object_pairs_hook=_json_object)
+            raw = json.loads(
+                payload,
+                object_pairs_hook=_json_object,
+                parse_int=_json_integer,
+                parse_float=_reject_json_number,
+                parse_constant=_reject_json_number,
+            )
         except CatalogError:
             raise
-        except (json.JSONDecodeError, RecursionError) as exc:
+        except (json.JSONDecodeError, ValueError, RecursionError) as exc:
             raise CatalogError(f"could not parse {label}: {exc}") from exc
         return cls.from_mapping(raw)
 

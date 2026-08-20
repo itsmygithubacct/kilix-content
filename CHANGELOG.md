@@ -5,8 +5,45 @@ pre-1.0.
 
 ## Unreleased
 
+### Added
+
+- Add frozen schema-v4 non-executable asset records, mirrored atomic asset
+  installation, and golden language-neutral asset/license contract fixtures.
+- Add a private immutable receipt store with exact release/catalog/asset/text
+  bindings, strict decision parsing, redacted export, verified user-input file
+  handles, crash recovery, no-overwrite concurrency, and typed refusal states.
+- Add durable pending-transaction reconciliation, crash-atomic store-format
+  initialization, shared-instance thread serialization, post-fork refusal, and
+  atomic private redacted-export output.
+- Add operator-only whole-guest power-loss and real-filesystem storage-error
+  acceptance runners with atomic machine-readable evidence.
+
+### Changed
+
+- Require exact receipt authorization for every public asset readiness and
+  installation path, including informational licenses, and recheck immediately
+  before atomic selection.
+- Keep production receipt authorization disabled until the immutable release
+  catalog snapshot loader supplies catalog-bound artifact handles; no shipped
+  factory, test subclass or mutable store flag can enable it. Synthetic
+  authority lives only in test-suite code excluded from the installed wheel.
+- Bound every catalog construction path by explicit text, sequence, nesting
+  and aggregate limits; enforce unique mirrors and the frozen conversion-argv
+  maximum at runtime.
+
 ### Fixed
 
+- Reject duplicate asset-license identifiers instead of choosing between
+  contradictory decision classes.
+- Keep visible-but-unconfirmed receipts non-authorizing across reopen until an
+  explicit durable reconciliation succeeds; normalize hostile bounded JSON to
+  typed refusals and prevent URL tokens, digests and terminal controls from
+  reaching default diagnostics.
+- Suppress untrusted unknown and duplicate field names in diagnostics, retain
+  the required license/asset binding digests in redacted exports, refuse
+  overwrite, symlink, wrong-owner, permissive or multiply-linked export
+  destinations, and normalize unsafe or missing export parents to typed
+  fixed-category refusals.
 - Advance `kilix-tui-utils` to relocatable runtime launchers so atomic package
   selection does not leave Start-menu applications pointing at staging paths.
 

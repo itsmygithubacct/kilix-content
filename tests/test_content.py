@@ -9,6 +9,7 @@ import re
 import shlex
 import stat
 import subprocess
+import sys
 import tarfile
 import tempfile
 import unittest
@@ -17,12 +18,11 @@ from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
-import sys
 
 sys.path.insert(0, str(ROOT / "src"))
 
-import kilix_content
-from kilix_content import (
+import kilix_content  # noqa: E402
+from kilix_content import (  # noqa: E402
     ActionSpec,
     Catalog,
     CatalogError,
@@ -37,7 +37,7 @@ from kilix_content import (
     safe_extract_zip,
     verify_git_checkout,
 )
-from kilix_content.install import _rename_exchange
+from kilix_content.install import _rename_exchange  # noqa: E402
 
 
 def run(*argv: str, cwd: Path) -> str:
@@ -167,6 +167,59 @@ class ContentTests(unittest.TestCase):
         oversized.write_text(" " * (1024 * 1024 + 1), encoding="utf-8")
         with self.assertRaisesRegex(CatalogError, "size limit"):
             Catalog.load(oversized)
+        with self.assertRaisesRegex(CatalogError, "numeric limit"):
+            Catalog.loads('{"schema_version":' + "9" * 5000 + ',"content":[]}')
+
+    def test_direct_catalog_mapping_has_equivalent_semantic_budgets(self) -> None:
+        base = {
+            "id": "fixture",
+            "label": "Fixture",
+            "source": {"type": "system"},
+            "command": ["fixture"],
+        }
+        with self.assertRaises(CatalogError):
+            Catalog.from_mapping(
+                {
+                    "schema_version": 3,
+                    "content": [{**base, "description": "x" * 900_000}],
+                }
+            )
+        with self.assertRaises(CatalogError):
+            Catalog.loads(
+                json.dumps(
+                    {
+                        "schema_version": 3,
+                        "content": [{**base, "description": "x" * 900_000}],
+                    }
+                )
+            )
+        with self.assertRaises(CatalogError):
+            ContentSpec.from_mapping({**base, "description": "x" * 2_000_000})
+        with self.assertRaisesRegex(CatalogError, "at most 256"):
+            ContentSpec.from_mapping(
+                {**base, "capabilities": ["capability"] * 100_000}
+            )
+        oversized_mapping = {
+            "schema_version": 3,
+            "content": [
+                {
+                    **base,
+                    "id": f"fixture-{index}",
+                    "description": "x" * 4096,
+                }
+                for index in range(300)
+            ],
+        }
+        with self.assertRaisesRegex(CatalogError, "1 MiB"):
+            Catalog.from_mapping(oversized_mapping)
+
+        nested: object = []
+        for _ in range(70):
+            nested = [nested]
+        with self.assertRaisesRegex(CatalogError, "nesting"):
+            Catalog.from_mapping(
+                {"schema_version": 3, "content": [], "assets": nested}
+            )
 
     def test_schema_two_packages_flatten_into_shared_content_specs(self) -> None:
         source, _ref = self._git_fixture()
@@ -1051,7 +1104,7 @@ class ContentTests(unittest.TestCase):
 
     def test_json_loader_reports_malformed_catalog(self) -> None:
         path = self.root / "catalog.json"
-        path.write_text(json.dumps({"schema_version": 4, "content": []}))
+        path.write_text(json.dumps({"schema_version": 5, "content": []}))
         with self.assertRaises(CatalogError):
             Catalog.load(path)
 
