@@ -49,13 +49,28 @@ The packaged U1 resource set includes separate closed schemas for:
   directory-phase, accounted, handoff-proof, terminal-reuse, and impossible
   records.
 
-`kilix.content.u1-resources-v1.json` is the production authority manifest for
-the 21 schemas and the genuine packaged `MIT.txt` release resource. Root
-contract bytes and importable package bytes must match every manifest digest;
-the wheel carries only those production resources, while sdist carries the
-schemas, manifest, fixtures, fixture hash manifest, tests, and update helper.
+`kilix.content.u1-resources-v1.json` externally roots exactly 28 production
+resources: 25 schemas, the canonical empty catalog-v5 record for Plebian OS
+0.2.1, its license-manifest/v1 record, and the genuine packaged `MIT.txt`.
+The U1 catalog deliberately contains no package, content, asset, alias, system,
+toolchain, or sandbox members. It therefore authorizes no installation before
+the later reviewed catalog-assembly handoff and does not replace the preserved
+schema-v4 desktop catalog.
+
+Manifest admission is two-pass and set-equal. Every path, role, size and digest
+is checked before the data graph is followed; then the catalog and license
+manifest are validated through their externally rooted schemas and semantic
+validators, and every manifest license path/digest is joined to exact packaged
+text. Root source copies, package copies, sdist, both reproducible wheels and
+installed resources must contain the same 28-resource set. The wheel contains
+no fixture, requirements-ledger, synthetic catalog or other test authority.
+
 The U1 implementation is pure parsing/canonicalization/validation: it does not
 open a store, acquire locks, recover a transaction, or sequence authorization.
+`validate_u1_bytes` proves only that supplied bytes satisfy one rooted schema
+and semantic route; it does not prove membership in the empty production
+catalog. Dict-level derivation and cross-authorization helpers are private,
+test-only implementation details and are not exported.
 
 The U1 fixture matrix is regenerated and checked with:
 
@@ -64,24 +79,38 @@ uv run --locked --no-sync python tests/update_u1_hashes.py --check
 uv run --locked --no-sync python -m unittest tests.test_u1_contracts -v
 ```
 
+The canonical source-only requirement-to-vector ledger is authored separately
+from the fixture renderer and has a literal SHA-256 gate in the test suite. The
+renderer may prove that every ledger requirement names present fixture IDs; it
+cannot generate or weaken the ledger. Large boundary records remain in source
+and sdist and are never packaged in a wheel.
+
 ## Reproducible U1 build toolchain
 
+The component version `kilix-content 0.4.0` is independent of the Plebian OS
+release identifier `0.2.1`. The project continues to declare Python `>=3.10`,
+but the only qualified M4 environment is CPython 3.12.8 on Linux x86-64/glibc;
+all other declared interpreters and platforms remain explicitly unqualified.
+
 The build backend and wheel tooling are pinned in both `build-system` and the
-`build` dependency group: setuptools 77.0.3, wheel 0.45.1, and the build
-frontend 1.3.0. `.python-version` pins CPython 3.12.8. The committed
-`build-toolchain.json` records the exact Python and `/usr/local/bin/uv`
-executable digests plus the build/test environment allowlist. Synchronize that
-exact environment before building; no isolated backend resolution is permitted
-for the reproducibility check:
+`build` dependency group: setuptools 77.0.3, wheel 0.45.1, and build 1.3.0.
+`.python-version` pins CPython 3.12.8. The committed `build-toolchain.json`
+records the exact Python and `/usr/local/bin/uv` executable digests plus the
+closed build/test environment. The reviewed offline wheelhouse contains 24
+wheels; its canonical manifest SHA-256 is
+`d9fc8fbcc4522dd9422611a82fa11e35323223107ae800c6c7ab57780aa7a1f8`,
+and `uv.lock` is
+`fd20b7915e3e198f65e236964426b6803dea61434d593f52ede9fa104da8b8af`.
+
+Run the long gate only from a disposable export of the exact candidate commit,
+never from the candidate worktree:
 
 ```sh
-uv sync --python 3.12.8 --locked --offline --group build --group test --no-install-project
-env -i HOME=/nonexistent LANG=C.UTF-8 LC_ALL=C.UTF-8 \
-  PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 \
-  SOURCE_DATE_EPOCH=1776729600 TZ=UTC \
-  UV_CACHE_DIR=/home/pleb/.cache/uv \
-  UV_PYTHON_INSTALL_DIR=/home/pleb/.local/share/uv/python \
-  /usr/local/bin/uv run --python 3.12.8 --locked --offline --no-sync --group build \
+candidate_commit="$(git rev-parse HEAD)"
+review_export="$(mktemp -d /tmp/kilix-content-u1-r3-review.XXXXXX)"
+git archive "$candidate_commit" | tar -x -C "$review_export"
+cd "$review_export"
+/usr/local/bin/uv run --python 3.12.8 --locked --offline --all-groups \
   python tests/check_reproducible_build.py
 ```
 
@@ -94,13 +123,14 @@ special files, duplicate normalized members, modes, wheel RECORD digest/size
 rows, production-resource equality across source/sdist/direct-wheel/
 sdist-wheel/installed-wheel, and forbidden test authority. It invokes
 `python -m build --no-isolation`, so the synchronized uv environment—not an
-unbounded backend resolver—owns every build tool.
-
-The checker also runs a fresh empty-cache offline attempt. It must fail closed
-until a separately reviewed wheelhouse is supplied; the current evidence is
-therefore explicitly `EXPECTED FAILURE (no reviewed wheelhouse)`, not an empty-
-cache reconstruction claim. The passing offline proof uses only the recorded
-`UV_CACHE_DIR` after its pinned artifacts have been synchronized.
+unbounded backend resolver—owns every build tool. Its source and exact-sdist
+bootstrap directories each contain a newly created `empty-uv-cache`; dependency
+installation uses only `wheelhouse/requirements.txt` with `--no-index`,
+`--find-links`, and `--require-hashes`. A successful gate must report both
+`empty-cache offline ... reconstruction: PASS` lines, byte-identical direct
+artifacts, an identical exact-sdist-derived wheel, installed-wheel resource and
+corpus probes, and the final package audit. Ignored residue in a development
+worktree is never candidate identity or acceptable review evidence.
 
 Frozen schema SHA-256 values:
 

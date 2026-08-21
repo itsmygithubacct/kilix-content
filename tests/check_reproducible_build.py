@@ -656,7 +656,7 @@ def main() -> int:
         env=environment,
         label="uv lock check",
     )
-    with tempfile.TemporaryDirectory(prefix="kilix-u1-r2-") as temporary_name:
+    with tempfile.TemporaryDirectory(prefix="kilix-u1-r3-") as temporary_name:
         temporary = Path(temporary_name)
         verify_export(
             PROJECT,
