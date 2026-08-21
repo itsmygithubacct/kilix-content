@@ -68,22 +68,39 @@ uv run --locked --no-sync python -m unittest tests.test_u1_contracts -v
 
 The build backend and wheel tooling are pinned in both `build-system` and the
 `build` dependency group: setuptools 77.0.3, wheel 0.45.1, and the build
-frontend 1.3.0. Synchronize that exact environment before building; no isolated
-backend resolution is permitted for the reproducibility check:
+frontend 1.3.0. `.python-version` pins CPython 3.12.8. The committed
+`build-toolchain.json` records the exact Python and `/usr/local/bin/uv`
+executable digests plus the build/test environment allowlist. Synchronize that
+exact environment before building; no isolated backend resolution is permitted
+for the reproducibility check:
 
 ```sh
-uv sync --locked --offline --group build --group test --no-install-project
-uv run --locked --offline --no-sync --group build \
+uv sync --python 3.12.8 --locked --offline --group build --group test --no-install-project
+env -i HOME=/nonexistent LANG=C.UTF-8 LC_ALL=C.UTF-8 \
+  PATH=/usr/local/bin:/usr/bin:/bin PYTHONDONTWRITEBYTECODE=1 \
+  SOURCE_DATE_EPOCH=1776729600 TZ=UTC \
+  UV_CACHE_DIR=/home/pleb/.cache/uv \
+  UV_PYTHON_INSTALL_DIR=/home/pleb/.local/share/uv/python \
+  /usr/local/bin/uv run --python 3.12.8 --locked --offline --no-sync --group build \
   python tests/check_reproducible_build.py
 ```
 
 `tests/check_reproducible_build.py` owns the release epoch
 `SOURCE_DATE_EPOCH=1776729600`, runs two direct source builds, extracts the
-first exact sdist, rebuilds its wheel, and compares all required SHA-256
-identities. It invokes `python -m build --no-isolation`, so the synchronized
-uv environment—not an unbounded backend resolver—owns every build tool. The
-script also rejects unsafe sdist members before extraction and prints the
-direct sdist, direct wheel, and sdist-derived wheel digests.
+first exact sdist, runs the full locked test suite from that sdist, rebuilds its
+wheel, installs the wheel with `uv pip --no-index` into a disposable venv, and
+probes it from a controlled external cwd/import path. It audits archive CRCs,
+special files, duplicate normalized members, modes, wheel RECORD digest/size
+rows, production-resource equality across source/sdist/direct-wheel/
+sdist-wheel/installed-wheel, and forbidden test authority. It invokes
+`python -m build --no-isolation`, so the synchronized uv environment—not an
+unbounded backend resolver—owns every build tool.
+
+The checker also runs a fresh empty-cache offline attempt. It must fail closed
+until a separately reviewed wheelhouse is supplied; the current evidence is
+therefore explicitly `EXPECTED FAILURE (no reviewed wheelhouse)`, not an empty-
+cache reconstruction claim. The passing offline proof uses only the recorded
+`UV_CACHE_DIR` after its pinned artifacts have been synchronized.
 
 Frozen schema SHA-256 values:
 

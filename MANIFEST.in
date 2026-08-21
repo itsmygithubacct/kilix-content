@@ -1,6 +1,8 @@
 include CHANGELOG.md
 include Makefile
 include uv.lock
+include .python-version
+include build-toolchain.json
 recursive-include contracts *.json *.md
 recursive-include benchmarks *.py
 recursive-include tests *.py
