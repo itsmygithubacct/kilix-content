@@ -1,4 +1,4 @@
-PYTHON ?= python3
+PYTHON ?= uv run --locked --no-sync python
 
 .PHONY: benchmark test
 

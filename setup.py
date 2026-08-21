@@ -12,6 +12,11 @@ from setuptools.command.sdist import sdist
 
 
 def _make_public(root: Path) -> None:
+    # PEP 660 editable wheels may call ``write_wheelfile`` without creating
+    # the normal bdist staging directory. There is nothing to normalize in
+    # that path; regular wheel/sdist builds still pass an existing tree.
+    if not root.exists():
+        return
     for path in (root, *root.rglob("*")):
         if path.is_symlink():
             continue

@@ -16,17 +16,91 @@ pre-1.0.
 - Stage a Tmux Browse entry as a validated test fixture: it ships in the
   catalog once its pinned loopback-only launcher is public.
 
+- Add frozen schema-v4 non-executable asset records, mirrored atomic asset
+  installation, and golden language-neutral asset/license contract fixtures.
+- Add a private immutable receipt store with exact release/catalog/asset/text
+  bindings, strict decision parsing, redacted export, verified user-input file
+  handles, crash recovery, no-overwrite concurrency, and typed refusal states.
+- Add durable pending-transaction reconciliation, crash-atomic store-format
+  initialization, shared-instance thread serialization, post-fork refusal, and
+  atomic private redacted-export output.
+- Add operator-only whole-guest power-loss and real-filesystem storage-error
+  acceptance runners with atomic machine-readable evidence.
+- Add typed user-supplied acquisition requirements, descriptor-pinned input
+  staging, bounded local conversion through pinned catalog tools, and the
+  explicit one-file identity path for records that require no conversion.
+- Add canonical `AssetSpec.to_mapping()` serialization so public acquisition
+  inputs can be round-tripped through the frozen parser before use.
+- Add code-pinned packaged release authority: the packaged catalog ships as
+  canonical schema-v4 bytes pinned by a digest constant, alongside a packaged
+  release-ID constant, and `ReleaseContext.packaged()` is the only construction
+  path that production authorization accepts.
+- Add `verified_packaged_catalog()`, which verifies the packaged catalog digest
+  before parsing so unauthenticated bytes never reach the parser, and extend the
+  frozen self-check to cover the packaged asset schema as well as the license
+  schema.
+- Add exact catalog-membership proof at both `record()` and `require_asset()`:
+  a caller's asset record must be byte/field-identical to the packaged
+  catalog's record for the same id, so a verified release context alone never
+  authorizes.
+- Add `AssetSpec.canonicalized()`, which reparses through the base
+  implementations so a subclass cannot substitute a different mapping for the
+  record actually being authorized.
+
 ### Changed
 
 - Advance `kilix-tui-utils` to the desktop wave that derives the Games place
   from the host catalog, remembers recent and pinned Home rows, adds the
   Launchers and Manual places, and gives the Tmux manager row a `kilix`
   fallback.
+- Refuse a catalog in which one id names both an asset and a content entry;
+  resolution order must never decide which record a name means.
+- Refuse production authorization for synthetic `ReleaseContext.from_catalog()`
+  contexts permanently, including one built from the exact packaged bytes.
+
+- Require exact receipt authorization for every public asset readiness and
+  installation path, including informational licenses, and recheck immediately
+  before atomic selection.
+- Bind production receipt authorization to the code-pinned packaged
+  catalog/release constructor and exact catalog-bound artifact handles; host
+  or synthetic contexts, test subclasses and mutable store flags can never
+  authorize. Synthetic authority lives only in test-suite code excluded from
+  the installed wheel.
+- Bound every catalog construction path by explicit text, sequence, nesting
+  and aggregate limits; enforce unique mirrors and the frozen conversion-argv
+  maximum at runtime.
+- Serialize each asset version through a private install lock, recheck input
+  and receipt bindings before selection, and bind conversion executables to a
+  private source-and-binary install attestation checked immediately before use.
+- Canonicalize every resolved `ContentSpec` before readiness or acquisition and
+  retain the unreaped converter leader until all same-group descendants stop,
+  preventing process-group identity reuse during lifecycle cleanup.
 
 ### Fixed
 
+- Reject duplicate asset-license identifiers instead of choosing between
+  contradictory decision classes.
+- Keep visible-but-unconfirmed receipts non-authorizing across reopen until an
+  explicit durable reconciliation succeeds; normalize hostile bounded JSON to
+  typed refusals and prevent URL tokens, digests and terminal controls from
+  reaching default diagnostics.
+- Suppress untrusted unknown and duplicate field names in diagnostics, retain
+  the required license/asset binding digests in redacted exports, refuse
+  overwrite, symlink, wrong-owner, permissive or multiply-linked export
+  destinations, and normalize unsafe or missing export parents to typed
+  fixed-category refusals.
 - Advance `kilix-tui-utils` to relocatable runtime launchers so atomic package
   selection does not leave Start-menu applications pointing at staging paths.
+- Refuse special-file user inputs without blocking, partial placeholder
+  substitution, unpinned conversion providers, inherited converter state and
+  descriptors, unbounded or terminal-active diagnostics, and timed-out process
+  groups including descendants.
+- Refuse empty, short, uppercase, or non-hex archive pins and missing, mutable,
+  short, uppercase, or non-hex Git refs from directly constructed converter
+  records before acquisition; terminate closed-stdio descendants after zero or
+  nonzero converter-parent exits as well as timeouts.
+- Reject asset-manifest files with foreign ownership or multiple hard links so
+  a selected tree cannot retain an undeclared mutable alias.
 
 ## 0.4.0 - 2026-08-10
 

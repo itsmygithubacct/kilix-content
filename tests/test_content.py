@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import builtins
+import contextlib
 import errno
 import hashlib
 import io
@@ -10,22 +12,23 @@ import shlex
 import signal
 import stat
 import subprocess
+import sys
 import tarfile
 import tempfile
 import threading
 import time
+import traceback
 import unittest
 import zipfile
 from pathlib import Path
 from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
-import sys
 
 sys.path.insert(0, str(ROOT / "src"))
 
-import kilix_content
-from kilix_content import (
+import kilix_content  # noqa: E402
+from kilix_content import (  # noqa: E402
     ActionSpec,
     Catalog,
     CatalogError,
@@ -40,12 +43,90 @@ from kilix_content import (
     safe_extract_zip,
     verify_git_checkout,
 )
-from kilix_content.install import _rename_exchange, _run_with_tail
+from kilix_content import install as install_module  # noqa: E402
+from kilix_content.install import (  # noqa: E402
+    _rename_exchange,
+    _run,
+    _run_with_tail,
+)
 
 
 def run(*argv: str, cwd: Path) -> str:
     result = subprocess.run(argv, cwd=cwd, check=True, capture_output=True, text=True)
     return result.stdout.strip()
+
+
+def process_group(pid: int) -> int | None:
+    """The process-group id of one pid, or None if it is gone."""
+    try:
+        with open(f"/proc/{pid}/stat", "rb") as stream:
+            raw = stream.read(4096)
+    except OSError:
+        return None
+    try:
+        return int(raw[raw.rfind(b")") + 2:].split()[2])
+    except (IndexError, ValueError):
+        return None
+
+
+def is_running(pid: int) -> bool:
+    """Report whether one PID is live right now, without waiting for it."""
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def outlives(pid: int, timeout: float = 5.0) -> bool:
+    """Report whether a PID is still live after waiting up to ``timeout``.
+
+    Used for assertions that a descendant is *gone*: a bare liveness check
+    immediately after the call under test would pass for the wrong reason if
+    the kernel had simply not scheduled the reaper yet.
+    """
+    deadline = time.monotonic() + timeout
+    while is_running(pid):
+        if time.monotonic() >= deadline:
+            return True
+        time.sleep(0.02)
+    return False
+
+
+def descendant_script(
+    marker: Path, *, exit_code: int, closed_stdio: bool, lifetime: int = 60
+) -> str:
+    """Shell that backgrounds a same-group sleeper, then exits ``exit_code``.
+
+    With ``closed_stdio`` the descendant drops the inherited pipe, which is the
+    shape that hides it from any pipe-EOF based wait.
+
+    ``lifetime`` is the sleeper's duration. It stays long by default so a
+    descendant cannot pass a liveness assertion merely by outliving it. A
+    caller may shorten it where a *mutant* would otherwise block on that
+    sleeper and race the mutation harness's watchdog.
+    """
+    redirect = "exec </dev/null >/dev/null 2>&1; " if closed_stdio else ""
+    return (
+        f"sh -c 'echo $$ > \"{marker}\"; {redirect}exec sleep {lifetime}' &\n"
+        f"exit {exit_code}\n"
+    )
+
+
+def descendant_pid(marker: Path, timeout: float = 5.0) -> int:
+    """Read the PID the backgrounded descendant recorded."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        try:
+            text = marker.read_text().strip()
+        except OSError:
+            text = ""
+        if text:
+            return int(text)
+        time.sleep(0.01)
+    raise AssertionError("the fixture descendant never recorded its pid")
 
 
 class ContentTests(unittest.TestCase):
@@ -60,6 +141,8 @@ class ContentTests(unittest.TestCase):
         catalog = default_catalog()
         self.assertIs(catalog, default_catalog())
         self.assertGreaterEqual(len(catalog), 12)
+        for entry in catalog:
+            self.assertEqual(entry.canonicalized(), entry)
         self.assertEqual(catalog.require("kilix-jpak").launch_mode, "terminal")
         self.assertEqual(catalog.require("kilix-rancher").binary, "kilix-rancher")
         self.assertEqual(catalog.require("kilix-pong").icon, "pong")
@@ -236,6 +319,59 @@ class ContentTests(unittest.TestCase):
         oversized.write_text(" " * (1024 * 1024 + 1), encoding="utf-8")
         with self.assertRaisesRegex(CatalogError, "size limit"):
             Catalog.load(oversized)
+        with self.assertRaisesRegex(CatalogError, "numeric limit"):
+            Catalog.loads('{"schema_version":' + "9" * 5000 + ',"content":[]}')
+
+    def test_direct_catalog_mapping_has_equivalent_semantic_budgets(self) -> None:
+        base = {
+            "id": "fixture",
+            "label": "Fixture",
+            "source": {"type": "system"},
+            "command": ["fixture"],
+        }
+        with self.assertRaises(CatalogError):
+            Catalog.from_mapping(
+                {
+                    "schema_version": 3,
+                    "content": [{**base, "description": "x" * 900_000}],
+                }
+            )
+        with self.assertRaises(CatalogError):
+            Catalog.loads(
+                json.dumps(
+                    {
+                        "schema_version": 3,
+                        "content": [{**base, "description": "x" * 900_000}],
+                    }
+                )
+            )
+        with self.assertRaises(CatalogError):
+            ContentSpec.from_mapping({**base, "description": "x" * 2_000_000})
+        with self.assertRaisesRegex(CatalogError, "at most 256"):
+            ContentSpec.from_mapping(
+                {**base, "capabilities": ["capability"] * 100_000}
+            )
+        oversized_mapping = {
+            "schema_version": 3,
+            "content": [
+                {
+                    **base,
+                    "id": f"fixture-{index}",
+                    "description": "x" * 4096,
+                }
+                for index in range(300)
+            ],
+        }
+        with self.assertRaisesRegex(CatalogError, "1 MiB"):
+            Catalog.from_mapping(oversized_mapping)
+
+        nested: object = []
+        for _ in range(70):
+            nested = [nested]
+        with self.assertRaisesRegex(CatalogError, "nesting"):
+            Catalog.from_mapping(
+                {"schema_version": 3, "content": [], "assets": nested}
+            )
 
     def test_schema_two_packages_flatten_into_shared_content_specs(self) -> None:
         source, _ref = self._git_fixture()
@@ -294,6 +430,8 @@ class ContentTests(unittest.TestCase):
         self.assertEqual(first.build, package.build)
         self.assertEqual(first.dependency_hint, "needs the fixture runtime")
         self.assertTrue(package.supplies(first))
+        self.assertEqual(first.canonicalized(), first)
+        self.assertEqual(sibling.canonicalized(), sibling)
         self.assertEqual(
             catalog.provided_by("fixture-suite"), (first, sibling)
         )
@@ -1248,10 +1386,49 @@ class ContentTests(unittest.TestCase):
         first = (self.root / "first-absent").as_uri()
         last = (self.root / "last-absent").as_uri()
         destination = self.root / "download"
-        with self.assertRaises(InstallError) as raised:
-            download((first, last), str(destination))
-        self.assertIn("last-absent", str(raised.exception))
-        self.assertNotIn("first-absent", str(raised.exception))
+        secret = "token-4f1c9ae2-do-not-leak"
+
+        class FirstMirrorError(OSError):
+            pass
+
+        class LastMirrorError(OSError):
+            pass
+
+        attempts: list[str] = []
+
+        def failing_urlopen(request, *args, **kwargs):
+            attempts.append(getattr(request, "full_url", str(request)))
+            if len(attempts) == 1:
+                raise FirstMirrorError(f"{first}?access={secret}")
+            raise LastMirrorError(f"{last}?access={secret}")
+
+        with mock.patch("urllib.request.urlopen", failing_urlopen):
+            with self.assertRaises(InstallError) as raised:
+                download((first, last), str(destination))
+
+        message = str(raised.exception)
+        # Baseline behavior: every mirror is attempted in order and the *last*
+        # failure identifies the error, sanitized to its class name. The
+        # superseded first mirror's class is not what gets reported.
+        self.assertEqual(len(attempts), 2)
+        self.assertIn("2", message)
+        self.assertIn("LastMirrorError", message)
+        self.assertNotIn("FirstMirrorError", message)
+        # F100 redaction: no URL or query token reaches the diagnostic, and the
+        # raw upstream exception is not retained anywhere in the rendered
+        # chain, which a traceback would otherwise print.
+        self.assertIsNone(raised.exception.__cause__)
+        self.assertIsNone(raised.exception.__context__)
+        rendered = "".join(
+            traceback.format_exception(
+                type(raised.exception),
+                raised.exception,
+                raised.exception.__traceback__,
+            )
+        )
+        for leaked in (secret, "first-absent", "last-absent", "?access="):
+            self.assertNotIn(leaked, message)
+            self.assertNotIn(leaked, rendered)
         self.assertFalse(destination.exists())
         self.assertFalse(any(".download-" in path.name for path in self.root.iterdir()))
 
@@ -1375,7 +1552,11 @@ class ContentTests(unittest.TestCase):
         else:
             self.fail("a build child survived the timeout")
 
-    def test_build_completes_when_a_background_child_keeps_the_pipe(self) -> None:
+    def test_build_completes_and_ends_a_background_child_keeping_the_pipe(self) -> None:
+        # This case previously asserted the opposite: that the background child
+        # survived a successful build and had to be killed by the test. A
+        # descendant that outlives the call crosses verification, atomic
+        # selection and lock release, and can rewrite selected bytes afterwards.
         script = (
             "import subprocess, sys\n"
             "child = subprocess.Popen(\n"
@@ -1392,13 +1573,1563 @@ class ContentTests(unittest.TestCase):
         )
         self.assertEqual(returncode, 0)
         self.assertLess(time.monotonic() - started, 15)
-        os.kill(int(tail.split()[-1]), signal.SIGKILL)
+        self.assertFalse(
+            outlives(int(tail.split()[-1])),
+            "a background build child survived a successful build",
+        )
+
+    def test_child_command_ends_descendants_on_every_parent_outcome(self) -> None:
+        for exit_code in (0, 3):
+            for closed_stdio in (False, True):
+                shape = f"exit={exit_code} closed_stdio={closed_stdio}"
+                with self.subTest(shape):
+                    marker = self.root / f"child-{exit_code}-{closed_stdio}.pid"
+                    started = time.monotonic()
+                    result = _run(
+                        [
+                            "sh",
+                            "-c",
+                            descendant_script(
+                                marker,
+                                exit_code=exit_code,
+                                closed_stdio=closed_stdio,
+                            ),
+                        ],
+                        cwd=str(self.root),
+                        timeout=30,
+                    )
+                    elapsed = time.monotonic() - started
+                    self.assertEqual(result.returncode, exit_code, shape)
+                    # An inherited-stdio descendant must not wedge the call to
+                    # its timeout either: the helper waits on the leader, not
+                    # on the pipe.
+                    self.assertLess(elapsed, 15, shape)
+                    self.assertFalse(
+                        outlives(descendant_pid(marker)),
+                        f"a child-command descendant survived ({shape})",
+                    )
+
+    def test_build_command_ends_descendants_on_every_parent_outcome(self) -> None:
+        for exit_code in (0, 3):
+            for closed_stdio in (False, True):
+                shape = f"exit={exit_code} closed_stdio={closed_stdio}"
+                with self.subTest(shape):
+                    marker = self.root / f"build-{exit_code}-{closed_stdio}.pid"
+                    returncode, _tail = _run_with_tail(
+                        [
+                            "sh",
+                            "-c",
+                            descendant_script(
+                                marker,
+                                exit_code=exit_code,
+                                closed_stdio=closed_stdio,
+                            ),
+                        ],
+                        cwd=str(self.root),
+                        env=dict(os.environ),
+                        timeout=30,
+                    )
+                    self.assertEqual(returncode, exit_code, shape)
+                    self.assertFalse(
+                        outlives(descendant_pid(marker)),
+                        f"a build-command descendant survived ({shape})",
+                    )
+
+    def test_commands_without_descendants_return_their_output_promptly(self) -> None:
+        started = time.monotonic()
+        result = _run(
+            ["sh", "-c", "printf 'plain-output'"], cwd=str(self.root), timeout=30
+        )
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "plain-output")
+        returncode, tail = _run_with_tail(
+            ["sh", "-c", "printf 'tail-output'"],
+            cwd=str(self.root),
+            env=dict(os.environ),
+            timeout=30,
+        )
+        self.assertEqual(returncode, 0)
+        self.assertEqual(tail, "tail-output")
+        # Group cleanup must not turn ordinary commands into slow ones.
+        self.assertLess(time.monotonic() - started, 15)
+
+    def test_child_command_ends_descendants_when_the_caller_is_interrupted(self) -> None:
+        marker = self.root / "interrupted.pid"
+
+        def explode(process, *, label, on_cleaned=None):
+            # Interrupt before any reap, which is the only state the real code
+            # can reach: the leader is still unreaped and the descendant is
+            # still live, so the handler must do the whole teardown itself.
+            # on_cleaned is accepted and deliberately NOT called, so the phase
+            # stays LIVE and the guard performs the full fallback.
+            raise KeyboardInterrupt("caller interrupted")
+
+        with mock.patch.object(
+            install_module, "_reap_after_group_cleanup", explode
+        ):
+            with self.assertRaises(KeyboardInterrupt):
+                _run(
+                    [
+                        "sh",
+                        "-c",
+                        descendant_script(marker, exit_code=0, closed_stdio=True),
+                    ],
+                    cwd=str(self.root),
+                    timeout=30,
+                )
+        self.assertFalse(
+            outlives(descendant_pid(marker)),
+            "a descendant survived an interrupted child command",
+        )
+
+    def test_unprovable_group_cleanup_refuses_instead_of_returning(self) -> None:
+        # A member that will not die must produce a refusal, never a result:
+        # a value the caller cannot trust as final is worse than an error.
+        leaders: list[subprocess.Popen[bytes]] = []
+
+        def phantom_members(process, *, label="asset converter"):
+            leaders.append(process)
+            return (999999,)
+
+        with mock.patch.object(
+            install_module, "_live_process_group_members", phantom_members
+        ):
+            with self.assertRaisesRegex(InstallError, "left a surviving process"):
+                _run(["sh", "-c", "exit 0"], cwd=str(self.root), timeout=30)
+            with self.assertRaisesRegex(InstallError, "left a surviving process"):
+                _run_with_tail(
+                    ["sh", "-c", "exit 0"],
+                    cwd=str(self.root),
+                    env=dict(os.environ),
+                    timeout=30,
+                )
+        self.assertTrue(leaders, "the refusal path never inspected a process group")
+        # Refusing deliberately leaves the leader unreaped so its PID/PGID stays
+        # reserved against the member the mock claims is still alive. Only this
+        # test knows that member is fictional, so it reaps the fixtures itself.
+        for leader in leaders:
+            leader.wait()
+
+    def _refusal_patches(self, events, leaders, failure, marker_holder):
+        """Cleanup that raises ``failure``, recording attempts and reaps.
+
+        The two helpers reach primary cleanup by different routes -- the
+        timeout path through ``_force_group_end`` and the normal path through
+        ``_reap_after_group_cleanup`` -- so both are patched and both record
+        the same ``cleanup`` event. ``_teardown_process_group`` is reachable
+        only from the guard's fallback, so it records distinctly.
+        """
+        real_wait = install_module.subprocess.Popen.wait
+        real_release = install_module._release_readers
+
+        def note(process, label):
+            leaders.append(process)
+            # The leader must still be unreaped -- its group id reserved --
+            # at the moment cleanup runs.
+            try:
+                os.waitid(os.P_PID, process.pid,
+                          os.WEXITED | os.WNOHANG | os.WNOWAIT)
+                events.append("identity-reserved")
+            except ChildProcessError:
+                events.append("already-reaped")
+            # And the marked descendant must be live and in the leader's exact
+            # process group right now, so the refusal is about a real
+            # surviving member rather than an empty group.
+            try:
+                pid = descendant_pid(marker_holder[0], timeout=5.0)
+            except AssertionError:
+                pid = None
+            if pid is not None and is_running(pid) and process_group(pid) == process.pid:
+                events.append("descendant-live-in-group")
+            events.append("cleanup")
+            raise failure(f"{label} left a surviving process")
+
+        def refusing_force(process, *, label="asset converter", on_cleaned=None):
+            note(process, label)
+
+        def refusing_reap(process, *, label="asset converter", on_cleaned=None):
+            note(process, label)
+
+        def counting_teardown(process, *, label="asset converter", **kwargs):
+            events.append("fallback-teardown")
+            return False
+
+        def counting_wait(self_process, *args, **kwargs):
+            events.append("reap")
+            return real_wait(self_process, *args, **kwargs)
+
+        def counting_release(*_args, **_kwargs):
+            events.append("release-readers")
+            return real_release(*_args, **_kwargs)
+
+        return (
+            mock.patch.object(install_module, "_force_group_end", refusing_force),
+            mock.patch.object(
+                install_module, "_reap_after_group_cleanup", refusing_reap),
+            mock.patch.object(
+                install_module, "_teardown_process_group", counting_teardown),
+            mock.patch.object(
+                install_module.subprocess.Popen, "wait", counting_wait),
+            mock.patch.object(
+                install_module, "_release_readers", counting_release),
+        )
+
+    def _assert_refusal_is_final(self, helper, shape, failure, expect_fallback):
+        events: list[str] = []
+        leaders: list[object] = []
+        marker = self.root / f"refusal-{helper}-{shape}.pid"
+        # A real, live, PID-marked descendant, so cleanup has something to fail
+        # to clear rather than trivially succeeding.
+        script = descendant_script(marker, exit_code=0, closed_stdio=True)
+        if shape == "timeout":
+            script = script.replace("exit 0\n", "sleep 60\n")
+        patches = self._refusal_patches(events, leaders, failure, [marker])
+        bound = 30 if shape == "normal" else 1
+        started = time.monotonic()
+        try:
+            with patches[0], patches[1], patches[2], patches[3], patches[4]:
+                with self.assertRaises(InstallError):
+                    if helper == "run":
+                        _run(["sh", "-c", script], cwd=str(self.root),
+                             timeout=bound)
+                    else:
+                        _run_with_tail(["sh", "-c", script], cwd=str(self.root),
+                                       env=dict(os.environ), timeout=bound)
+            # A refusal must be prompt: the point of not touching the readers
+            # is that nothing blocks on a pipe a live writer still holds.
+            self.assertLess(time.monotonic() - started, 20, "refusal was slow")
+            self.assertIn("identity-reserved", events, f"{events}")
+            self.assertIn(
+                "descendant-live-in-group", events,
+                f"no live marked descendant in the leader's group: {events}")
+            self.assertEqual(
+                events.count("cleanup"), 1,
+                f"cleanup attempted {events.count('cleanup')} times: {events}")
+            self.assertEqual(
+                events.count("fallback-teardown"), 1 if expect_fallback else 0,
+                f"unexpected fallback behaviour: {events}")
+            self.assertEqual(
+                events.count("release-readers"), 0,
+                "readers were released while the process group was "
+                f"unproven: {events}",
+            )
+            if not expect_fallback:
+                self.assertEqual(
+                    events.count("reap"), 0,
+                    f"the leader was reaped after a refusal: {events}")
+        finally:
+            # This fixture deliberately defeated the real cleanup, so it owns
+            # the group. Kill the exact recorded leader's group -- never by
+            # name -- before any assertion failure can escape and strand it.
+            for leader in leaders:
+                try:
+                    os.killpg(leader.pid, signal.SIGKILL)
+                except (OSError, ProcessLookupError):
+                    pass
+            try:
+                pid = descendant_pid(marker, timeout=2.0)
+            except AssertionError:
+                pid = None
+            if pid is not None and is_running(pid):
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            for leader in leaders:
+                try:
+                    install_module.subprocess.Popen.wait(leader, timeout=5)
+                except Exception:  # noqa: BLE001 - fixture teardown only
+                    pass
+            if pid is not None:
+                self.assertFalse(outlives(pid), "fixture descendant survived")
+
+    def test_child_command_refusal_does_not_clean_or_reap_twice(self) -> None:
+        # A refusal is final. Retrying cleanup would re-signal a group we
+        # already failed to clear, and reaping would release the leader pid we
+        # deliberately hold to keep that group id reserved.
+        for shape in ("normal", "timeout"):
+            with self.subTest(shape):
+                self._assert_refusal_is_final(
+                    "run", shape, install_module._CleanupRefusal,
+                    expect_fallback=False)
+        # Positive control: the safety rule is ordering, not removal.  Once a
+        # normal command's group is proven gone, its readers are released
+        # exactly once.
+        with mock.patch.object(
+            install_module,
+            "_release_readers",
+            wraps=install_module._release_readers,
+        ) as release_readers:
+            completed = _run(
+                ["sh", "-c", "printf ready"],
+                cwd=str(self.root),
+                timeout=30,
+            )
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(completed.stdout, "ready")
+        self.assertEqual(release_readers.call_count, 1)
+
+    def test_build_command_refusal_does_not_clean_or_reap_twice(self) -> None:
+        for shape in ("normal", "timeout"):
+            with self.subTest(shape):
+                self._assert_refusal_is_final(
+                    "tail", shape, install_module._CleanupRefusal,
+                    expect_fallback=False)
+
+    def _assert_cleaned_unreaped_retries_reap_only(self, helper, shape) -> None:
+        """The group is proven empty, then the first reap fails.
+
+        The guard must retry the reap ONLY. Repeating group cleanup there
+        would be wrong work on an already-dead group, and a boolean
+        reaped/refused pair cannot express this window at all.
+        """
+        events: list[str] = []
+        real_wait = install_module.subprocess.Popen.wait
+        real_terminate = install_module._terminate_remaining_process_group
+        real_teardown = install_module._teardown_process_group
+        waits = {"n": 0}
+
+        def counting_terminate(process, *, label="asset converter"):
+            events.append("group-cleanup")
+            return real_terminate(process, label=label)
+
+        def counting_teardown(process, *, label="asset converter", **kwargs):
+            events.append("group-cleanup")
+            return real_teardown(process, label=label, **kwargs)
+
+        def flaky_wait(self_process, *args, **kwargs):
+            waits["n"] += 1
+            events.append("reap")
+            if waits["n"] == 1:
+                raise OSError("simulated first reap failure")
+            return real_wait(self_process, *args, **kwargs)
+
+        argv = ["sh", "-c", "exit 0" if shape == "normal" else "sleep 60"]
+        bound = 30 if shape == "normal" else 1
+        with mock.patch.object(
+            install_module, "_terminate_remaining_process_group",
+            counting_terminate
+        ), mock.patch.object(
+            install_module, "_teardown_process_group", counting_teardown
+        ), mock.patch.object(
+            install_module.subprocess.Popen, "wait", flaky_wait
+        ):
+            with self.assertRaises(OSError):
+                if helper == "run":
+                    _run(argv, cwd=str(self.root), timeout=bound)
+                else:
+                    _run_with_tail(argv, cwd=str(self.root),
+                                   env=dict(os.environ), timeout=bound)
+        self.assertEqual(
+            events.count("group-cleanup"), 1,
+            f"group cleanup repeated after the group was proven empty: {events}")
+        self.assertEqual(
+            events.count("reap"), 2,
+            f"the outstanding reap was not retried exactly once: {events}")
+
+    def test_child_command_retries_only_the_reap_after_cleanup(self) -> None:
+        for shape in ("normal", "timeout"):
+            with self.subTest(shape):
+                self._assert_cleaned_unreaped_retries_reap_only("run", shape)
+
+    def test_build_command_retries_only_the_reap_after_cleanup(self) -> None:
+        for shape in ("normal", "timeout"):
+            with self.subTest(shape):
+                self._assert_cleaned_unreaped_retries_reap_only("tail", shape)
+
+    def test_an_unrelated_cleanup_error_still_gets_fallback_cleanup(self) -> None:
+        # Only a deliberate refusal is final. An unexpected failure *during*
+        # cleanup means cleanup did not complete, so the guard's fallback must
+        # still run -- a broad `except InstallError` would wrongly skip it.
+        for helper in ("run", "tail"):
+            with self.subTest(helper):
+                self._assert_refusal_is_final(
+                    helper, "normal", InstallError, expect_fallback=True)
+
+    def test_unreadable_member_stat_refuses_instead_of_proving_empty(self) -> None:
+        # A same-group member whose /proc stat cannot be read or parsed has an
+        # UNKNOWN identity. Skipping it would falsely prove the group empty,
+        # reap the leader and return a result that is not final.
+        shapes = (
+            ("permission", PermissionError(13, "Permission denied")),
+            ("truncated", b"1234 (sh) S 1"),
+            ("no-delimiter", b"1234 sh S 1 2 3 4 5"),
+            # A ')' exists but is not followed by the exact ") " separator, so
+            # every later field is shifted by one and a naive parse would read
+            # the wrong column as the process group.
+            ("bad-delimiter", b"1234 (sh)X S 1 2 3 4 5 6 7"),
+        )
+        for name, failure in shapes:
+            with self.subTest(name):
+                marker = self.root / f"unreadable-{name}.pid"
+                script = descendant_script(
+                    marker, exit_code=0, closed_stdio=True)
+                real_open = builtins.open
+                real_popen = install_module.subprocess.Popen
+                leaders: list[object] = []
+                witness = {"member": None, "group_ok": False}
+
+                def recording_popen(*args, **kwargs):
+                    process = real_popen(*args, **kwargs)
+                    leaders.append(process)
+                    return process
+
+                def hostile_open(path, *args, **kwargs):
+                    text = str(path)
+                    if text.startswith("/proc/") and text.endswith("/stat"):
+                        pid = int(text.split("/")[2])
+                        if witness["member"] is None and leaders and marker.exists():
+                            try:
+                                witness["member"] = descendant_pid(
+                                    marker, timeout=1.0)
+                            except AssertionError:
+                                witness["member"] = None
+                        if witness["member"] is not None and pid == witness["member"]:
+                            # Evaluated at the injection point, not when the
+                            # pid was first learned: the target must be a LIVE
+                            # member of the exact leader group right now, or
+                            # this test would prove nothing.
+                            # Read the group through real_open: the module
+                            # helper would re-enter this hook and recurse.
+                            group = None
+                            try:
+                                with real_open(f"/proc/{pid}/stat", "rb") as s:
+                                    blob = s.read(4096)
+                                group = int(
+                                    blob[blob.rfind(b")") + 2:].split()[2])
+                            except (OSError, IndexError, ValueError):
+                                group = None
+                            witness["group_ok"] = (
+                                is_running(pid) and group == leaders[0].pid)
+                            if isinstance(failure, BaseException):
+                                raise failure
+                            return io.BytesIO(failure)
+                    return real_open(path, *args, **kwargs)
+
+                try:
+                    with mock.patch.object(
+                        install_module.subprocess, "Popen", recording_popen
+                    ), mock.patch("builtins.open", hostile_open):
+                        with self.assertRaisesRegex(
+                            InstallError, "process group could not be inspected"
+                        ) as raised:
+                            _run(["sh", "-c", script], cwd=str(self.root),
+                                 timeout=30)
+                    # Unpatched from here.
+                    message = str(raised.exception)
+                    self.assertIn("could not be inspected", message)
+                    for leaked in ("/proc", "denied", "Permission",
+                                   str(self.root), str(witness["member"])):
+                        self.assertNotIn(leaked, message)
+                    self.assertEqual(len(leaders), 1)
+                    self.assertIsNotNone(
+                        witness["member"], "fixture never spawned")
+                    self.assertTrue(
+                        witness["group_ok"],
+                        "injection target was not a live member of the leader "
+                        "group; the test would be vacuous")
+                    # The leader must NOT have been reaped: its identity stays
+                    # reserved because the group was never proven empty.
+                    try:
+                        os.waitid(os.P_PID, leaders[0].pid,
+                                  os.WEXITED | os.WNOHANG | os.WNOWAIT)
+                        reserved = True
+                    except ChildProcessError:
+                        reserved = False
+                    self.assertTrue(
+                        reserved, "the leader was reaped despite a refusal")
+                finally:
+                    # Exact, test-owned cleanup, reached even if an assertion
+                    # above fails, so this fixture can never strand a sleeper.
+                    for leader in leaders:
+                        try:
+                            os.killpg(leader.pid, signal.SIGKILL)
+                        except (OSError, ProcessLookupError):
+                            pass
+                        try:
+                            leader.wait(timeout=5)
+                        except Exception:  # noqa: BLE001 - teardown only
+                            pass
+                    if witness["member"] and witness["member"] > 0:
+                        self.assertFalse(outlives(witness["member"]))
+
+    def _converter(self, argv, timeout=30):
+        return install_module._run_converter(
+            argv, cwd=str(self.root), env=dict(os.environ), timeout=timeout)
+
+    def _converter_witness(self, marker, leaders, events):
+        """Record that a marked descendant is live in the leader's exact group."""
+        def note(process):
+            leaders.append(process)
+            try:
+                os.waitid(os.P_PID, process.pid,
+                          os.WEXITED | os.WNOHANG | os.WNOWAIT)
+                events.append("identity-reserved")
+            except ChildProcessError:
+                events.append("already-reaped")
+            pid = descendant_pid(marker, timeout=10.0)
+            if is_running(pid) and process_group(pid) == process.pid:
+                events.append("descendant-live-in-group")
+        return note
+
+    def _kill_recorded(self, leaders, marker):
+        real_wait = install_module.subprocess.Popen.wait
+        for leader in leaders:
+            try:
+                os.killpg(leader.pid, signal.SIGKILL)
+            except (OSError, ProcessLookupError):
+                pass
+            try:
+                real_wait(leader, timeout=5)
+            except Exception:  # noqa: BLE001 - teardown only
+                pass
+            # Only now, with every writer proven gone, is closing safe -- and
+            # it keeps the suite free of ResourceWarnings.
+            for name in ("stdout", "stderr"):
+                stream = getattr(leader, name, None)
+                if stream is not None:
+                    try:
+                        stream.close()
+                    except (OSError, ValueError):
+                        pass
+        try:
+            pid = descendant_pid(marker, timeout=2.0)
+        except AssertionError:
+            return None
+        return pid
+
+    def test_converter_refusal_does_not_clean_or_reap_twice(self) -> None:
+        # Same refusal contract as the other two runners, proven against a
+        # real live descendant in the leader's exact group.
+        for shape in ("normal", "timeout"):
+            with self.subTest(shape):
+                events: list[str] = []
+                leaders: list[object] = []
+                marker = self.root / f"conv-refusal-{shape}.pid"
+                script = descendant_script(marker, exit_code=0, closed_stdio=True)
+                if shape == "timeout":
+                    script = script.replace("exit 0\n", "sleep 60\n")
+                real_wait = install_module.subprocess.Popen.wait
+                note = self._converter_witness(marker, leaders, events)
+
+                def refusing(process, *, label="asset converter", on_cleaned=None):
+                    note(process)
+                    events.append("cleanup")
+                    raise install_module._CleanupRefusal(
+                        f"{label} left a surviving process")
+
+                def counting_teardown(process, *, label="asset converter", **kw):
+                    events.append("fallback-teardown")
+                    return False
+
+                def counting_wait(self_process, *args, **kwargs):
+                    events.append("reap")
+                    return real_wait(self_process, *args, **kwargs)
+
+                started = time.monotonic()
+                try:
+                    with mock.patch.object(
+                        install_module, "_force_group_end", refusing
+                    ), mock.patch.object(
+                        install_module, "_reap_after_group_cleanup", refusing
+                    ), mock.patch.object(
+                        install_module, "_teardown_process_group", counting_teardown
+                    ), mock.patch.object(
+                        install_module.subprocess.Popen, "wait", counting_wait
+                    ):
+                        with self.assertRaisesRegex(
+                            InstallError, "left a surviving process"
+                        ):
+                            self._converter(["sh", "-c", script],
+                                            timeout=30 if shape == "normal" else 1)
+                    self.assertLess(time.monotonic() - started, 20)
+                    self.assertIn("identity-reserved", events, f"{events}")
+                    self.assertIn("descendant-live-in-group", events, f"{events}")
+                    self.assertEqual(events.count("cleanup"), 1, f"{events}")
+                    self.assertEqual(events.count("fallback-teardown"), 0, f"{events}")
+                    self.assertEqual(events.count("reap"), 0, f"{events}")
+                finally:
+                    pid = self._kill_recorded(leaders, marker)
+                    self.assertIsNotNone(pid, "fixture descendant never spawned")
+                    self.assertFalse(outlives(pid))
+
+    def test_converter_retries_only_the_reap_after_cleanup(self) -> None:
+        # Both converter paths: normal reaches _reap_after_group_cleanup,
+        # timeout reaches _force_group_end/_teardown_process_group.
+        for shape in ("normal", "timeout"):
+            with self.subTest(shape):
+                events: list[str] = []
+                real_wait = install_module.subprocess.Popen.wait
+                real_terminate = install_module._terminate_remaining_process_group
+                real_teardown = install_module._teardown_process_group
+                waits = {"n": 0}
+
+                def counting_terminate(process, *, label="asset converter"):
+                    events.append("group-cleanup")
+                    return real_terminate(process, label=label)
+
+                def counting_teardown(process, *, label="asset converter", **kw):
+                    events.append("group-cleanup")
+                    return real_teardown(process, label=label, **kw)
+
+                def flaky_wait(self_process, *args, **kwargs):
+                    waits["n"] += 1
+                    events.append("reap")
+                    if waits["n"] == 1:
+                        raise OSError("simulated first reap failure")
+                    return real_wait(self_process, *args, **kwargs)
+
+                argv = ["sh", "-c",
+                        "exit 0" if shape == "normal" else "sleep 60"]
+                with mock.patch.object(
+                    install_module, "_terminate_remaining_process_group",
+                    counting_terminate
+                ), mock.patch.object(
+                    install_module, "_teardown_process_group", counting_teardown
+                ), mock.patch.object(
+                    install_module.subprocess.Popen, "wait", flaky_wait
+                ):
+                    with self.assertRaises((OSError, InstallError)):
+                        self._converter(argv, timeout=30 if shape == "normal" else 1)
+                self.assertEqual(events.count("group-cleanup"), 1, f"{events}")
+                self.assertEqual(events.count("reap"), 2, f"{events}")
+
+    def test_converter_unrelated_cleanup_error_gets_fallback(self) -> None:
+        # An unrelated failure during cleanup is NOT a refusal: the fallback
+        # must run, really tear the group down, and preserve the sentinel.
+        events: list[str] = []
+        leaders: list[object] = []
+        marker = self.root / "conv-unrelated.pid"
+        sentinel = InstallError("asset converter process group could not be inspected")
+        real_teardown = install_module._teardown_process_group
+        note = self._converter_witness(marker, leaders, events)
+
+        def unrelated(process, *, label="asset converter", on_cleaned=None):
+            note(process)
+            events.append("cleanup")
+            raise sentinel
+
+        def counting_teardown(process, *, label="asset converter", **kw):
+            events.append("fallback-teardown")
+            return real_teardown(process, label=label, **kw)
+
+        try:
+            with mock.patch.object(
+                install_module, "_reap_after_group_cleanup", unrelated
+            ), mock.patch.object(
+                install_module, "_teardown_process_group", counting_teardown
+            ):
+                with self.assertRaises(InstallError) as raised:
+                    self._converter([
+                        "sh", "-c",
+                        descendant_script(marker, exit_code=0, closed_stdio=True)])
+            self.assertIs(raised.exception, sentinel, "sentinel was not preserved")
+            self.assertIn("descendant-live-in-group", events, f"{events}")
+            self.assertEqual(events.count("cleanup"), 1, f"{events}")
+            self.assertEqual(events.count("fallback-teardown"), 1, f"{events}")
+            # The fallback must have REALLY torn the group down. Asserting this
+            # before the test-owned cleanup runs is what stops a no-op fallback
+            # from being masked by the test's own kill.
+            self.assertTrue(leaders, "no leader was recorded")
+            witness_pid = descendant_pid(marker, timeout=5.0)
+            self.assertFalse(
+                outlives(witness_pid),
+                "the fallback did not end the descendant")
+            self.assertEqual(
+                install_module._live_process_group_members(
+                    leaders[0], label="asset converter"),
+                (),
+                "the fallback left group members alive")
+            self.assertFalse(
+                is_running(leaders[0].pid), "the leader was not reaped")
+        finally:
+            pid = self._kill_recorded(leaders, marker)
+            self.assertIsNotNone(pid, "fixture descendant never spawned")
+            self.assertFalse(outlives(pid))
+
+    def test_converter_reader_start_failure_ends_the_group(self) -> None:
+        marker = self.root / "conv-reader.pid"
+        boom = RuntimeError("simulated converter reader start failure")
+        real_thread = threading.Thread
+        real_popen = install_module.subprocess.Popen
+        leaders: list[object] = []
+        observed = {}
+
+        class FlakyThread(real_thread):
+            def start(self):
+                pid = descendant_pid(marker, timeout=10.0)
+                observed["pid"] = pid
+                observed["in_group"] = (
+                    is_running(pid) and leaders
+                    and process_group(pid) == leaders[0].pid)
+                raise boom
+
+        def recording_popen(*args, **kwargs):
+            process = real_popen(*args, **kwargs)
+            leaders.append(process)
+            return process
+
+        try:
+            with mock.patch.object(
+                install_module.threading, "Thread", FlakyThread
+            ), mock.patch.object(
+                install_module.subprocess, "Popen", recording_popen
+            ):
+                with self.assertRaises(RuntimeError) as raised:
+                    self._converter([
+                        "sh", "-c",
+                        descendant_script(marker, exit_code=0, closed_stdio=True)])
+            self.assertIs(raised.exception, boom)
+            self.assertIn("pid", observed)
+            self.assertTrue(observed.get("in_group"), "witness was not in the group")
+            self.assertFalse(outlives(observed["pid"]))
+            self.assertFalse(outlives(leaders[0].pid))
+        finally:
+            self._kill_recorded(leaders, marker)
+
+    def test_converter_reader_capture_failure_refuses(self) -> None:
+        # reader_errors must be load-bearing: a real mid-stream read failure
+        # in the converter's own reader must refuse, not truncate.
+        class FailingStream:
+            def __init__(self, wrapped):
+                self._wrapped = wrapped
+                self._calls = 0
+
+            def read(self, size):
+                self._calls += 1
+                block = self._wrapped.read(size)
+                if self._calls == 1 and block:
+                    raise OSError("simulated converter capture failure")
+                return block
+
+            def close(self):
+                return self._wrapped.close()
+
+        real_popen = install_module.subprocess.Popen
+
+        def wrapping_popen(*args, **kwargs):
+            process = real_popen(*args, **kwargs)
+            if process.stdout is not None:
+                process.stdout = FailingStream(process.stdout)
+            return process
+
+        spawned: list[object] = []
+        real_wrapping = wrapping_popen
+
+        def recording_popen(*args, **kwargs):
+            process = real_wrapping(*args, **kwargs)
+            spawned.append(process)
+            return process
+
+        try:
+            with mock.patch.object(
+                install_module.subprocess, "Popen", recording_popen
+            ):
+                with self.assertRaisesRegex(
+                    InstallError, "output could not be captured"
+                ):
+                    self._converter(["sh", "-c", "printf 'some-output'"])
+        finally:
+            for process in spawned:
+                try:
+                    process.wait(timeout=5)
+                except Exception:  # noqa: BLE001 - teardown only
+                    pass
+                stream = getattr(process, "stdout", None)
+                wrapped = getattr(stream, "_wrapped", stream)
+                if wrapped is not None:
+                    try:
+                        wrapped.close()
+                    except (OSError, ValueError):
+                        pass
+
+    def test_converter_never_closes_a_stream_a_live_reader_owns(self) -> None:
+        # Deterministic and hang-free: the reader is a stub whose is_alive()
+        # stays True, so the live-reader branch is genuinely exercised. A
+        # stream that records close() proves production joins and returns
+        # WITHOUT closing, and still refuses the capture.
+        closes: list[str] = []
+        real_popen = install_module.subprocess.Popen
+        real_thread = install_module.threading.Thread
+
+        class ObservingStream:
+            def __init__(self, wrapped):
+                self._wrapped = wrapped
+
+            def read(self, size):
+                return self._wrapped.read(size)
+
+            def close(self):
+                closes.append("closed")
+                return self._wrapped.close()
+
+        class StalledReader:
+            """Never runs, never dies: is_alive() is always True."""
+
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def start(self):
+                return None
+
+            def join(self, timeout=None):
+                return None
+
+            def is_alive(self):
+                return True
+
+        spawned: list[object] = []
+
+        def wrapping_popen(*args, **kwargs):
+            process = real_popen(*args, **kwargs)
+            spawned.append(process)
+            if process.stdout is not None:
+                process.stdout = ObservingStream(process.stdout)
+            return process
+
+        try:
+            with mock.patch.object(
+                install_module.subprocess, "Popen", wrapping_popen
+            ), mock.patch.object(
+                install_module.threading, "Thread", StalledReader
+            ):
+                with self.assertRaisesRegex(
+                    InstallError, "output could not be captured"
+                ):
+                    self._converter(["sh", "-c", "printf 'x'"])
+            self.assertEqual(
+                closes, [],
+                "a stream owned by a live reader was closed")
+        finally:
+            install_module.threading.Thread = real_thread
+            # Production deliberately left this stream open -- that is the
+            # property under test -- so the test owns closing it, once the
+            # writer is provably gone.
+            for process in spawned:
+                try:
+                    process.wait(timeout=5)
+                except Exception:  # noqa: BLE001 - teardown only
+                    pass
+                stream = getattr(process, "stdout", None)
+                wrapped = getattr(stream, "_wrapped", stream)
+                if wrapped is not None:
+                    try:
+                        wrapped.close()
+                    except (OSError, ValueError):
+                        pass
+
+    def test_every_child_spawn_is_lexically_inside_its_cleanup_guard(self) -> None:
+        # Structural, not behavioural: an async KeyboardInterrupt between a
+        # spawn and the guard that owns it would abandon a live session, and no
+        # runtime test can reliably hit that window. This proves the window
+        # does not exist in the source.
+        import ast
+
+        source = Path(install_module.__file__).read_text()
+        tree = ast.parse(source)
+        checked = []
+        for function in ast.walk(tree):
+            if not isinstance(function, ast.FunctionDef):
+                continue
+            # All three runners, not two: the converter carries the same
+            # ownership contract rather than a third parallel protocol.
+            if function.name not in ("_run", "_run_with_tail", "_run_converter"):
+                continue
+            spawns = [
+                node for node in ast.walk(function)
+                if isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr == "Popen"
+            ]
+            self.assertEqual(
+                len(spawns), 1, f"{function.name}: {len(spawns)} Popen calls")
+            spawn = spawns[0]
+            guarded = False
+            for block in ast.walk(function):
+                if not isinstance(block, ast.Try) or not block.handlers:
+                    continue
+                # The handler must own teardown, not merely re-raise.
+                handler_calls = {
+                    n.func.id for h in block.handlers for n in ast.walk(h)
+                    if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)
+                }
+                # Ownership means the handler actually tears down and reaps.
+                # A bare signal is not sufficient evidence of ownership.
+                if not {"_teardown_process_group", "_reap_only"} <= handler_calls:
+                    continue
+                if any(spawn is node for stmt in block.body
+                       for node in ast.walk(stmt)):
+                    guarded = True
+                    break
+            self.assertTrue(
+                guarded,
+                f"{function.name}: Popen is not lexically inside a cleanup Try "
+                f"whose handler performs teardown")
+            checked.append(function.name)
+        self.assertEqual(
+            sorted(checked),
+            ["_run", "_run_converter", "_run_with_tail"])
+
+    def test_the_leader_is_not_reaped_before_its_group_is_cleared(self) -> None:
+        # Reaping the leader first frees its PID, so the kernel may hand that
+        # id -- and therefore that process-group id -- to something unrelated
+        # before the group signals are sent. The leader must still be an
+        # unreaped zombie when cleanup runs.
+        observed: list[str] = []
+        witnessed: list[int] = []
+        real_cleanup = install_module._terminate_remaining_process_group
+        current = {"marker": None}
+
+        def checking_cleanup(process, *, label="asset converter"):
+            try:
+                os.waitid(
+                    os.P_PID, process.pid, os.WEXITED | os.WNOHANG | os.WNOWAIT
+                )
+                observed.append("identity-reserved")
+            except ChildProcessError:
+                observed.append("already-reaped")
+            # A live, marked member must be present, or this proves nothing.
+            pid = descendant_pid(current["marker"])
+            members = install_module._live_process_group_members(
+                process, label=label
+            )
+            self.assertIn(
+                pid, members, "the marked descendant was not in the exact group"
+            )
+            witnessed.append(pid)
+            return real_cleanup(process, label=label)
+
+        for helper in ("run", "tail"):
+            marker = self.root / f"identity-{helper}.pid"
+            current["marker"] = marker
+            script = descendant_script(marker, exit_code=0, closed_stdio=True)
+            with mock.patch.object(
+                install_module,
+                "_terminate_remaining_process_group",
+                checking_cleanup,
+            ):
+                if helper == "run":
+                    _run(["sh", "-c", script], cwd=str(self.root), timeout=30)
+                else:
+                    _run_with_tail(
+                        ["sh", "-c", script],
+                        cwd=str(self.root),
+                        env=dict(os.environ),
+                        timeout=30,
+                    )
+            self.assertFalse(
+                outlives(descendant_pid(marker)),
+                f"the {helper} descendant survived cleanup",
+            )
+        self.assertEqual(observed, ["identity-reserved", "identity-reserved"])
+        self.assertEqual(len(witnessed), 2)
+
+    def test_incomplete_output_capture_refuses_rather_than_truncating(self) -> None:
+        # If a descendant still holds the pipe, the captured bytes are only a
+        # prefix of what the command produced. Handing that back as a normal
+        # CompletedProcess would let a caller act on a silently truncated
+        # result, so the helper refuses instead.
+        marker = self.root / "holder.pid"
+        # This fixture deliberately defeats group cleanup, so the descendant
+        # holds the pipe. Under the M-H mutation the helper does not refuse,
+        # and _release_readers then blocks on the reader's stream lock until
+        # this sleeper exits -- so an over-long lifetime would make a correct
+        # M-H catch race the mutation harness's watchdog. Eight seconds keeps a
+        # mutant well inside that watchdog. No elapsed bound is asserted here;
+        # see the note below the call.
+        script = descendant_script(
+            marker, exit_code=0, closed_stdio=False, lifetime=8)
+        with mock.patch.object(
+            install_module,
+            "_terminate_remaining_process_group",
+            lambda *a, **k: None,
+        ):
+            with self.assertRaisesRegex(
+                InstallError, "output could not be captured"
+            ):
+                _run(["sh", "-c", script], cwd=str(self.root), timeout=30)
+        # No elapsed bound is asserted here. The no-op cleanup mock makes the
+        # REAPED phase reachable while a group member is still alive -- a state
+        # the real code cannot produce -- so _release_readers legitimately
+        # waits out this fixture's sleeper. Bounding that would be testing the
+        # mock, not the helper. The lifetime is short purely so a mutant stays
+        # well inside the mutation harness's watchdog.
+        # Fixture cleanup only. This test deliberately suppresses group
+        # teardown, so it owns the leaked child -- but that child may already
+        # have gone by the time we get here, so the kill must be idempotent.
+        # The assertion that follows is the real invariant either way.
+        pid = descendant_pid(marker)
+        if is_running(pid):
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        self.assertFalse(outlives(pid))
+
+    def test_group_teardown_tries_sigterm_before_sigkill(self) -> None:
+        # A member that ignores SIGTERM must still die, and the SIGTERM must
+        # actually have been delivered first rather than skipped for SIGKILL.
+        termed = self.root / "termed"
+        marker = self.root / "signal-order.pid"
+        script = (
+            f"sh -c 'trap \"echo termed > {termed}\" TERM; "
+            f'echo $$ > "{marker}"; '
+            "while :; do sleep 0.05; done' &\n"
+            "while :; do sleep 0.05; done\n"
+        )
+        signals: list[tuple[int, float]] = []
+        real_signal = install_module._signal_process_group
+
+        def recording_signal(process, signum):
+            signals.append((signum, time.monotonic()))
+            return real_signal(process, signum)
+
+        started = time.monotonic()
+        with mock.patch.object(
+            install_module, "_signal_process_group", recording_signal
+        ):
+            with self.assertRaises(subprocess.TimeoutExpired):
+                _run(["sh", "-c", script], cwd=str(self.root), timeout=1)
+        self.assertLess(time.monotonic() - started, 30)
+        pid = descendant_pid(marker)
+        self.assertFalse(
+            outlives(pid), "a TERM-ignoring group member survived teardown"
+        )
+        self.assertTrue(
+            termed.exists(),
+            "teardown escalated to SIGKILL without first sending SIGTERM",
+        )
+
+        # Exact escalation order, and a real grace interval between them: a
+        # TERM immediately followed by KILL gives nothing a chance to exit
+        # cleanly, which is what the bounded grace exists to provide.
+        order = [signum for signum, _when in signals]
+        self.assertIn(signal.SIGTERM, order)
+        self.assertIn(signal.SIGKILL, order)
+        first_term = next(when for num, when in signals if num == signal.SIGTERM)
+        first_kill = next(
+            when for num, when in signals
+            if num == signal.SIGKILL and when >= first_term
+        )
+        self.assertLess(
+            order.index(signal.SIGTERM),
+            order.index(signal.SIGKILL),
+            "SIGKILL was sent before SIGTERM",
+        )
+        # The floor is a test-policy literal, deliberately NOT derived from
+        # install_module._CONVERTER_TERMINATE_GRACE_SECONDS: reading the
+        # constant would let a mutation that zeroes it satisfy its own
+        # threshold. Production grace is 2.0s; require at least 1.0s of real
+        # interval, and keep an upper bound so the escalation stays bounded.
+        interval = first_kill - first_term
+        self.assertGreaterEqual(
+            interval,
+            1.0,
+            "SIGKILL followed SIGTERM without a real grace interval",
+        )
+        self.assertLessEqual(interval, 8.0, "the TERM grace was not bounded")
+        self.assertEqual(
+            install_module._CONVERTER_TERMINATE_GRACE_SECONDS,
+            2.0,
+            "the production grace constant moved; revisit the policy floor",
+        )
+
+    def test_build_command_ends_the_group_when_its_capture_loop_fails(self) -> None:
+        # Finding D: the selector/read loop must be inside the cleanup guard.
+        # A failure there previously escaped with the leader and its
+        # descendants still running.
+        marker = self.root / "tail-loop-failure.pid"
+        boom = RuntimeError("simulated capture-loop failure")
+        real_wait = install_module._wait_without_reaping
+        calls = {"n": 0}
+
+        def failing_wait(process, timeout, *, label="asset converter"):
+            if label == install_module._BUILD_COMMAND_LABEL and timeout == 0:
+                calls["n"] += 1
+                if calls["n"] == 1:
+                    raise boom
+            return real_wait(process, timeout, label=label)
+
+        with mock.patch.object(
+            install_module, "_wait_without_reaping", failing_wait
+        ):
+            with self.assertRaises(RuntimeError) as raised:
+                _run_with_tail(
+                    [
+                        "sh",
+                        "-c",
+                        f"sh -c 'echo $$ > \"{marker}\"; exec sleep 60' &\n"
+                        "sleep 60\n",
+                    ],
+                    cwd=str(self.root),
+                    env=dict(os.environ),
+                    timeout=30,
+                )
+        # Cleanup succeeded, so the caller sees the original failure shape.
+        self.assertIs(raised.exception, boom)
+        self.assertFalse(
+            outlives(descendant_pid(marker)),
+            "a descendant survived a failing build capture loop",
+        )
+
+    def test_build_command_ends_the_group_when_an_actual_read_fails(self) -> None:
+        # Finding D, on the real capture path: the failure comes out of the
+        # genuine os.read used by absorb(), after a real byte has already been
+        # captured, with a marked descendant live.
+        marker = self.root / "read-failure.pid"
+        boom = OSError("simulated capture read failure")
+        real_read = install_module.os.read
+        reads = {"n": 0}
+
+        captured: list[int] = []
+
+        def failing_read(descriptor, size):
+            block = real_read(descriptor, size)
+            if block:
+                captured.append(len(block))
+            # Fail only after a real, NON-EMPTY block has been captured and the
+            # marked descendant is actually running. Injecting after an empty
+            # read would mean the real capture path had already reached EOF, so
+            # the test would prove nothing about a failure mid-stream.
+            reads["n"] += 1
+            # The *current* block must be non-empty: injecting on an empty
+            # read means this read had already reached EOF, so it would prove
+            # nothing about a failure mid-stream even if an earlier block was
+            # non-empty.
+            if block and reads["n"] >= 2 and marker.exists():
+                raise boom
+            return block
+
+        script = (
+            f"sh -c 'echo $$ > \"{marker}\"; exec sleep 60' &\n"
+            "while :; do echo tick; sleep 0.05; done\n"
+        )
+        with mock.patch.object(install_module.os, "read", failing_read):
+            with self.assertRaises(OSError) as raised:
+                _run_with_tail(
+                    ["sh", "-c", script],
+                    cwd=str(self.root),
+                    env=dict(os.environ),
+                    timeout=60,
+                )
+        # The original failure shape survives cleanup unchanged.
+        self.assertIs(raised.exception, boom)
+        self.assertGreaterEqual(reads["n"], 2, "the real read path was not used")
+        self.assertTrue(
+            captured, "no non-empty block was ever captured before injecting"
+        )
+        self.assertGreater(
+            captured[0], 0, "the injection point saw only empty reads"
+        )
+        self.assertFalse(
+            outlives(descendant_pid(marker)),
+            "a descendant survived a real capture read failure",
+        )
+
+    def test_child_command_ends_the_group_when_reader_startup_fails(self) -> None:
+        # Finding E: thread construction/start sits after Popen, so a failure
+        # there must not abandon a live group. The first reader starts, the
+        # second fails.
+        marker = self.root / "reader-startup.pid"
+        boom = RuntimeError("simulated reader thread start failure")
+        real_thread = threading.Thread
+        real_popen = install_module.subprocess.Popen
+        made = {"n": 0}
+        leaders: list[object] = []
+
+        observed: dict[str, int] = {}
+
+        class FlakyThread(real_thread):
+            def start(self):
+                made["n"] += 1
+                if made["n"] == 2:
+                    # Fail only once the fixture descendant is genuinely
+                    # running, so this proves group cleanup rather than
+                    # passing because nothing had spawned yet.
+                    observed["pid"] = descendant_pid(marker, timeout=10.0)
+                    raise boom
+                return super().start()
+
+        def recording_popen(*args, **kwargs):
+            process = real_popen(*args, **kwargs)
+            leaders.append(process)
+            return process
+
+        with mock.patch.object(
+            install_module.threading, "Thread", FlakyThread
+        ), mock.patch.object(
+            install_module.subprocess, "Popen", recording_popen
+        ):
+            with self.assertRaises(RuntimeError) as raised:
+                _run(
+                    [
+                        "sh",
+                        "-c",
+                        descendant_script(marker, exit_code=0, closed_stdio=True),
+                    ],
+                    cwd=str(self.root),
+                    timeout=30,
+                )
+        self.assertIs(raised.exception, boom)
+        self.assertEqual(made["n"], 2, "the second reader start was never reached")
+        self.assertEqual(len(leaders), 1)
+        leader = leaders[0]
+        self.assertIn(
+            "pid", observed, "the fixture descendant never started; test is vacuous"
+        )
+        # Both the exact leader and the exact descendant must be gone.
+        self.assertFalse(
+            outlives(observed["pid"]),
+            "a descendant survived a failed reader startup",
+        )
+        self.assertFalse(outlives(leader.pid), "the leader survived")
+        self.assertEqual(
+            install_module._live_process_group_members(
+                leader, label="child command"
+            ),
+            (),
+            "a group member survived a failed reader startup",
+        )
+
+    def test_hostile_build_output_is_sanitized_in_tail_and_error(self) -> None:
+        # Build output is attacker-influenced and reaches a terminal both as
+        # the returned tail and inside the timeout diagnostic.
+        hostile = (
+            r"\033[2J\033[1;31m"          # ANSI erase + colour
+            r"\033]0;window-title\007"     # OSC window-title with BEL
+            r"\033[?1049h"                 # alternate screen buffer
+            "BUILD-MARKER-OK"
+            r"\010\010\010"                # backspaces
+            r"\r\n"
+            r"\342\200\256"                # U+202E right-to-left override
+            r"\000"                        # NUL
+        )
+        returncode, tail = _run_with_tail(
+            ["sh", "-c", f"printf '{hostile}'"],
+            cwd=str(self.root),
+            env=dict(os.environ),
+            timeout=30,
+        )
+        self.assertEqual(returncode, 0)
+        self.assertIn("BUILD-MARKER-OK", tail)
+        forbidden = ("\x1b", "\x07", "\x08", "\r", "\n", "\x00", "‮")
+        for character in forbidden:
+            self.assertNotIn(character, tail)
+
+        # The same sanitizer must protect the timeout diagnostic, which
+        # embeds the tail.
+        with self.assertRaises(InstallError) as raised:
+            _run_with_tail(
+                ["sh", "-c", f"printf '{hostile}'; sleep 60"],
+                cwd=str(self.root),
+                env=dict(os.environ),
+                timeout=2,
+            )
+        message = str(raised.exception)
+        rendered = "".join(
+            traceback.format_exception(
+                type(raised.exception), raised.exception,
+                raised.exception.__traceback__,
+            )
+        )
+        self.assertIn("BUILD-MARKER-OK", message)
+        for character in forbidden:
+            self.assertNotIn(character, message)
+        # A rendered traceback legitimately contains its own newlines, so only
+        # the terminal-control bytes are forbidden there.
+        for character in ("\x1b", "\x07", "\x08", "\x00", "‮"):
+            self.assertNotIn(character, rendered)
+
+    def test_post_exit_drain_is_bounded_against_an_always_ready_pipe(self) -> None:
+        # Deterministic proof that the post-exit drain terminates by its own
+        # bound rather than by winning a race against the writer. A real
+        # saturating descendant may or may not keep the descriptor ready on any
+        # given host; this stub always does, so an unbounded drain can never
+        # leave it.
+        blocks = {"count": 0}
+
+        class AlwaysReady:
+            def select(self, _timeout):
+                return [("key", "events")]
+
+        def absorb() -> bool:
+            blocks["count"] += 1
+            return True
+
+        finished = threading.Event()
+
+        def drain() -> None:
+            install_module._drain_pending(AlwaysReady(), absorb)
+            finished.set()
+
+        worker = threading.Thread(target=drain, daemon=True)
+        worker.start()
+        # The bound is 64 blocks / 0.5s, so a correct drain returns almost
+        # immediately. Keep the join short so an unbounded drain is reported as
+        # a named assertion failure rather than having to be caught by an
+        # outer watchdog.
+        worker.join(timeout=5)
+        # An unbounded drain leaves this thread running forever; assert rather
+        # than let the suite hang.
+        self.assertTrue(
+            finished.is_set(),
+            "the post-exit drain did not terminate against an always-ready pipe",
+        )
+        self.assertLessEqual(
+            blocks["count"], install_module._POST_EXIT_DRAIN_BLOCKS
+        )
+
+    def test_drain_stream_records_a_mid_stream_read_failure(self) -> None:
+        # Exercises the production helper itself, not a stand-in: restoring a
+        # silent `except ...: pass` here must fail this test directly.
+        for error in (OSError("read failed"), ValueError("stream invalidated")):
+            with self.subTest(type(error).__name__):
+                blocks = [b"captured-prefix"]
+
+                class FakeStream:
+                    def __enter__(self):
+                        return self
+
+                    def __exit__(self, *exc_info):
+                        return False
+
+                    def read(self, _size):
+                        if blocks:
+                            return blocks.pop(0)
+                        raise error
+
+                sink = bytearray()
+                failures: list[BaseException] = []
+                install_module._drain_stream(FakeStream(), sink, failures)
+
+                self.assertEqual(bytes(sink), b"captured-prefix")
+                self.assertEqual(len(failures), 1)
+                self.assertIs(failures[0], error)
+
+    def test_post_exit_drain_goes_through_the_bounded_helper(self) -> None:
+        # The bounded-helper test proves `_drain_pending` terminates; this
+        # proves the build path actually uses it. Replacing the call with an
+        # inline exhaustive loop would leave the helper correct but unused,
+        # and on a fast reader that regression can hide behind a won race.
+        marker = self.root / "drain-callsite.pid"
+        real_drain = install_module._drain_pending
+        calls = {"n": 0}
+
+        def recording_drain(poller, absorb, **kwargs):
+            calls["n"] += 1
+            return real_drain(poller, absorb, **kwargs)
+
+        with mock.patch.object(install_module, "_drain_pending", recording_drain):
+            returncode, _tail = _run_with_tail(
+                [
+                    "sh",
+                    "-c",
+                    f"sh -c 'echo $$ > \"{marker}\"; "
+                    "exec dd if=/dev/zero bs=1M status=none' &\n"
+                    "exit 0\n",
+                ],
+                cwd=str(self.root),
+                env=dict(os.environ),
+                timeout=30,
+            )
+        self.assertEqual(returncode, 0)
+        self.assertGreaterEqual(
+            calls["n"], 1, "the post-exit drain bypassed the bounded helper"
+        )
+        self.assertFalse(outlives(descendant_pid(marker)))
+
+    def test_incomplete_capture_from_a_failing_reader_refuses(self) -> None:
+        # A reader that fails after capturing a prefix stops running, so it is
+        # not "still alive": liveness alone would let a truncated stdout be
+        # returned as if it were the command's real output.
+        real_drain = install_module._drain_stream
+
+        def failing_drain(stream, sink, failures):
+            try:
+                sink.extend(stream.read(8))
+            except (OSError, ValueError):
+                pass
+            failures.append(OSError("simulated mid-stream read failure"))
+
+        with mock.patch.object(install_module, "_drain_stream", failing_drain):
+            with self.assertRaises(InstallError) as raised:
+                _run(
+                    ["sh", "-c", "printf 'prefix-then-much-more-output'"],
+                    cwd=str(self.root),
+                    timeout=30,
+                )
+        message = str(raised.exception)
+        self.assertIn("output could not be captured", message)
+        # The refusal must not disclose the underlying error text or any path.
+        for leaked in ("simulated mid-stream read failure", "OSError", str(self.root)):
+            self.assertNotIn(leaked, message)
+        self.assertIs(install_module._drain_stream, real_drain)
+
+    def test_a_chatty_descendant_cannot_wedge_a_finished_build(self) -> None:
+        # The descendant writes continuously, so the output descriptor is
+        # always ready. A leader-exit check reachable only when the selector
+        # idles would never run, and the finished build would block until the
+        # command timeout.
+        marker = self.root / "chatty.pid"
+        # No sleep anywhere: several `dd` producers keep the descriptor ready
+        # continuously. An earlier version of this test slept between writes,
+        # which let the pipe go idle and so never exercised the gapless case.
+        writers = "".join(
+            "sh -c 'exec dd if=/dev/zero bs=1M status=none' &\n" for _ in range(7)
+        )
+        script = (
+            f"sh -c 'echo $$ > \"{marker}\"; "
+            "exec dd if=/dev/zero bs=1M status=none' &\n" + writers + "exit 0\n"
+        )
+        started = time.monotonic()
+        returncode, _tail = _run_with_tail(
+            ["sh", "-c", script],
+            cwd=str(self.root),
+            env=dict(os.environ),
+            timeout=60,
+        )
+        elapsed = time.monotonic() - started
+        self.assertEqual(returncode, 0)
+        self.assertLess(elapsed, 15, "a chatty descendant wedged a finished build")
+        self.assertFalse(
+            outlives(descendant_pid(marker)),
+            "a chatty build descendant survived",
+        )
+
+    def _delayed_mutation_fixture(self) -> tuple[ContentSpec, dict[str, str]]:
+        """A pinned Git spec whose build backgrounds a delayed self-append."""
+        source = self.root / "mutating-source"
+        source.mkdir()
+        (source / "fixture").write_text("#!/bin/sh\nexit 0\n")
+        (source / "fixture").chmod(0o755)
+        run("git", "init", "--quiet", cwd=source)
+        run("git", "config", "user.name", "Fixture", cwd=source)
+        run("git", "config", "user.email", "fixture@example.invalid", cwd=source)
+        run("git", "add", "fixture", cwd=source)
+        run("git", "commit", "--quiet", "-m", "fixture", cwd=source)
+        ref = run("git", "rev-parse", "HEAD", cwd=source)
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {"type": "git", "repository": str(source), "ref": ref},
+                "binary": "fixture",
+                # The build exits immediately while leaving a same-group helper
+                # that rewrites the built binary a moment later. The helper
+                # records its pid so tests can assert on its exact identity.
+                "build": [
+                    "sh",
+                    "-c",
+                    "sh -c 'echo $$ > "
+                    f'"{self.root / "build-descendant.pid"}"'
+                    "; sleep 2; echo mutated >> fixture' &\nexit 0\n",
+                ],
+            }
+        )
+        return spec, dict(os.environ, GIT_ALLOW_PROTOCOL="file")
+
+    def test_no_build_descendant_can_mutate_content_after_selection(self) -> None:
+        spec, env = self._delayed_mutation_fixture()
+        installer = Installer(str(self.root / "data"), env=env)
+
+        selected = Path(installer.ensure(spec))
+
+        # Non-vacuity: the hostile descendant must actually have existed, or a
+        # stable digest below would prove nothing at all.
+        hostile = descendant_pid(self.root / "build-descendant.pid", timeout=10.0)
+        self.assertGreater(hostile, 0)
+        self.assertFalse(
+            outlives(hostile),
+            "the build descendant survived ensure() and could still mutate",
+        )
+
+        settled = selected.read_bytes()
+        digest = hashlib.sha256(settled).hexdigest()
+        # If a build helper outlived ensure(), it rewrites the selected file a
+        # couple of seconds after the call already returned it as final.
+        time.sleep(4)
+        self.assertEqual(
+            hashlib.sha256(selected.read_bytes()).hexdigest(),
+            digest,
+            "a surviving build descendant rewrote content after selection",
+        )
+        self.assertNotIn(b"mutated", selected.read_bytes())
+
+    def test_the_install_lock_is_held_until_group_cleanup_finishes(self) -> None:
+        spec, env = self._delayed_mutation_fixture()
+        installer = Installer(str(self.root / "data"), env=env)
+        events: list[str] = []
+        seen_members: list[int] = []
+        real_cleanup = install_module._terminate_remaining_process_group
+        real_lock = install_module.Installer._install_lock
+
+        def recording_cleanup(process, *, label="asset converter"):
+            if label != install_module._BUILD_COMMAND_LABEL:
+                return real_cleanup(process, label=label)
+            # The leader is still unreaped here, so its group id is exact.
+            members = install_module._live_process_group_members(
+                process, label=label
+            )
+            if members:
+                seen_members.extend(members)
+                events.append("live-under-lock")
+            real_cleanup(process, label=label)
+            events.append("cleanup-complete")
+            self.assertEqual(
+                install_module._live_process_group_members(process, label=label),
+                (),
+                "a group member outlived cleanup while the lock was held",
+            )
+
+        @contextlib.contextmanager
+        def recording_lock(self_installer, install_id):
+            with real_lock(self_installer, install_id):
+                yield
+            events.append("lock-released")
+
+        with mock.patch.object(
+            install_module, "_terminate_remaining_process_group", recording_cleanup
+        ), mock.patch.object(
+            install_module.Installer, "_install_lock", recording_lock
+        ):
+            installer.ensure(spec)
+
+        # Non-vacuity: if no build descendant was ever live under the lock,
+        # this test proves nothing and must fail rather than pass quietly.
+        self.assertIn(
+            "live-under-lock",
+            events,
+            "no live build-group member existed under the lock; test is vacuous",
+        )
+        self.assertTrue(seen_members)
+        for member in seen_members:
+            self.assertFalse(outlives(member), f"group member {member} survived")
+        self.assertIn("cleanup-complete", events)
+        self.assertIn("lock-released", events)
+        self.assertLess(
+            events.index("live-under-lock"),
+            events.index("cleanup-complete"),
+            "cleanup was recorded before any member was observed live",
+        )
+        self.assertLess(
+            events.index("cleanup-complete"),
+            events.index("lock-released"),
+            "the install lock was released before the build group was cleared",
+        )
 
     def test_stalled_source_setup_is_bounded_and_leaves_no_residue(self) -> None:
         stub_bin = self.root / "bin"
         stub_bin.mkdir()
+        pid_path = self.root / "descendant.pid"
         stub = stub_bin / "git"
-        stub.write_text("#!/bin/sh\nsleep 60\n", encoding="utf-8")
+        # The stub leaves a descendant behind: a timeout that killed only the
+        # direct child would let this outlive the bounded source setup.
+        stub.write_text(
+            "#!/bin/sh\n"
+            f"sh -c 'echo $$ > \"{pid_path}\"; exec sleep 60' &\n"
+            "sleep 60\n",
+            encoding="utf-8",
+        )
         stub.chmod(0o755)
         spec = ContentSpec.from_mapping(
             {
@@ -1426,9 +3157,30 @@ class ContentTests(unittest.TestCase):
             any(path.name.startswith(".fixture.install-") for path in data.iterdir())
         )
 
+        # The stub really did spawn a descendant ...
+        deadline = time.monotonic() + 10.0
+        while time.monotonic() < deadline and not pid_path.exists():
+            time.sleep(0.05)
+        self.assertTrue(pid_path.exists(), "stub never spawned its descendant")
+        descendant = int(pid_path.read_text(encoding="ascii").strip())
+        # ... and the timeout killed the complete process group, not just the
+        # direct child, so nothing is left holding the staging directory.
+        alive = True
+        deadline = time.monotonic() + 10.0
+        while time.monotonic() < deadline:
+            try:
+                os.kill(descendant, 0)
+            except OSError:
+                alive = False
+                break
+            time.sleep(0.05)
+        self.assertFalse(
+            alive, f"descendant {descendant} survived the source-setup timeout"
+        )
+
     def test_json_loader_reports_malformed_catalog(self) -> None:
         path = self.root / "catalog.json"
-        path.write_text(json.dumps({"schema_version": 4, "content": []}))
+        path.write_text(json.dumps({"schema_version": 5, "content": []}))
         with self.assertRaises(CatalogError):
             Catalog.load(path)
 

@@ -1,0 +1,44 @@
+{
+  "compatibility": {
+    "consumer_schema": "fixture",
+    "maximum": 1,
+    "minimum": 2
+  },
+  "files": [
+    {
+      "bytes": 4,
+      "path": "data.bin",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  ],
+  "id": "fixture.reverse-range",
+  "label": "Reverse range",
+  "licenses": [
+    {
+      "decision": "informational",
+      "id": "MIT",
+      "text_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  ],
+  "provider": "fixture",
+  "schema": "kilix.content.asset/v1",
+  "sizes": {
+    "download_bytes": 4,
+    "installed_bytes": 4,
+    "temporary_bytes": 4
+  },
+  "source": {
+    "archive_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+    "mirrors": [
+      "https://example.org/data.tar"
+    ],
+    "mode": "mirrored",
+    "provenance": {
+      "original_url": "https://example.org/data",
+      "project": "fixture",
+      "revision": "1"
+    }
+  },
+  "stream": "F100",
+  "version": "1"
+}

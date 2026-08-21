@@ -17,6 +17,11 @@ classifiers = [
   "Typing :: Typed",
 ]
 
+[dependency-groups]
+test = [
+  "jsonschema[format]>=4.23,<5",
+]
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 include-package-data = true
@@ -25,4 +30,7 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-kilix_content = ["catalog/*.json", "py.typed"]
+kilix_content = ["catalog/*.json", "contracts/*.json", "py.typed"]
+
+[tool.setuptools.data-files]
+"share/kilix-content/contracts" = ["contracts/*.schema.json"]
