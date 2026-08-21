@@ -1,8 +1,0 @@
-{
-  "aliases": {},
-  "catalog_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
-  "content": [],
-  "packages": [{"id": "a", "install": {"dependencies": [{"id": "a", "role": "runtime"}, {"id": "a", "role": "runtime"}], "installed_bytes_max": 1, "installed_files_max": 1, "licenses": [{"decision": "informational", "id": "l", "text_sha256": "0000000000000000000000000000000000000000000000000000000000000001"}], "process_memory_bytes_max": 1, "sandbox": {"id": "s", "sha256": "0000000000000000000000000000000000000000000000000000000000000002"}, "source_bytes_max": 1, "system_requirements": [], "temporary_bytes_max": 1, "temporary_files_max": 1, "toolchain": {"id": "t", "sha256": "0000000000000000000000000000000000000000000000000000000000000003"}, "version": 1}, "kind": "package", "members": []}],
-  "release_id": "release-0.2.1",
-  "schema": "kilix.content.catalog/v5"
-}

@@ -1,4 +1,4 @@
-"""Regenerate or verify the complete U1 schema and golden-fixture manifest."""
+"""Verify the deterministic U1 fixture index and corpus hash manifest."""
 
 from __future__ import annotations
 
@@ -14,8 +14,9 @@ MANIFEST = FIXTURES / "SHA256SUMS"
 
 
 def expected_manifest() -> str:
-    paths = sorted((ROOT / "contracts").glob("*.schema.json")) + sorted(
-        FIXTURES.glob("*/*.json")
+    paths = sorted(
+        [FIXTURES / "index.json", *(FIXTURES / "corpus").rglob("*.json")],
+        key=lambda path: path.relative_to(ROOT).as_posix(),
     )
     return "".join(
         f"{hashlib.sha256(path.read_bytes()).hexdigest()}  "
@@ -34,7 +35,7 @@ def main() -> int:
             print("U1 fixture hash manifest is stale", file=sys.stderr)
             return 1
         return 0
-    MANIFEST.write_text(manifest, encoding="ascii")
+    MANIFEST.write_text(manifest, encoding="ascii", newline="")
     return 0
 
 

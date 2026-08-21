@@ -1,1 +1,0 @@
-{"architecture":"amd64","distribution":"plebian","id":"system.profile","manifest_sha256":"0000000000000000000000000000000000000000000000000000000000000003","packages":[{"architecture":"amd64","name":"libc6","sha256":"0000000000000000000000000000000000000000000000000000000000000090","version":"2.39"}],"schema":"kilix.pleb.system-requirements/v1","version":"debian-2026"}
