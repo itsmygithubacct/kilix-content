@@ -16,6 +16,9 @@ classifiers = [
   "Operating System :: POSIX :: Linux",
   "Typing :: Typed",
 ]
+dependencies = [
+  "jsonschema[format]==4.26.0",
+]
 
 [dependency-groups]
 build = [
@@ -24,7 +27,7 @@ build = [
   "wheel==0.45.1",
 ]
 test = [
-  "jsonschema[format]>=4.23,<5",
+  "ruff==0.12.8",
 ]
 
 [tool.setuptools]
@@ -35,7 +38,8 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-kilix_content = ["catalog/*.json", "contracts/*.json", "licenses/*.txt", "py.typed"]
+kilix_content = ["catalog/*.json", "contracts/*.json", "contracts/u1/*.json", "licenses/*.txt", "py.typed"]
 
 [tool.setuptools.data-files]
 "share/kilix-content/contracts" = ["contracts/*.schema.json", "contracts/kilix.content.u1-resources-v1.json"]
+"share/kilix-content/contracts/u1" = ["contracts/u1/*.schema.json"]

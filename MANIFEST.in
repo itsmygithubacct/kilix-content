@@ -4,6 +4,7 @@ include uv.lock
 include .python-version
 include build-toolchain.json
 recursive-include contracts *.json *.md
+recursive-include wheelhouse *.whl *.json *.txt
 recursive-include benchmarks *.py
 recursive-include tests *.py
 recursive-include tests/fixtures/contracts *.json
@@ -11,4 +12,5 @@ recursive-include tests/fixtures/u1 *.json
 include tests/fixtures/u1/SHA256SUMS
 recursive-include tests/fixtures/catalogs *.json
 recursive-include tests/staged *.json
+recursive-include tools *.py
 include tests/fixtures/contracts/SHA256SUMS
