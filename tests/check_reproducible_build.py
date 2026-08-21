@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import csv
+import io
 import hashlib
 import importlib.metadata
 import json
@@ -14,8 +15,9 @@ import sys
 import tarfile
 import tempfile
 import zipfile
+from copy import copy
 from pathlib import Path, PurePosixPath
-from typing import Any
+from typing import Any, Callable
 
 
 PROJECT = Path(__file__).resolve().parents[1]
@@ -457,6 +459,27 @@ def extract_sdist(archive: Path, destination: Path) -> Path:
     return root
 
 
+def classify_wheel_member(archive: zipfile.ZipFile, info: zipfile.ZipInfo) -> int:
+    name = info.filename
+    safe_member_name(name)
+    if info.create_system != 3:
+        fail(f"wheel member creator/type is ambiguous: {name}")
+    mode_word = info.external_attr >> 16
+    kind = stat.S_IFMT(mode_word)
+    if kind not in (stat.S_IFREG, stat.S_IFDIR):
+        fail(f"wheel member has an unsupported or unknown type: {name}")
+    is_directory_name = name.endswith("/")
+    if kind == stat.S_IFREG:
+        if is_directory_name:
+            fail(f"wheel regular member has a directory spelling: {name}")
+    else:
+        if not is_directory_name or name != name.rstrip("/") + "/":
+            fail(f"wheel directory member has a noncanonical spelling: {name}")
+        if archive.read(name):
+            fail(f"wheel directory member is nonempty: {name}")
+    return kind
+
+
 def wheel_archive_audit(wheel: Path) -> set[str]:
     with zipfile.ZipFile(wheel) as archive:
         if archive.testzip() is not None:
@@ -467,10 +490,7 @@ def wheel_archive_audit(wheel: Path) -> set[str]:
         if len(normalized) != len(names):
             fail("wheel has duplicate normalized members")
         for info in infos:
-            mode = (info.external_attr >> 16) & 0o7777
-            kind = stat.S_IFMT(mode)
-            if kind not in (0, stat.S_IFREG, stat.S_IFDIR):
-                fail("wheel contains a special or linked member")
+            classify_wheel_member(archive, info)
         forbidden = (
             "tests/",
             "fixtures/",
@@ -486,6 +506,8 @@ def wheel_archive_audit(wheel: Path) -> set[str]:
 
 def record_audit(wheel: Path) -> None:
     with zipfile.ZipFile(wheel) as archive:
+        if archive.testzip() is not None:
+            fail("wheel CRC check failed")
         names = [info.filename for info in archive.infolist()]
         records = [name for name in names if name.endswith(".dist-info/RECORD")]
         if len(records) != 1:
@@ -591,10 +613,10 @@ def wheel_resource_prefixes(
     package_prefix = "kilix_content/"
     external_prefix = f"{distribution}.data/data/share/kilix-content/"
     observed_external = {
-        "/".join(PurePosixPath(name).parts[:4]) + "/"
+        "/".join(PurePosixPath(name.rstrip("/")).parts[:4]) + "/"
         for name in archive.namelist()
-        if len(PurePosixPath(name).parts) >= 5
-        and PurePosixPath(name).parts[1:4]
+        if len(PurePosixPath(name.rstrip("/")).parts) >= 4
+        and PurePosixPath(name.rstrip("/")).parts[1:4]
         == ("data", "share", "kilix-content")
     }
     if observed_external != {external_prefix}:
@@ -605,21 +627,50 @@ def wheel_resource_prefixes(
     return package_prefix, external_prefix
 
 
-def audit_resource_mapping(
+def expected_resource_directories(
+    expected: dict[str, tuple[str, bytes]],
+) -> set[str]:
+    directories: set[str] = set()
+    for path in expected:
+        parts = PurePosixPath(path).parts
+        directories.update(
+            PurePosixPath(*parts[:index]).as_posix()
+            for index in range(1, len(parts))
+        )
+    return directories
+
+
+def parent_directories(path: PurePosixPath) -> set[str]:
+    return {
+        PurePosixPath(*path.parts[:index]).as_posix()
+        for index in range(1, len(path.parts))
+    }
+
+
+def audit_resource_tree(
     label: str,
-    observed: dict[str, bytes],
+    observed_files: dict[str, bytes],
+    observed_directories: set[str],
     expected: dict[str, tuple[str, bytes]],
 ) -> None:
     expected_paths = set(expected)
-    if set(observed) != expected_paths:
-        missing = sorted(expected_paths - set(observed))
-        extra = sorted(set(observed) - expected_paths)
+    if set(observed_files) != expected_paths:
+        missing = sorted(expected_paths - set(observed_files))
+        extra = sorted(set(observed_files) - expected_paths)
         fail(
             f"{label} production resource set differs: "
             f"missing={missing!r} extra={extra!r}"
         )
+    expected_directories = expected_resource_directories(expected)
+    if observed_directories != expected_directories:
+        missing = sorted(expected_directories - observed_directories)
+        extra = sorted(observed_directories - expected_directories)
+        fail(
+            f"{label} production resource directories differ: "
+            f"missing={missing!r} extra={extra!r}"
+        )
     for path, (expected_digest, expected_payload) in expected.items():
-        payload = observed[path]
+        payload = observed_files[path]
         if len(payload) != len(expected_payload):
             fail(f"{label} production resource size mismatch: {path}")
         if hashlib.sha256(payload).hexdigest() != expected_digest:
@@ -633,35 +684,47 @@ def archive_resource_mapping(
     prefix: str,
     *,
     package_subtrees: bool,
-) -> dict[str, bytes]:
-    observed: dict[str, bytes] = {}
-    for name in archive.namelist():
-        if not name.startswith(prefix) or name.endswith("/"):
+) -> tuple[dict[str, bytes], set[str]]:
+    observed_files: dict[str, bytes] = {}
+    observed_directories: set[str] = set()
+    for info in archive.infolist():
+        name = info.filename
+        if not name.startswith(prefix):
             continue
-        relative = name[len(prefix) :]
-        if package_subtrees and PurePosixPath(relative).parts[0] not in RESOURCE_TOP_LEVELS:
+        relative_name = name[len(prefix) :]
+        if not relative_name:
             continue
-        observed[relative] = archive.read(name)
-    return observed
+        relative = PurePosixPath(safe_member_name(relative_name))
+        if package_subtrees and relative.parts[0] not in RESOURCE_TOP_LEVELS:
+            continue
+        if name.endswith("/"):
+            observed_directories.add(relative.as_posix())
+        else:
+            observed_files[relative.as_posix()] = archive.read(name)
+        observed_directories.update(parent_directories(relative))
+    return observed_files, observed_directories
 
 
 def filesystem_resource_mapping(
     root: Path,
     *,
     package_subtrees: bool,
-) -> dict[str, bytes]:
-    observed: dict[str, bytes] = {}
+) -> tuple[dict[str, bytes], set[str]]:
+    observed_files: dict[str, bytes] = {}
+    observed_directories: set[str] = set()
 
     def visit(path: Path, relative: PurePosixPath) -> None:
         if path.is_symlink():
             fail(f"installed production resource is a symlink: {relative}")
         if path.is_dir():
+            if relative.parts:
+                observed_directories.add(relative.as_posix())
             for child in sorted(path.iterdir()):
                 visit(child, relative / child.name)
             return
         if not path.is_file():
             fail(f"installed production resource is not regular: {relative}")
-        observed[relative.as_posix()] = path.read_bytes()
+        observed_files[relative.as_posix()] = path.read_bytes()
 
     if package_subtrees:
         for top_name in sorted(RESOURCE_TOP_LEVELS):
@@ -673,7 +736,7 @@ def filesystem_resource_mapping(
         if not root.is_dir():
             fail("installed external production resource root is missing")
         visit(root, PurePosixPath())
-    return observed
+    return observed_files, observed_directories
 
 
 def wheel_presentation_payloads(
@@ -683,12 +746,12 @@ def wheel_presentation_payloads(
     label: str,
     *,
     package_subtrees: bool,
-) -> dict[str, bytes]:
-    observed = archive_resource_mapping(
+) -> tuple[dict[str, bytes], set[str]]:
+    observed_files, observed_directories = archive_resource_mapping(
         archive, prefix, package_subtrees=package_subtrees
     )
-    audit_resource_mapping(label, observed, expected)
-    return observed
+    audit_resource_tree(label, observed_files, observed_directories, expected)
+    return observed_files, observed_directories
 
 
 def compare_cross_presentation_bytes(
@@ -710,14 +773,14 @@ def wheel_resource_audit(
     wheel_archive_audit(wheel)
     with zipfile.ZipFile(wheel) as archive:
         package_prefix, external_prefix = wheel_resource_prefixes(archive)
-        package_payloads = wheel_presentation_payloads(
+        package_payloads, _ = wheel_presentation_payloads(
             archive,
             package_prefix,
             package_expected,
             "package",
             package_subtrees=True,
         )
-        external_payloads = wheel_presentation_payloads(
+        external_payloads, _ = wheel_presentation_payloads(
             archive,
             external_prefix,
             external_expected,
@@ -873,18 +936,62 @@ print(json.dumps({"external_root": str(external_root), "package_root": str(resou
         external_root = Path(roots["external_root"]).resolve()
     except (json.JSONDecodeError, KeyError, TypeError) as exc:
         fail(f"installed-wheel probe did not return resource roots: {exc}")
-    package_observed = filesystem_resource_mapping(
+    package_observed_files, package_observed_directories = filesystem_resource_mapping(
         package_root, package_subtrees=True
     )
-    external_observed = filesystem_resource_mapping(
+    external_observed_files, external_observed_directories = filesystem_resource_mapping(
         external_root, package_subtrees=False
     )
-    audit_resource_mapping("installed package", package_observed, package_expected)
-    audit_resource_mapping("installed external", external_observed, external_expected)
+    audit_resource_tree(
+        "installed package",
+        package_observed_files,
+        package_observed_directories,
+        package_expected,
+    )
+    audit_resource_tree(
+        "installed external",
+        external_observed_files,
+        external_observed_directories,
+        external_expected,
+    )
     compare_cross_presentation_bytes(
-        package_observed, external_observed, set(manifest_expected)
+        package_observed_files, external_observed_files, set(manifest_expected)
     )
     print("installed-wheel external corpus and resources: PASS")
+
+
+def regular_zip_info(name: str) -> zipfile.ZipInfo:
+    info = zipfile.ZipInfo(name)
+    info.create_system = 3
+    info.external_attr = (stat.S_IFREG | 0o644) << 16
+    info.compress_type = zipfile.ZIP_DEFLATED
+    return info
+
+
+def directory_zip_info(name: str) -> zipfile.ZipInfo:
+    if not name.endswith("/") or name != name.rstrip("/") + "/":
+        fail(f"test directory member is not canonical: {name}")
+    info = zipfile.ZipInfo(name)
+    info.create_system = 3
+    info.external_attr = (stat.S_IFDIR | 0o755) << 16
+    info.compress_type = zipfile.ZIP_DEFLATED
+    return info
+
+
+def build_record_payload(
+    entries: list[tuple[zipfile.ZipInfo, bytes]],
+    record_name: str,
+) -> bytes:
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\n")
+    for info, payload in entries:
+        encoded = "" if info.filename == record_name else "sha256=" + base64.urlsafe_b64encode(
+            hashlib.sha256(payload).digest()
+        ).rstrip(b"=").decode("ascii")
+        size = "" if info.filename == record_name else str(len(payload))
+        writer.writerow((info.filename, encoded, size))
+    writer.writerow((record_name, "", ""))
+    return output.getvalue().encode("utf-8")
 
 
 def rewrite_wheel(
@@ -896,23 +1003,67 @@ def rewrite_wheel(
     replace: dict[str, bytes] | None = None,
     extra: dict[str, bytes] | None = None,
     duplicate: tuple[str, ...] = (),
+    rename: dict[str, str] | None = None,
+    mutate: dict[str, Callable[[zipfile.ZipInfo], None]] | None = None,
+    extra_directories: tuple[str, ...] = (),
+    rebuild_record: bool = False,
 ) -> None:
     removed = remove or set()
     replacements = replace or {}
     additions = extra or {}
+    renames = rename or {}
+    mutations = mutate or {}
     with zipfile.ZipFile(source) as source_archive, zipfile.ZipFile(
         destination, "w", compression=zipfile.ZIP_DEFLATED
     ) as destination_archive:
+        record_names = [
+            info.filename
+            for info in source_archive.infolist()
+            if info.filename.endswith(".dist-info/RECORD")
+        ]
+        if rebuild_record and len(record_names) != 1:
+            fail("cannot rebuild a wheel without exactly one source RECORD")
+        record_name = record_names[0] if record_names else ""
+        entries: list[tuple[zipfile.ZipInfo, bytes]] = []
         for info in source_archive.infolist():
             name = info.filename
             if name in removed or any(name.startswith(prefix) for prefix in remove_prefixes):
                 continue
+            if rebuild_record and name == record_name:
+                continue
+            rewritten = copy(info)
+            rewritten.filename = renames.get(name, name)
+            if name in mutations:
+                mutations[name](rewritten)
             payload = replacements.get(name, source_archive.read(name))
-            destination_archive.writestr(info, payload)
+            entries.append((rewritten, payload))
         for name in duplicate:
-            destination_archive.writestr(name, source_archive.read(name))
+            source_info = next(
+                (info for info in source_archive.infolist() if info.filename == name),
+                None,
+            )
+            if source_info is None:
+                fail(f"cannot duplicate absent wheel member: {name}")
+            entries.append((copy(source_info), source_archive.read(name)))
         for name, payload in additions.items():
-            destination_archive.writestr(name, payload)
+            entries.append((regular_zip_info(name), payload))
+        for name in extra_directories:
+            entries.append((directory_zip_info(name), b""))
+        if rebuild_record:
+            if any(info.filename == record_name for info, _ in entries):
+                fail("rebuilt wheel RECORD name collides with a mutation")
+            record_info = next(
+                copy(info)
+                for info in source_archive.infolist()
+                if info.filename == record_name
+            )
+            record_info.create_system = 3
+            record_info.external_attr = (stat.S_IFREG | 0o644) << 16
+            entries.append(
+                (record_info, build_record_payload(entries, record_name))
+            )
+        for info, payload in entries:
+            destination_archive.writestr(info, payload)
 
 
 def expect_audit_failure(label: str, action: Any, fragment: str) -> None:
@@ -924,6 +1075,34 @@ def expect_audit_failure(label: str, action: Any, fragment: str) -> None:
             fail(f"{label} failed for the wrong reason: {detail}")
         return
     fail(f"{label} unexpectedly passed")
+
+
+def expect_repaired_wheel_failure(
+    label: str,
+    wheel: Path,
+    action: Any,
+    fragment: str,
+) -> None:
+    record_audit(wheel)
+    expect_audit_failure(label, action, fragment)
+
+
+def set_zip_mode(mode: int) -> Callable[[zipfile.ZipInfo], None]:
+    def mutate(info: zipfile.ZipInfo) -> None:
+        info.external_attr = mode << 16
+
+    return mutate
+
+
+def materialize_resource_tree(
+    root: Path,
+    expected: dict[str, tuple[str, bytes]],
+) -> None:
+    root.mkdir(parents=True, exist_ok=True)
+    for path, (_, payload) in expected.items():
+        destination = root / path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(payload)
 
 
 def resource_negative_controls(
@@ -939,6 +1118,216 @@ def resource_negative_controls(
         external_names = [
             name for name in archive.namelist() if name.startswith(external_prefix)
         ]
+    wheel_resource_audit(wheel, package_expected, external_expected, manifest_expected)
+    mit_member = external_prefix + "licenses/MIT.txt"
+
+    special_types = (
+        ("symlink", stat.S_IFLNK | 0o777),
+        ("fifo", stat.S_IFIFO | 0o644),
+        ("socket", stat.S_IFSOCK | 0o644),
+        ("character device", stat.S_IFCHR | 0o600),
+        ("block device", stat.S_IFBLK | 0o600),
+        ("ambiguous mode-less", 0),
+    )
+    for type_name, mode in special_types:
+        special = temporary / f"special-{type_name.replace(' ', '-')}.whl"
+        rewrite_wheel(
+            wheel,
+            special,
+            mutate={mit_member: set_zip_mode(mode)},
+        )
+        expect_repaired_wheel_failure(
+            f"{type_name} member control",
+            special,
+            lambda special=special: wheel_resource_audit(
+                special, package_expected, external_expected, manifest_expected
+            ),
+            "wheel member has an unsupported or unknown type",
+        )
+
+    regular_with_directory_spelling = temporary / "regular-directory-spelling.whl"
+    rewrite_wheel(
+        wheel,
+        regular_with_directory_spelling,
+        rename={mit_member: mit_member + "/"},
+        rebuild_record=True,
+    )
+    expect_repaired_wheel_failure(
+        "regular type with directory spelling control",
+        regular_with_directory_spelling,
+        lambda: wheel_resource_audit(
+            regular_with_directory_spelling,
+            package_expected,
+            external_expected,
+            manifest_expected,
+        ),
+        "wheel regular member has a directory spelling",
+    )
+
+    directory_with_regular_spelling = temporary / "directory-regular-spelling.whl"
+    rewrite_wheel(
+        wheel,
+        directory_with_regular_spelling,
+        replace={mit_member: b""},
+        mutate={mit_member: set_zip_mode(stat.S_IFDIR | 0o755)},
+        rebuild_record=True,
+    )
+    expect_repaired_wheel_failure(
+        "directory type with regular spelling control",
+        directory_with_regular_spelling,
+        lambda: wheel_resource_audit(
+            directory_with_regular_spelling,
+            package_expected,
+            external_expected,
+            manifest_expected,
+        ),
+        "wheel directory member has a noncanonical spelling",
+    )
+
+    nonempty_directory = temporary / "nonempty-directory.whl"
+    rewrite_wheel(
+        wheel,
+        nonempty_directory,
+        rename={mit_member: mit_member + "/"},
+        mutate={mit_member: set_zip_mode(stat.S_IFDIR | 0o755)},
+        rebuild_record=True,
+    )
+    expect_repaired_wheel_failure(
+        "nonempty directory member control",
+        nonempty_directory,
+        lambda: wheel_resource_audit(
+            nonempty_directory, package_expected, external_expected, manifest_expected
+        ),
+        "wheel directory member is nonempty",
+    )
+
+    expected_directories = sorted(expected_resource_directories(package_expected))
+    explicit_directories = tuple(
+        [package_prefix + path + "/" for path in expected_directories]
+        + [external_prefix + path + "/" for path in expected_directories]
+    )
+    explicit_directory_wheel = temporary / "explicit-expected-directories.whl"
+    rewrite_wheel(
+        wheel,
+        explicit_directory_wheel,
+        extra_directories=explicit_directories,
+        rebuild_record=True,
+    )
+    record_audit(explicit_directory_wheel)
+    wheel_resource_audit(
+        explicit_directory_wheel,
+        package_expected,
+        external_expected,
+        manifest_expected,
+    )
+
+    fourth_directory = temporary / "external-fourth-directory.whl"
+    rewrite_wheel(
+        wheel,
+        fourth_directory,
+        extra_directories=(external_prefix + "fourth/",),
+        rebuild_record=True,
+    )
+    expect_repaired_wheel_failure(
+        "external fourth directory control",
+        fourth_directory,
+        lambda: wheel_resource_audit(
+            fourth_directory, package_expected, external_expected, manifest_expected
+        ),
+        "external production resource directories differ",
+    )
+
+    nested_external_directory = temporary / "nested-external-directory.whl"
+    rewrite_wheel(
+        wheel,
+        nested_external_directory,
+        extra_directories=(external_prefix + "contracts/unmanifested/",),
+        rebuild_record=True,
+    )
+    expect_repaired_wheel_failure(
+        "nested external directory control",
+        nested_external_directory,
+        lambda: wheel_resource_audit(
+            nested_external_directory,
+            package_expected,
+            external_expected,
+            manifest_expected,
+        ),
+        "external production resource directories differ",
+    )
+
+    package_empty_directory = temporary / "package-empty-directory.whl"
+    rewrite_wheel(
+        wheel,
+        package_empty_directory,
+        extra_directories=(package_prefix + "licenses/unmanifested/",),
+        rebuild_record=True,
+    )
+    expect_repaired_wheel_failure(
+        "package empty directory control",
+        package_empty_directory,
+        lambda: wheel_resource_audit(
+            package_empty_directory,
+            package_expected,
+            external_expected,
+            manifest_expected,
+        ),
+        "package production resource directories differ",
+    )
+
+    alternate_external_root = temporary / "alternate-empty-external-root.whl"
+    rewrite_wheel(
+        wheel,
+        alternate_external_root,
+        extra_directories=("alternate.data/data/share/kilix-content/",),
+        rebuild_record=True,
+    )
+    expect_repaired_wheel_failure(
+        "empty alternate external root control",
+        alternate_external_root,
+        lambda: wheel_resource_audit(
+            alternate_external_root,
+            package_expected,
+            external_expected,
+            manifest_expected,
+        ),
+        "external production resource roots are not exactly one",
+    )
+
+    installed_external = temporary / "installed-external"
+    materialize_resource_tree(installed_external, external_expected)
+    installed_external.joinpath("fourth").mkdir()
+    external_files, external_directories = filesystem_resource_mapping(
+        installed_external, package_subtrees=False
+    )
+    expect_audit_failure(
+        "installed external fourth directory control",
+        lambda: audit_resource_tree(
+            "installed external",
+            external_files,
+            external_directories,
+            external_expected,
+        ),
+        "installed external production resource directories differ",
+    )
+
+    installed_package = temporary / "installed-package"
+    materialize_resource_tree(installed_package, package_expected)
+    installed_package.joinpath("licenses", "unmanifested").mkdir()
+    package_files, package_directories = filesystem_resource_mapping(
+        installed_package, package_subtrees=True
+    )
+    expect_audit_failure(
+        "installed package empty directory control",
+        lambda: audit_resource_tree(
+            "installed package",
+            package_files,
+            package_directories,
+            package_expected,
+        ),
+        "installed package production resource directories differ",
+    )
+
     missing_external = temporary / "missing-external-mit.whl"
     rewrite_wheel(
         wheel,

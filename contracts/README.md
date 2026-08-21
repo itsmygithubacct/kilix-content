@@ -129,12 +129,19 @@ cd "$review_export"
 first exact sdist, runs the full locked test suite from that sdist, rebuilds its
 wheel, installs the wheel with `uv pip --no-index` into a disposable venv, and
 probes it from a controlled external cwd/import path. It audits archive CRCs,
-special files, duplicate normalized members, modes, wheel RECORD digest/size
-rows, exact package and external production-resource roots across
+the complete upper ZIP mode word and Unix creator/type, canonical
+regular-file/directory names with empty directory payloads, special files,
+duplicate normalized members, modes, wheel RECORD digest/size rows, exact
+package and external production-resource roots across
 source/sdist/direct-wheel/sdist-wheel/installed-wheel, and forbidden test
-authority. The same audit has causal controls for absent or duplicate external
-roots, missing `MIT.txt`, extra or renamed resources, package-root fallback,
-and path/size/digest mismatches. It invokes
+authority. The shared resource audit compares both the exact file map and the
+mechanically derived semantic directory set (`catalog`, `catalog/u1`,
+`contracts`, `contracts/u1`, `licenses`); archive checks include explicit
+directory entries and empty alternate external roots. The same audit has
+causal controls for absent or duplicate external roots, missing `MIT.txt`,
+extra or renamed resources, package-root fallback, path/size/digest
+mismatches, every disallowed ZIP type, name/type/payload mismatch, and
+unexpected installed directories. It invokes
 `python -m build --no-isolation`, so the synchronized uv environment—not an
 unbounded backend resolver—owns every build tool. Its source and exact-sdist
 bootstrap directories each contain a newly created `empty-uv-cache`; dependency
