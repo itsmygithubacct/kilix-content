@@ -64,6 +64,27 @@ uv run --locked --no-sync python tests/update_u1_hashes.py --check
 uv run --locked --no-sync python -m unittest tests.test_u1_contracts -v
 ```
 
+## Reproducible U1 build toolchain
+
+The build backend and wheel tooling are pinned in both `build-system` and the
+`build` dependency group: setuptools 77.0.3, wheel 0.45.1, and the build
+frontend 1.3.0. Synchronize that exact environment before building; no isolated
+backend resolution is permitted for the reproducibility check:
+
+```sh
+uv sync --locked --offline --group build --group test --no-install-project
+uv run --locked --offline --no-sync --group build \
+  python tests/check_reproducible_build.py
+```
+
+`tests/check_reproducible_build.py` owns the release epoch
+`SOURCE_DATE_EPOCH=1776729600`, runs two direct source builds, extracts the
+first exact sdist, rebuilds its wheel, and compares all required SHA-256
+identities. It invokes `python -m build --no-isolation`, so the synchronized
+uv environment—not an unbounded backend resolver—owns every build tool. The
+script also rejects unsafe sdist members before extraction and prints the
+direct sdist, direct wheel, and sdist-derived wheel digests.
+
 Frozen schema SHA-256 values:
 
 - `kilix.content.asset/v1`: `89d4865d11d6a537328965a8a903ac07d7dcf0ea14e1b360888f22af7ba5a1a8`
