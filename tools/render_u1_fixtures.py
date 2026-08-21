@@ -27,6 +27,7 @@ from kilix_content.u1_core import (
     S64_MAX,
     U64_MAX,
 )
+from kilix_content.u1_capacity import OWNER_PHASES, ROOT_ROLES
 from tests.u1_vectors import (
     authority_binding,
     authorization,
@@ -312,6 +313,29 @@ def build_vectors() -> list[dict[str, Any]]:
             disposition={
                 "operation": "validate_retention_admission",
                 "paired_positive_id": value["paired_positive_id"],
+                "source_only": True,
+            },
+        )
+
+    def add_causal_oracle(
+        identifier: str,
+        value: dict[str, Any],
+        expected: str,
+        paired_positive_id: str,
+    ) -> None:
+        add_value(
+            identifier,
+            "operation",
+            "test-only.u1-causal-oracle/v1",
+            {
+                "schema": "test-only.u1-causal-oracle/v1",
+                **value,
+            },
+            "operation",
+            expected,
+            disposition={
+                "operation": "causal_oracle",
+                "paired_positive_id": paired_positive_id,
                 "source_only": True,
             },
         )
@@ -711,6 +735,126 @@ def build_vectors() -> list[dict[str, Any]]:
                 },
                 "refused" if closed else "accepted",
             )
+
+    # M01: the declared retention-record scan budget is exercised by a causal
+    # operation recipe.  The recipe carries only a delta; the test derives the
+    # frozen budget from the production capacity policy and calls the real
+    # retention-admission oracle.  The extra open-over-budget case proves the
+    # fail-closed bit is not merely a label.
+    scan_positive = "boundary-retention-scan-budget-exact"
+    for suffix, delta, expected in (
+        ("minus-one", -1, "accepted"),
+        ("exact", 0, "accepted"),
+        ("plus-one-closed", 1, "accepted"),
+        (
+            "plus-one-open",
+            1,
+            error_code("retention admission result is not the recomputed fail-closed state"),
+        ),
+    ):
+        add_causal_oracle(
+            f"boundary-retention-scan-budget-{suffix}",
+            {
+                "operation": "retention_scan",
+                "case": suffix,
+                "bound": "scan_bounds.retention_records_max",
+                "delta": delta,
+            },
+            expected,
+            scan_positive,
+        )
+
+    # The policy has several independent scan dimensions.  The graph, depth,
+    # and encoded-byte dimensions deliberately reuse the already-rendered
+    # causal triples below/above; these remaining dimensions get their own
+    # operation triplets so no field is hidden behind a coupled label.
+    for field in (
+        "roots_max",
+        "filesystems_max",
+        "reservations_max",
+        "relations_max",
+        "objects_max",
+        "journals_max",
+        "directory_children_max",
+    ):
+        positive = f"boundary-scan-{field}-exact"
+        for suffix, delta, expected in (
+            ("minus-one", -1, "accepted"),
+            ("exact", 0, "accepted"),
+            (
+                "plus-one",
+                1,
+                error_code("array field is outside the frozen bound"),
+            ),
+        ):
+            add_causal_oracle(
+                f"boundary-scan-{field}-{suffix}",
+                {
+                    "operation": "scan_bound",
+                    "field": field,
+                    "delta": delta,
+                },
+                expected,
+                positive,
+            )
+
+    # M02: every frozen owner/phase pair gets a five-root join recipe.  The
+    # transaction owner is intentionally retained as a policy-only recipe:
+    # capacity-generation/v2 cannot structurally represent that owner, so the
+    # test invokes validate_capacity_policy and independently checks the exact
+    # five selector join.  Capacity and retention-capacity pairs additionally
+    # pass through the production generation/policy join helper.
+    for owner, phase in OWNER_PHASES:
+        identifier = f"join-owner-phase-{owner}-{phase}".lower()
+        add_causal_oracle(
+            identifier,
+            {
+                "operation": "owner_phase_join",
+                "case": "positive",
+                "owner": owner,
+                "phase": phase,
+                "root_selectors": len(ROOT_ROLES),
+            },
+            "accepted",
+            identifier,
+        )
+    join_mutation_cases = (
+        ("missing-root", "U1_ARRAY_FIELD_IS_OUTSIDE_THE_FROZEN_BOUND"),
+        (
+            "duplicate-root",
+            error_code("capacity phase maximum selector is unknown or duplicated"),
+        ),
+        (
+            "alias-root",
+            error_code("capacity phase maximum selector is unknown or duplicated"),
+        ),
+        (
+            "wrong-phase",
+            error_code("capacity phase maximum selector is unknown or duplicated"),
+        ),
+        (
+            "cross-owner",
+            error_code("capacity phase maximum selector is unknown or duplicated"),
+        ),
+        (
+            "root-set",
+            error_code("capacity generation root role is unknown or duplicated"),
+        ),
+    )
+    for case, expected in join_mutation_cases:
+        add_causal_oracle(
+            f"join-owner-phase-{case}",
+            {
+                "operation": "owner_phase_join",
+                "case": case,
+                "owner": "capacity",
+                "phase": "RESERVED",
+                "root_selectors": len(ROOT_ROLES),
+            },
+            expected,
+            "join-owner-phase-capacity-reserved",
+        )
+
     value = capacity_policy()
     value["scan_bounds"]["graph_nodes_max"] = 0
     add_schema_mutation(
@@ -986,6 +1130,128 @@ def build_vectors() -> list[dict[str, Any]]:
         value,
         vector_class="cycle",
     )
+
+    # M03: causal cycle families whose hostile references are either rejected
+    # by a pure chain/provenance validator or cannot be represented by a
+    # production schema and therefore use a source-only recipe.
+    cycle_cases = (
+        (
+            "cycle-transaction-predecessor-two-node",
+            "transaction-predecessor-cycle",
+            error_code("transaction predecessor does not bind exact prior bytes"),
+            "cycle-transaction-predecessor-positive",
+        ),
+        (
+            "cycle-transaction-replay-two-node",
+            "transaction-replay-cycle",
+            error_code("transaction generation skips or replays a generation"),
+            "cycle-transaction-replay-positive",
+        ),
+        (
+            "cycle-capacity-self-digest",
+            "capacity-self-digest",
+            error_code("capacity generation predecessor does not bind exact prior bytes"),
+            "cycle-capacity-self-digest-positive",
+        ),
+        (
+            "cycle-capacity-future-digest",
+            "capacity-future-digest",
+            error_code("capacity generation predecessor does not bind exact prior bytes"),
+            "cycle-capacity-future-digest-positive",
+        ),
+        (
+            "cycle-retention-envelope-component",
+            "retention-envelope-component-cycle",
+            error_code("retention envelope diverges from its intent"),
+            "cycle-retention-envelope-component-positive",
+        ),
+        (
+            "cycle-cross-journal-envelope",
+            "cross-journal-envelope-cycle",
+            error_code("physical identity aliases across filesystem unions"),
+            "cycle-cross-journal-envelope-positive",
+        ),
+    )
+    for identifier, case, expected, positive_id in cycle_cases:
+        add_causal_oracle(
+            identifier,
+            {"operation": "provenance_cycle", "case": case},
+            expected,
+            positive_id,
+        )
+        add_causal_oracle(
+            positive_id,
+            {"operation": "provenance_cycle", "case": f"{case}-positive"},
+            "accepted",
+            positive_id,
+        )
+
+    # M04: atomic field-edge recipes.  Each row names one semantic edge from
+    # the R3-5 sentence; the test constructs the matching production record,
+    # mutates only that edge, and invokes its real pure validator.
+    edge_positives = {
+        "install": "edge-install-positive",
+        "filesystem": "edge-filesystem-key-positive",
+        "capacity": "edge-capacity-positive",
+        "intent": "edge-intent-positive",
+        "provenance": "edge-provenance-positive",
+        "admission": "edge-admission-positive",
+    }
+    for group, identifier in edge_positives.items():
+        add_causal_oracle(
+            identifier,
+            {"operation": "named_edge", "case": "positive", "group": group},
+            "accepted",
+            identifier,
+        )
+    edge_cases = (
+        ("install-source-url", "install", SCHEMA_FAILURE),
+        ("install-source-kind", "install", SCHEMA_FAILURE),
+        ("install-git-commit", "install", SCHEMA_FAILURE),
+        ("install-license-decision", "install", SCHEMA_FAILURE),
+        ("filesystem-boot-id", "filesystem", error_code("filesystem identity is zero")),
+        ("filesystem-magic", "filesystem", error_code("integer field is outside the unsigned-64 bound")),
+        ("filesystem-type", "filesystem", error_code("text field is outside the frozen grammar")),
+        ("filesystem-device-major", "filesystem", error_code("integer field is outside the unsigned-32 bound")),
+        ("filesystem-device-minor", "filesystem", error_code("integer field is outside the unsigned-32 bound")),
+        ("filesystem-fsid-word-0", "filesystem", error_code("integer field is outside the unsigned-64 bound")),
+        ("filesystem-fsid-word-1", "filesystem", error_code("integer field is outside the unsigned-64 bound")),
+        ("capacity-phase", "capacity", error_code("capacity generation owner and phase are inconsistent")),
+        ("capacity-generation", "capacity", error_code("integer field is outside the signed-64 bound")),
+        ("capacity-predecessor", "capacity", error_code("text field is outside the frozen bound")),
+        ("intent-nonce", "intent", SCHEMA_FAILURE),
+        ("intent-object-descriptor", "intent", SCHEMA_FAILURE),
+        ("intent-component-descriptor", "intent", error_code("retention component envelope does not match components")),
+        ("marker-predecessor", "provenance", error_code("text field is outside the frozen bound")),
+        ("marker-digest", "provenance", error_code("retention marker semantic payload digest is inconsistent")),
+        ("marker-semantic-core", "provenance", error_code("retention marker semantic payload digest is inconsistent")),
+        ("relation-predecessor", "provenance", error_code("text field is outside the frozen bound")),
+        ("relation-digest", "provenance", error_code("retention relation semantic payload digest is inconsistent")),
+        ("relation-semantic-core", "provenance", error_code("retention relation identity diverges from its authority")),
+        ("accounted-predecessor", "provenance", error_code("P durable generation provenance is inconsistent")),
+        ("accounted-digest", "provenance", error_code("P logical-state digest is inconsistent")),
+        ("accounted-semantic-core", "provenance", error_code("P final path diverges from its intent component")),
+        ("handoff-predecessor", "provenance", error_code("H transaction ACCOUNTED provenance is inconsistent")),
+        ("handoff-digest", "provenance", error_code("H physical-state digest is inconsistent")),
+        ("handoff-semantic-core", "provenance", error_code("H names diverge from the original intent component")),
+        ("journal-predecessor", "provenance", error_code("transaction predecessor does not bind exact prior bytes")),
+        ("journal-digest", "provenance", error_code("transaction predecessor does not bind exact prior bytes")),
+        ("journal-semantic-core", "provenance", error_code("transaction phase skips or regresses")),
+        ("logical-set", "admission", error_code("O referenced is not the projection of R counted")),
+        ("logical-count", "admission", error_code("retained unique object cardinality is inconsistent")),
+        ("logical-admission", "admission", error_code("retention admission closure and reasons diverge")),
+        ("physical-set", "admission", error_code("physical component identity is duplicated")),
+        ("physical-count", "admission", error_code("physical filesystem union totals are inconsistent")),
+        ("physical-charge", "admission", error_code("physical filesystem union totals are inconsistent")),
+    )
+    for field, group, expected in edge_cases:
+        add_causal_oracle(
+            f"mutation-edge-{field}",
+            {"operation": "named_edge", "case": field, "group": group},
+            expected,
+            edge_positives[group],
+        )
+
     value = logical_state()
     value["retained_unique_objects"] = -1
     add_schema_mutation(

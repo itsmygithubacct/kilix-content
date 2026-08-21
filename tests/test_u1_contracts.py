@@ -25,7 +25,6 @@ from kilix_content import (
     U1_MANIFEST_SHA256,
     canonical_json_bytes,
     filesystem_key_bytes,
-    filesystem_key_digest,
     packaged_release_capability,
     packaged_resource_bytes,
     parse_json_bytes,
@@ -35,8 +34,11 @@ from kilix_content import (
 )
 from kilix_content.u1_capacity import (
     CAPACITY_PHASES,
+    ROOT_ROLES,
     _validate_capacity_generation_against_policy,
+    validate_capacity_generation,
     validate_capacity_generation_chain,
+    validate_capacity_policy,
 )
 import kilix_content.u1_catalog as u1_catalog_module
 from kilix_content.u1_catalog import (
@@ -51,10 +53,15 @@ from kilix_content.u1_core import (
     MAX_JSON_TOKENS,
     S64_MAX,
     authorization_record_digest,
+    capacity_generation_digest,
     canonical_digest,
     checked_add,
     checked_mul,
     checked_round_up,
+    filesystem_key_digest,
+    retention_envelope_digest,
+    retention_physical_envelope_digest,
+    transaction_generation_digest,
 )
 from kilix_content.u1_retention import (
     validate_accounted_provenance,
@@ -64,6 +71,9 @@ from kilix_content.u1_retention import (
     validate_marker_against_intent,
     validate_relation_against_marker,
     validate_retention_admission,
+    validate_retention_physical_state,
+    validate_retention_marker,
+    validate_retention_relation,
     validate_transaction_generation_chain,
 )
 from tests.u1_vectors import (
@@ -81,11 +91,13 @@ from tests.u1_vectors import (
     output_binding,
     physical_state,
     retention_envelope,
+    retention_intent,
     retention_provenance_bundle,
     sandbox_profile,
     sha,
     system_profile,
     toolchain_profile,
+    transaction_generation,
 )
 from tools.render_u1_fixtures import REQUIRED_VECTOR_IDS, build_vectors
 
@@ -95,8 +107,8 @@ CONTRACTS = ROOT / "contracts"
 PACKAGE = ROOT / "src" / "kilix_content"
 FIXTURES = ROOT / "tests" / "fixtures" / "u1"
 LEDGER = FIXTURES / "requirements-ledger.json"
-LEDGER_SHA256 = "7ca39301c25eca66a5f31f12a3054837257cede6dd336b8d124f5e94dc7b78bf"
-EXPECTED_CORPUS_COUNT = 260
+LEDGER_SHA256 = "d24593e0743ec9804f15290d0bedc74d378295e9830c31d36eba757cb8cd2963"
+EXPECTED_CORPUS_COUNT = 369
 
 
 def load_json(path: Path) -> object:
@@ -502,7 +514,496 @@ class U1ResourceAndCorpusTests(unittest.TestCase):
                 if operation == "admission_authority":
                     self._assert_admission_authority_operation(value, expected)
                     continue
+                if operation == "causal_oracle":
+                    self._assert_causal_oracle_operation(value, expected)
+                    continue
                 self.fail(f"unknown source-only operation {operation!r}")
+
+    def _assert_causal_oracle_operation(
+        self, record: dict[str, object], expected: str
+    ) -> None:
+        operation = record["operation"]
+        if operation == "retention_scan":
+            bound = capacity_policy()["scan_bounds"]["retention_records_max"]
+            count = bound + int(record["delta"])
+            logical = logical_state()
+            physical = physical_state()
+            exhausted = count > bound
+            closed = record["case"] != "plus-one-open" and exhausted
+            physical["scan_complete"] = not exhausted
+            physical["scan_bound_exhausted"] = exhausted
+            physical["incomplete_representations"] = (
+                [sha("scan-incomplete")] if exhausted else []
+            )
+            logical["retention_admission_closed"] = closed
+            logical["admission_closed_reasons"] = (
+                ["incomplete-representation", "scan-bound-exhausted"]
+                if closed
+                else []
+            )
+            try:
+                validate_retention_admission(
+                    logical,
+                    physical,
+                    {
+                        "retained_unique_objects_max": 8,
+                        "retained_allocated_bytes_max": 65536,
+                        "retained_inodes_max": 128,
+                        "retained_versions_per_stable_slot_max": 4,
+                        "ambiguous_retained_objects_max": 2,
+                    },
+                )
+            except U1ContractError as caught:
+                self.assertEqual(caught.code, expected)
+            else:
+                self.assertEqual(expected, "accepted")
+                if exhausted:
+                    self.assertTrue(logical["retention_admission_closed"])
+            return
+
+        if operation == "scan_bound":
+            field = str(record["field"])
+            bound = capacity_policy()["scan_bounds"][field]
+            count = bound + int(record["delta"])
+            values = [None] * count
+            try:
+                u1_core_module.require_array(values, maximum=bound)
+            except U1ContractError as caught:
+                self.assertEqual(caught.code, expected)
+            else:
+                self.assertEqual(expected, "accepted")
+            return
+
+        if operation == "owner_phase_join":
+            policy = capacity_policy()
+            owner = str(record["owner"])
+            phase = str(record["phase"])
+            case = str(record["case"])
+            if case == "positive":
+                selectors = [
+                    (item["owner_kind"], item["phase"], item["root_role"])
+                    for item in policy["phase_maxima"]
+                    if item["owner_kind"] == owner and item["phase"] == phase
+                ]
+                validate_capacity_policy(policy)
+                self.assertEqual(len(selectors), len(ROOT_ROLES))
+                self.assertEqual(
+                    set(selectors), {(owner, phase, role) for role in ROOT_ROLES}
+                )
+                if owner in {"capacity", "retention-capacity"}:
+                    generation = capacity_generation(
+                        phase,
+                        generation=0 if (owner, phase) == ("capacity", "RESERVED") else 1,
+                    )
+                    _validate_capacity_generation_against_policy(generation, policy)
+                self.assertEqual(expected, "accepted")
+                return
+
+            generation = capacity_generation("RESERVED")
+            matching = [
+                item
+                for item in policy["phase_maxima"]
+                if item["owner_kind"] == "capacity"
+                and item["phase"] == "RESERVED"
+            ]
+            self.assertEqual(len(matching), len(ROOT_ROLES))
+            if case == "missing-root":
+                policy["phase_maxima"].remove(matching[0])
+            elif case == "duplicate-root":
+                policy["phase_maxima"].remove(matching[0])
+                policy["phase_maxima"].append(clone(matching[1]))
+            elif case == "alias-root":
+                matching[0]["root_role"] = "installed-data-alias"
+            elif case == "wrong-phase":
+                matching[0]["phase"] = "SUBMITTER_ARMING"
+            elif case == "cross-owner":
+                matching[0]["owner_kind"] = "transaction"
+            elif case == "root-set":
+                generation["root_identities"][0]["role"] = generation[
+                    "root_identities"
+                ][1]["role"]
+            else:
+                self.fail(f"unknown owner/phase join case {case!r}")
+            try:
+                _validate_capacity_generation_against_policy(generation, policy)
+            except U1ContractError as caught:
+                self.assertEqual(caught.code, expected)
+            else:
+                self.fail("owner/phase mutation was accepted")
+            return
+
+        if operation == "provenance_cycle":
+            case = str(record["case"])
+            if case.startswith("transaction-"):
+                first = transaction_generation("RETENTION_PREPARED", generation=1)
+                second = transaction_generation(
+                    "RETENTION_MARKER_DURABLE",
+                    generation=2,
+                    predecessor=transaction_generation_digest(first),
+                )
+                if case == "transaction-predecessor-cycle":
+                    second["predecessor_sha256"] = transaction_generation_digest(second)
+                elif case == "transaction-replay-cycle":
+                    second["generation"] = first["generation"]
+                else:
+                    self.assertIn(
+                        case,
+                        {
+                            "transaction-predecessor-cycle-positive",
+                            "transaction-replay-cycle-positive",
+                        },
+                    )
+                try:
+                    validate_transaction_generation_chain([first, second])
+                except U1ContractError as caught:
+                    self.assertEqual(caught.code, expected)
+                else:
+                    self.assertEqual(expected, "accepted")
+                return
+            if case.startswith("capacity-"):
+                first = capacity_generation("RESERVED", generation=0)
+                second = capacity_generation(
+                    "SUBMITTER_ARMING",
+                    generation=1,
+                    predecessor=capacity_generation_digest(first),
+                )
+                if case == "capacity-self-digest":
+                    second["predecessor_sha256"] = capacity_generation_digest(second)
+                elif case == "capacity-future-digest":
+                    second["predecessor_sha256"] = sha("future-generation")
+                else:
+                    self.assertIn(case, {"capacity-self-digest-positive", "capacity-future-digest-positive"})
+                try:
+                    validate_capacity_generation_chain([first, second])
+                except U1ContractError as caught:
+                    self.assertEqual(caught.code, expected)
+                else:
+                    self.assertEqual(expected, "accepted")
+                return
+            if case.startswith("retention-envelope-component"):
+                intent = retention_intent()
+                envelope = retention_envelope()
+                if case == "retention-envelope-component-cycle":
+                    envelope["entries"][0]["component_sha256"] = sha("envelope-cycle")
+                    envelope["envelope_sha256"] = retention_envelope_digest(envelope)
+                try:
+                    validate_intent_envelope(intent, envelope)
+                except U1ContractError as caught:
+                    self.assertEqual(caught.code, expected)
+                else:
+                    self.assertEqual(expected, "accepted")
+                return
+            if case.startswith("cross-journal-envelope"):
+                state = self._two_envelope_journal_state(
+                    conflict=case == "cross-journal-envelope-cycle"
+                )
+                try:
+                    validate_retention_physical_state(state)
+                except U1ContractError as caught:
+                    self.assertEqual(caught.code, expected)
+                else:
+                    self.assertEqual(expected, "accepted")
+                return
+            self.fail(f"unknown provenance cycle case {case!r}")
+
+        if operation == "named_edge":
+            self._assert_named_edge(
+                str(record["case"]), str(record.get("group", "")), expected
+            )
+            return
+
+        self.fail(f"unknown causal operation {operation!r}")
+
+    def _two_envelope_journal_state(self, *, conflict: bool) -> dict[str, object]:
+        first = physical_state(component_specs=[("journal", "prospective", None)])
+        second_descriptor = {
+            "root_identity": sha("journal-root-two"),
+            "mount_identity": sha("journal-mount-two"),
+            "descriptor_identity_sha256": sha("journal-descriptor-two"),
+            "object_type": "regular",
+            "bytes": 100,
+            "inodes": 1,
+        }
+        second = physical_state(
+            component_specs=[("journal", "prospective", second_descriptor)]
+        )
+        second_union = clone(second["filesystem_unions"][0])
+        second_union["filesystem_key"] = sha("filesystem-key-two")
+        if conflict:
+            second_union["components"][0]["identity"] = clone(
+                first["filesystem_unions"][0]["components"][0]["identity"]
+            )
+        second_union["envelope_sha256"] = retention_physical_envelope_digest(
+            second_union
+        )
+        result = clone(first)
+        result["filesystem_unions"].append(second_union)
+        result["filesystem_unions"] = sorted(
+            result["filesystem_unions"], key=canonical_json_bytes
+        )
+        return result
+
+    def _assert_named_edge(self, case: str, group: str, expected: str) -> None:
+        if case == "positive":
+            if group == "install":
+                self._expect_route_refusal(
+                    "kilix.content.install-record/v5",
+                    install_record("archive", output_manifest=True),
+                    "accepted",
+                )
+            elif group == "filesystem":
+                self.assertEqual(
+                    filesystem_key_digest(
+                        {
+                            "boot_id": "11" * 16,
+                            "filesystem_magic": 0xEF53,
+                            "filesystem_type_utf8": "ext4",
+                            "st_dev_major": 8,
+                            "st_dev_minor": 1,
+                            "statfs_fsid_word_0": 1,
+                            "statfs_fsid_word_1": 2,
+                        }
+                    ),
+                    "e5976409027856ff05f8e4944d81bd04b659c247933fc225999384018928220e",
+                )
+            elif group == "capacity":
+                _validate_capacity_generation_against_policy(
+                    capacity_generation(), capacity_policy()
+                )
+            elif group == "intent":
+                validate_intent_envelope(retention_intent(), retention_envelope())
+            elif group == "provenance":
+                bundle = retention_provenance_bundle()
+                validate_marker_against_intent(
+                    bundle["marker"], bundle["intent"], bundle["intent_capacity"], bundle["prepared_generation"]
+                )
+                validate_relation_against_marker(
+                    bundle["relation"], bundle["marker"], bundle["marker_generation"], bundle["intent"]
+                )
+                validate_accounted_provenance(
+                    bundle["accounted"], bundle["marker"], bundle["relation"], bundle["ready_generation"], bundle["intent_capacity"]
+                )
+                validate_handoff_provenance(
+                    bundle["handoff"], bundle["accounted"], bundle["accounted_generation"], bundle["capacity_accounted"], bundle["capacity_releasing"]
+                )
+            elif group == "admission":
+                validate_retention_admission(
+                    logical_state(),
+                    physical_state(),
+                    {
+                        "retained_unique_objects_max": 8,
+                        "retained_allocated_bytes_max": 65536,
+                        "retained_inodes_max": 128,
+                        "retained_versions_per_stable_slot_max": 4,
+                        "ambiguous_retained_objects_max": 2,
+                    },
+                )
+            else:
+                self.fail(f"unknown named-edge positive group {group!r}")
+            self.assertEqual(expected, "accepted")
+            return
+        if case.startswith("install-"):
+            value = install_record("git" if case == "install-git-commit" else "archive", output_manifest=True)
+            if case == "install-source-url":
+                value["source"]["urls"] = ["http://example.invalid/source"]
+            elif case == "install-source-kind":
+                value["source"]["kind"] = "unknown"
+            elif case == "install-git-commit":
+                value["source"]["commit"] = 1
+            elif case == "install-license-decision":
+                value["licenses"][0]["decision"] = "unknown"
+            self._expect_route_refusal(
+                "kilix.content.install-record/v5", value, expected
+            )
+            return
+        if case.startswith("filesystem-"):
+            value = {
+                "boot_id": "11" * 16,
+                "filesystem_magic": 0xEF53,
+                "filesystem_type_utf8": "ext4",
+                "st_dev_major": 8,
+                "st_dev_minor": 1,
+                "statfs_fsid_word_0": 1,
+                "statfs_fsid_word_1": 2,
+            }
+            if case == "filesystem-boot-id":
+                value["boot_id"] = "0" * 32
+            elif case == "filesystem-magic":
+                value["filesystem_magic"] = 0
+            elif case == "filesystem-type":
+                value["filesystem_type_utf8"] = "EXT4"
+            elif case == "filesystem-device-major":
+                value["st_dev_major"] = -1
+            elif case == "filesystem-device-minor":
+                value["st_dev_minor"] = -1
+            elif case == "filesystem-fsid-word-0":
+                value["statfs_fsid_word_0"] = -1
+            elif case == "filesystem-fsid-word-1":
+                value["statfs_fsid_word_1"] = -1
+            else:
+                self.fail(case)
+            with self.assertRaises(U1ContractError) as caught:
+                filesystem_key_digest(value)
+            self.assertEqual(caught.exception.code, expected)
+            return
+        if case.startswith("capacity-"):
+            value = capacity_generation("RESERVED")
+            if case == "capacity-phase":
+                value["phase"] = "FUTURE"
+            elif case == "capacity-generation":
+                value["generation"] = S64_MAX + 1
+            elif case == "capacity-predecessor":
+                value["predecessor_sha256"] = 1
+            else:
+                self.fail(case)
+            with self.assertRaises(U1ContractError) as caught:
+                validate_capacity_generation(value)
+            self.assertEqual(caught.exception.code, expected)
+            return
+        if case.startswith("intent-"):
+            value = retention_intent()
+            if case == "intent-nonce":
+                value["creation_nonce"] = 1
+            elif case == "intent-object-descriptor":
+                value["object_identity"]["install_authority_sha256"] = 1
+            elif case == "intent-component-descriptor":
+                value["components"][0]["uid"] = 1
+            else:
+                self.fail(case)
+            self._expect_route_refusal(
+                "kilix.content.retention-intent/v1", value, expected
+            )
+            return
+        if case.startswith(("marker-", "relation-", "accounted-", "handoff-", "journal-")):
+            self._assert_provenance_edge(case, expected)
+            return
+        if case.startswith(("logical-", "physical-")):
+            self._assert_state_edge(case, expected)
+            return
+        self.fail(f"unknown named edge {case!r}")
+
+    def _expect_route_refusal(self, schema_id: str, value: object, expected: str) -> None:
+        if expected == "accepted":
+            result = validate_u1_bytes(
+                schema_id, canonical_json_bytes(value), self.capability
+            )
+            self.assertEqual(result.raw_bytes, canonical_json_bytes(value))
+            return
+        with self.assertRaises(U1ContractError) as caught:
+            validate_u1_bytes(schema_id, canonical_json_bytes(value), self.capability)
+        self.assertEqual(caught.exception.code, expected)
+
+    def _assert_provenance_edge(self, case: str, expected: str) -> None:
+        bundle = retention_provenance_bundle()
+        if case.startswith("marker-"):
+            value = bundle["marker"]
+            if case == "marker-predecessor":
+                value["predecessor_transaction_generation_sha256"] = 1
+            elif case == "marker-digest":
+                value["semantic_payload_sha256"] = sha("wrong-marker")
+            else:
+                value["stable_slot_sha256"] = sha("wrong-marker-slot")
+            with self.assertRaises(U1ContractError) as caught:
+                validate_retention_marker(value)
+            self.assertEqual(caught.exception.code, expected)
+            return
+        if case.startswith("relation-"):
+            value = bundle["relation"]
+            if case == "relation-predecessor":
+                value["predecessor_transaction_generation_sha256"] = 1
+            elif case == "relation-digest":
+                value["semantic_payload_sha256"] = sha("wrong-relation")
+            else:
+                value["stable_slot_sha256"] = sha("wrong-relation-slot")
+            with self.assertRaises(U1ContractError) as caught:
+                validate_retention_relation(value)
+            self.assertEqual(caught.exception.code, expected)
+            return
+        if case.startswith("accounted-"):
+            value = bundle["accounted"]
+            if case == "accounted-predecessor":
+                value["ready_transaction_generation_sha256"] = sha("wrong-ready")
+            elif case == "accounted-digest":
+                value["logical_state_sha256"] = sha("wrong-logical")
+            else:
+                value["p_final_relative_path"] = "other/path"
+            with self.assertRaises(U1ContractError) as caught:
+                validate_accounted_provenance(
+                    value,
+                    bundle["marker"],
+                    bundle["relation"],
+                    bundle["ready_generation"],
+                    bundle["intent_capacity"],
+                )
+            self.assertEqual(caught.exception.code, expected)
+            return
+        if case.startswith("handoff-"):
+            value = bundle["handoff"]
+            if case == "handoff-predecessor":
+                value["accounted_transaction_generation_sha256"] = sha("wrong-journal")
+            elif case == "handoff-digest":
+                value["physical_state_sha256"] = sha("wrong-physical")
+            else:
+                value["names"]["h_final_relative_path"] = "other/path"
+            with self.assertRaises(U1ContractError) as caught:
+                validate_handoff_provenance(
+                    value,
+                    bundle["accounted"],
+                    bundle["accounted_generation"],
+                    bundle["capacity_accounted"],
+                    bundle["capacity_releasing"],
+                )
+            self.assertEqual(caught.exception.code, expected)
+            return
+        first = transaction_generation("RETENTION_PREPARED", generation=1)
+        second = transaction_generation(
+            "RETENTION_MARKER_DURABLE",
+            generation=2,
+            predecessor=transaction_generation_digest(first),
+        )
+        if case == "journal-predecessor":
+            second["predecessor_sha256"] = sha("wrong-journal")
+        elif case == "journal-digest":
+            second["predecessor_sha256"] = transaction_generation_digest(second)
+        else:
+            second["phase"] = "RETENTION_READY"
+            second["phase_payload"] = {
+                "marker_sha256": sha("marker"),
+                "relation_sha256": sha("relation"),
+            }
+        with self.assertRaises(U1ContractError) as caught:
+            validate_transaction_generation_chain([first, second])
+        self.assertEqual(caught.exception.code, expected)
+
+    def _assert_state_edge(self, case: str, expected: str) -> None:
+        if case.startswith("logical-"):
+            value = logical_state()
+            if case == "logical-set":
+                value["O_referenced"] = []
+            elif case == "logical-count":
+                value["retained_unique_objects"] = 2
+            else:
+                value["retention_admission_closed"] = True
+            self._expect_route_refusal(
+                "kilix.content.retention-logical-state/v1", value, expected
+            )
+            return
+        value = physical_state(component_specs=[("M", "actual", None), ("R", "actual", None)])
+        if case == "physical-set":
+            value["filesystem_unions"][0]["components"][1]["identity"] = clone(
+                value["filesystem_unions"][0]["components"][0]["identity"]
+            )
+        elif case == "physical-count":
+            value["filesystem_unions"][0]["actual_inodes"] += 1
+        else:
+            value["filesystem_unions"][0]["components"][0]["bytes"] += 1
+            value["filesystem_unions"][0]["components"] = sorted(
+                value["filesystem_unions"][0]["components"],
+                key=canonical_json_bytes,
+            )
+        with self.assertRaises(U1ContractError) as caught:
+            validate_retention_physical_state(value)
+        self.assertEqual(caught.exception.code, expected)
 
     def _assert_admission_authority_operation(
         self, record: dict[str, object], expected: str
