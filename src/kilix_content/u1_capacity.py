@@ -10,6 +10,7 @@ from .u1_core import (
     HEX32_RE,
     ZERO_DIGEST,
     capacity_generation_digest,
+    capacity_policy_digest,
     checked_add,
     checked_mul,
     checked_round_up,
@@ -528,11 +529,12 @@ def _validate_root_identities(value: Any) -> list[dict[str, Any]]:
 
 def _validate_phase_payload(value: Any, *, owner_kind: str, phase: str) -> None:
     payload = require_object(value)
-    fields = (
-        CAPACITY_PAYLOAD_FIELDS.get(phase)
-        if owner_kind == "capacity"
-        else RETENTION_PAYLOAD_FIELDS.get(phase)
-    )
+    if owner_kind == "capacity":
+        fields = CAPACITY_PAYLOAD_FIELDS.get(phase)
+    elif owner_kind == "retention-capacity":
+        fields = RETENTION_PAYLOAD_FIELDS.get(phase)
+    else:
+        fields = None
     if fields is None:
         refuse("capacity generation owner and phase are inconsistent")
     require_keys(payload, required=fields)
@@ -575,7 +577,7 @@ def validate_capacity_generation(value: Any) -> None:
         refuse("capacity generation schema is not v2")
     owner_kind = generation["owner_kind"]
     phase = generation["phase"]
-    if owner_kind not in {"capacity", "retention"}:
+    if owner_kind not in {"capacity", "retention-capacity"}:
         refuse("capacity generation owner is outside the frozen enum")
     _validate_phase_payload(
         generation["phase_payload"], owner_kind=owner_kind, phase=phase
@@ -613,6 +615,37 @@ def validate_capacity_generation(value: Any) -> None:
     recovery = require_u64(deadlines["recovery_monotonic_ns"], nonzero=True)
     if recovery < submission:
         refuse("capacity recovery deadline precedes submission deadline")
+
+
+def _validate_capacity_generation_against_policy(
+    generation_value: Any, policy_value: Any
+) -> None:
+    """Join one generation to exactly one maximum for each frozen root role."""
+    validate_capacity_generation(generation_value)
+    validate_capacity_policy(policy_value)
+    generation = require_object(generation_value)
+    policy = require_object(policy_value)
+    if generation["release_id"] != policy["release_id"] or generation[
+        "policy_sha256"
+    ] != capacity_policy_digest(policy):
+        refuse("capacity generation does not bind the exact capacity policy")
+
+    selectors = [
+        (
+            maximum["owner_kind"],
+            maximum["phase"],
+            maximum["root_role"],
+        )
+        for maximum in policy["phase_maxima"]
+        if maximum["owner_kind"] == generation["owner_kind"]
+        and maximum["phase"] == generation["phase"]
+    ]
+    expected = {
+        (generation["owner_kind"], generation["phase"], root["role"])
+        for root in generation["root_identities"]
+    }
+    if len(selectors) != len(ROOT_ROLES) or set(selectors) != expected:
+        refuse("capacity generation lacks an exact five-root policy maximum join")
 
 
 def _next_phase(previous: str, current: str, *, recovery: bool) -> bool:

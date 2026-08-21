@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from kilix_content.u1_capacity import OWNER_PHASES, ROOT_ROLES
-from kilix_content.u1_catalog import derive_install_authority_binding
+from kilix_content.u1_catalog import _derive_install_authority_binding
 from kilix_content.u1_core import (
     ZERO_DIGEST,
     authorization_record_digest,
@@ -445,7 +445,7 @@ def catalog() -> dict[str, Any]:
 
 
 def authority_binding(request_id: str = "demo.codec") -> dict[str, Any]:
-    return derive_install_authority_binding(catalog(), request_id)
+    return _derive_install_authority_binding(catalog(), request_id)
 
 
 def output_binding() -> dict[str, Any]:
@@ -706,7 +706,7 @@ def capacity_generation(
     generation: int = 0,
     predecessor: str | None = None,
 ) -> dict[str, Any]:
-    owner = "retention" if phase.startswith("RETENTION_") else "capacity"
+    owner = "retention-capacity" if phase.startswith("RETENTION_") else "capacity"
     return {
         "schema": "kilix.content.capacity-generation/v2",
         "owner_kind": owner,
@@ -1351,9 +1351,7 @@ def retention_handoff(
     next_capacity_generation: int = 20,
 ) -> dict[str, Any]:
     accounted = (
-        clone(accounted_value)
-        if accounted_value is not None
-        else retention_accounted()
+        clone(accounted_value) if accounted_value is not None else retention_accounted()
     )
     logical = copy.deepcopy(accounted["logical_state"])
     accounted_bytes = canonical_json_bytes(accounted)
@@ -1415,15 +1413,13 @@ def retention_handoff(
             or sha("accounted-transaction-generation")
         ),
         "capacity_accounted_generation_sha256": (
-            capacity_accounted_generation_sha256
-            or sha("capacity-accounted-generation")
+            capacity_accounted_generation_sha256 or sha("capacity-accounted-generation")
         ),
         "capacity_releasing_generation_sha256": (
-            capacity_releasing_generation_sha256
-            or sha("capacity-releasing-generation")
+            capacity_releasing_generation_sha256 or sha("capacity-releasing-generation")
         ),
         "next_capacity_fields": {
-            "owner_kind": "retention",
+            "owner_kind": "retention-capacity",
             "phase": "RETENTION_HANDOFF_PROOFED",
             "generation": next_capacity_generation,
             "predecessor_sha256": (

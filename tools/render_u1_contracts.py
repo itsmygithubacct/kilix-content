@@ -16,7 +16,13 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_CONTRACTS = ROOT / "contracts" / "u1"
 PACKAGE_CONTRACTS = ROOT / "src" / "kilix_content" / "contracts" / "u1"
+SOURCE_CATALOGS = ROOT / "catalog" / "u1"
+PACKAGE_CATALOGS = ROOT / "src" / "kilix_content" / "catalog" / "u1"
+SOURCE_LICENSES = ROOT / "licenses"
+PACKAGE_LICENSES = ROOT / "src" / "kilix_content" / "licenses"
 MANIFEST_NAME = "kilix.content.u1-resources-v1.json"
+CATALOG_NAME = "plebian-0.2.1.json"
+LICENSE_MANIFEST_NAME = "u1-0.2.1.json"
 RELEASE_ID = "0.2.1"
 SCHEMA_BASE = "https://json-schema.org/draft/2020-12/schema"
 BASELINE_SCHEMA_NAMES = {
@@ -785,7 +791,7 @@ def capacity_schemas() -> dict[str, dict[str, Any]]:
     )
     common_generation = {
         "schema": const("kilix.content.capacity-generation/v2"),
-        "owner_kind": enum("capacity", "retention"),
+        "owner_kind": enum("capacity", "retention-capacity"),
         "phase": ref("id"),
         "reservation_id": ref("id"),
         "generation": ref("s64"),
@@ -888,7 +894,7 @@ def capacity_schemas() -> dict[str, dict[str, Any]]:
     branches = []
     for owner, payloads in (
         ("capacity", capacity_payloads),
-        ("retention", retention_payloads),
+        ("retention-capacity", retention_payloads),
     ):
         for phase, fields in payloads.items():
             payload_properties = {}
@@ -1430,7 +1436,7 @@ def retention_schemas() -> dict[str, dict[str, Any]]:
     )
     next_capacity = closed(
         {
-            "owner_kind": const("retention"),
+            "owner_kind": const("retention-capacity"),
             "phase": const("RETENTION_HANDOFF_PROOFED"),
             "generation": ref("positive"),
             "predecessor_sha256": ref("digest"),
@@ -1652,6 +1658,9 @@ def render() -> tuple[int, str]:
     schemas = all_schemas()
     SOURCE_CONTRACTS.mkdir(parents=True, exist_ok=True)
     PACKAGE_CONTRACTS.mkdir(parents=True, exist_ok=True)
+    SOURCE_CATALOGS.mkdir(parents=True, exist_ok=True)
+    PACKAGE_CATALOGS.mkdir(parents=True, exist_ok=True)
+    SOURCE_LICENSES.mkdir(parents=True, exist_ok=True)
     for directory in (ROOT / "contracts", ROOT / "src" / "kilix_content" / "contracts"):
         for obsolete in directory.glob("*.schema.json"):
             if obsolete.name not in BASELINE_SCHEMA_NAMES:
@@ -1675,8 +1684,60 @@ def render() -> tuple[int, str]:
                 "sdist_disposition": "required",
             }
         )
-    license_path = ROOT / "src" / "kilix_content" / "licenses" / "MIT.txt"
+    license_path = PACKAGE_LICENSES / "MIT.txt"
     license_payload = license_path.read_bytes()
+    catalog = {
+        "schema": "kilix.content.catalog/v5",
+        "release_id": RELEASE_ID,
+        "packages": [],
+        "contents": [],
+        "assets": [],
+        "aliases": [],
+        "system_requirement_profiles": [],
+        "toolchain_profiles": [],
+        "sandbox_profiles": [],
+        "license_manifest_id": "u1-0.2.1",
+    }
+    catalog_payload = canonical(catalog)
+    for directory in (SOURCE_CATALOGS, PACKAGE_CATALOGS):
+        (directory / CATALOG_NAME).write_bytes(catalog_payload)
+    resources.append(
+        {
+            "role": "catalog",
+            "schema_id": "kilix.content.catalog/v5",
+            "path": f"catalog/u1/{CATALOG_NAME}",
+            "size": len(catalog_payload),
+            "sha256": hashlib.sha256(catalog_payload).hexdigest(),
+            "wheel_disposition": "required",
+            "sdist_disposition": "required",
+        }
+    )
+    license_manifest = {
+        "schema": "kilix.content.license-manifest/v1",
+        "release_id": RELEASE_ID,
+        "licenses": [
+            {
+                "id": "mit",
+                "path": "licenses/MIT.txt",
+                "text_sha256": hashlib.sha256(license_payload).hexdigest(),
+                "decision": "informational",
+            }
+        ],
+    }
+    license_manifest_payload = canonical(license_manifest)
+    for directory in (SOURCE_LICENSES, PACKAGE_LICENSES):
+        (directory / LICENSE_MANIFEST_NAME).write_bytes(license_manifest_payload)
+    resources.append(
+        {
+            "role": "license-manifest",
+            "schema_id": "kilix.content.license-manifest/v1",
+            "path": f"licenses/{LICENSE_MANIFEST_NAME}",
+            "size": len(license_manifest_payload),
+            "sha256": hashlib.sha256(license_manifest_payload).hexdigest(),
+            "wheel_disposition": "required",
+            "sdist_disposition": "required",
+        }
+    )
     resources.append(
         {
             "role": "license-text",

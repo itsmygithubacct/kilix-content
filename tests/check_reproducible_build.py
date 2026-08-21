@@ -115,8 +115,7 @@ def load_canonical(path: Path, *, newline: bool = False) -> dict[str, Any]:
 def checked_toolchain() -> tuple[dict[str, str], Path, Path]:
     toolchain = load_canonical(TOOLCHAIN_PATH, newline=True)
     if (
-        toolchain.get("schema")
-        != "kilix.content.reproducible-build-toolchain/v1"
+        toolchain.get("schema") != "kilix.content.reproducible-build-toolchain/v1"
         or str(toolchain.get("source_date_epoch")) != SOURCE_DATE_EPOCH
     ):
         fail("build-toolchain identity is not frozen")
@@ -286,7 +285,10 @@ def verify_export(
         env=env,
         label="locked requirement export",
     )
-    if destination.read_bytes() != (root / WHEELHOUSE_NAME / "requirements.txt").read_bytes():
+    if (
+        destination.read_bytes()
+        != (root / WHEELHOUSE_NAME / "requirements.txt").read_bytes()
+    ):
         fail("locked requirement export differs from committed wheelhouse input")
 
 
@@ -505,9 +507,10 @@ def production_resources(root: Path) -> tuple[bytes, dict[str, tuple[str, bytes]
     resources: dict[str, tuple[str, bytes]] = {}
     for entry in manifest["resources"]:
         package_path = entry["path"]
+        root_copy = root / package_path
         source_path = (
-            root / package_path
-            if package_path.startswith("contracts/")
+            root_copy
+            if root_copy.is_file()
             else root / "src" / "kilix_content" / package_path
         )
         packaged_source = root / "src" / "kilix_content" / package_path
@@ -519,7 +522,7 @@ def production_resources(root: Path) -> tuple[bytes, dict[str, tuple[str, bytes]
         ):
             fail("source production resource copies diverge")
         resources[package_path] = (entry["sha256"], payload)
-    if len(resources) != 26:
+    if len(resources) != 28:
         fail("production resource manifest is not exhaustive")
     return raw, resources
 
@@ -536,9 +539,10 @@ def resource_audit(
         fail("sdist production authority differs from source")
     manifest_digest = hashlib.sha256(source_manifest).hexdigest()
     expected = {path: item[0] for path, item in source_resources.items()}
-    with zipfile.ZipFile(direct_wheel) as direct, zipfile.ZipFile(
-        rebuilt_wheel
-    ) as rebuilt:
+    with (
+        zipfile.ZipFile(direct_wheel) as direct,
+        zipfile.ZipFile(rebuilt_wheel) as rebuilt,
+    ):
         for archive in (direct, rebuilt):
             wheel_manifest = archive.read(f"kilix_content/contracts/{U1_MANIFEST}")
             if wheel_manifest != source_manifest:
@@ -591,7 +595,7 @@ def installed_wheel_audit(
     )
     external = temporary / "external-cwd"
     external.mkdir()
-    probe = r'''
+    probe = r"""
 import hashlib, importlib.resources as resources, json, pathlib, sys
 from kilix_content import U1ContractError, packaged_release_capability, validate_u1_bytes, verify_packaged_u1_manifest
 expected_manifest = sys.argv[1]
@@ -622,7 +626,7 @@ for entry in index["entries"]:
 package_path = pathlib.Path(__import__("kilix_content").__file__).resolve()
 assert all(not package_path.is_relative_to(pathlib.Path(item)) for item in sys.argv[4:])
 print("installed-wheel external corpus and resources: PASS")
-'''
+"""
     result = run(
         [
             str(python),
@@ -689,9 +693,7 @@ def main() -> int:
             "--sdist",
             "--wheel",
         )
-        source_root = extract_sdist(
-            direct_one["sdist"], temporary / "extracted-sdist"
-        )
+        source_root = extract_sdist(direct_one["sdist"], temporary / "extracted-sdist")
         verify_wheelhouse(source_root)
         verify_export(
             source_root,

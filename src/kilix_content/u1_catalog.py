@@ -462,10 +462,10 @@ def _catalog_index(
     return installables, aliases
 
 
-def derive_install_authority_binding(
+def _derive_install_authority_binding(
     catalog_value: Any, request_id: str
 ) -> dict[str, Any]:
-    """Derive the sole authority bytes for a direct or alias request."""
+    """Test-only builder; caller mappings never establish packaged authority."""
     validate_catalog_v5(catalog_value)
     catalog = require_object(catalog_value)
     identifier = require_id(request_id)
@@ -566,11 +566,11 @@ def validate_authority_binding(value: Any) -> None:
         require_digest(binding["output_manifest_sha256"])
 
 
-def validate_authority_against_catalog(
+def _validate_authority_against_catalog(
     value: Any, catalog: Any, request_id: str
 ) -> None:
     validate_authority_binding(value)
-    if require_object(value) != derive_install_authority_binding(catalog, request_id):
+    if require_object(value) != _derive_install_authority_binding(catalog, request_id):
         refuse("install authority diverges from packaged catalog authority")
 
 
@@ -617,7 +617,7 @@ def validate_output_binding(value: Any) -> None:
     require_s64(binding["output_format_version"], positive=True)
 
 
-def validate_output_against_authority(value: Any, authority: Any) -> None:
+def _validate_output_against_authority(value: Any, authority: Any) -> None:
     from .u1_core import install_authority_digest
 
     validate_output_binding(value)
@@ -657,7 +657,7 @@ def validate_authorization_v2(value: Any) -> None:
         refuse("authorization record digest is inconsistent")
 
 
-def validate_authorization_against_records(
+def _validate_authorization_against_records(
     authorization_value: Any,
     catalog_value: Any,
     authority_value: Any,
@@ -667,8 +667,8 @@ def validate_authorization_against_records(
     """Recompute the complete catalog -> authority -> output -> authorization chain."""
     validate_authorization_v2(authorization_value)
     validate_catalog_v5(catalog_value)
-    validate_authority_against_catalog(authority_value, catalog_value, request_id)
-    validate_output_against_authority(output_value, authority_value)
+    _validate_authority_against_catalog(authority_value, catalog_value, request_id)
+    _validate_output_against_authority(output_value, authority_value)
     authorization = require_object(authorization_value)
     catalog = require_object(catalog_value)
     authority = require_object(authority_value)
@@ -684,7 +684,7 @@ def validate_authorization_against_records(
         refuse("authorization does not bind the exact admitted record chain")
 
 
-def validate_catalog_transition(previous: Any, current: Any) -> None:
+def _validate_catalog_transition(previous: Any, current: Any) -> None:
     """Require an additive external review for every package/direct/alias kind change."""
     validate_catalog_v5(previous)
     validate_catalog_v5(current)
@@ -697,14 +697,13 @@ def validate_catalog_transition(previous: Any, current: Any) -> None:
             )
 
 
-def validate_catalog_resource_bundle(
+def _validate_catalog_resource_bundle(
     catalog_value: Any,
     resources: Mapping[str, bytes],
-    resource_sha256s: Mapping[str, str],
     *,
     validate_json_resource: Callable[[str, bytes], Any],
 ) -> None:
-    """Bind the exact profile and license-manifest inventory to supplied bytes."""
+    """Internally bind the exact catalog/profile/license resource graph."""
     validate_catalog_v5(catalog_value)
     catalog = require_object(catalog_value)
     expected: dict[str, tuple[str, str, str, str]] = {}
@@ -718,26 +717,29 @@ def validate_catalog_resource_bundle(
         ("sandbox_profiles", "profile_sha256", "kilix.content.sandbox-profile/v1"),
     ):
         for entry in catalog[field]:
-            expected[entry["resource_path"]] = (
+            path = entry["resource_path"]
+            if path in expected:
+                refuse("catalog profile paths collide across resource roles")
+            expected[path] = (
                 entry["id"],
                 digest_field,
                 entry[digest_field],
                 schema_id,
             )
     license_path = f"licenses/{catalog['license_manifest_id']}.json"
-    if license_path not in resources:
+    if license_path in expected:
+        refuse("catalog license manifest path collides with a profile resource")
+    if license_path not in resources or type(resources[license_path]) is not bytes:
         refuse("catalog resource bundle lacks its license manifest")
-    if set(resources) != set(expected) | {license_path}:
-        refuse("catalog resource bundle is missing data or contains extras")
-    if type(resource_sha256s) is not dict or set(resource_sha256s) != set(resources):
-        refuse("catalog resource hashes are not set-equal to supplied resources")
-    for path, (identifier, digest_field, semantic_digest, schema_id) in expected.items():
-        payload = resources[path]
-        if (
-            type(payload) is not bytes
-            or hashlib.sha256(payload).hexdigest() != resource_sha256s[path]
-        ):
-            refuse("catalog resource bundle contains a digest mismatch")
+    for path, (
+        identifier,
+        digest_field,
+        semantic_digest,
+        schema_id,
+    ) in expected.items():
+        payload = resources.get(path)
+        if type(payload) is not bytes:
+            refuse("catalog resource bundle lacks a profile resource")
         validated = validate_json_resource(schema_id, payload)
         if not isinstance(validated, Mapping):
             refuse("catalog resource validator did not return immutable record data")
@@ -746,30 +748,58 @@ def validate_catalog_resource_bundle(
             or validated.get(digest_field) != semantic_digest
         ):
             refuse("catalog profile authority diverges from validated resource data")
-    license_payload = resources[license_path]
-    if (
-        type(license_payload) is not bytes
-        or hashlib.sha256(license_payload).hexdigest()
-        != resource_sha256s[license_path]
-    ):
-        refuse("catalog resource bundle contains a digest mismatch")
     license_record = validate_json_resource(
-        "kilix.content.license-manifest/v1", license_payload
+        "kilix.content.license-manifest/v1", resources[license_path]
     )
     if not isinstance(license_record, Mapping) or license_record.get(
         "release_id"
     ) != catalog.get("release_id"):
         refuse("catalog license manifest diverges from release authority")
 
+    manifest_rows = {
+        (entry["id"], entry["text_sha256"], entry["decision"])
+        for entry in license_record["licenses"]
+    }
+    for collection in (catalog["packages"], catalog["contents"], catalog["assets"]):
+        for installable in collection:
+            for license_reference in installable["install"]["licenses"]:
+                row = (
+                    license_reference["id"],
+                    license_reference["text_sha256"],
+                    license_reference["decision"],
+                )
+                if row not in manifest_rows:
+                    refuse("catalog license reference is not exact manifest authority")
 
-def validate_license_text_bundle(manifest: Any, resources: Mapping[str, bytes]) -> None:
-    manifest_value = require_object(manifest)
+    text_paths = {entry["path"] for entry in license_record["licenses"]}
+    if license_path in text_paths or set(expected) & text_paths:
+        refuse("catalog resource paths collide across data roles")
+    expected_paths = set(expected) | {license_path} | text_paths
+    if set(resources) != expected_paths:
+        refuse("catalog resource bundle is missing data or contains extras")
+    _validate_license_text_bundle(
+        license_record, {path: resources[path] for path in text_paths}
+    )
+
+
+def _validate_license_text_bundle(
+    manifest: Any, resources: Mapping[str, bytes]
+) -> None:
+    if not isinstance(manifest, Mapping):
+        refuse("license manifest is not validated record data")
+    manifest_value = manifest
     if manifest_value.get("schema") != "kilix.content.license-manifest/v1":
         refuse("license manifest schema is not frozen")
+    licenses = manifest_value.get("licenses")
+    if not isinstance(licenses, (list, tuple)):
+        refuse("license manifest rows are not validated record data")
     expected = {
         entry["path"]: entry["text_sha256"]
-        for entry in manifest_value.get("licenses", [])
+        for entry in licenses
+        if isinstance(entry, Mapping)
     }
+    if len(expected) != len(licenses):
+        refuse("license manifest rows are not validated record data")
     if set(resources) != set(expected):
         refuse("license text bundle is missing data or contains extras")
     for path, digest in expected.items():
@@ -788,17 +818,10 @@ __all__ = [
     "DEPENDENCY_ROLES",
     "LICENSE_DECISIONS",
     "SOURCE_KINDS",
-    "derive_install_authority_binding",
-    "validate_authorization_against_records",
-    "validate_authority_against_catalog",
     "validate_authority_binding",
     "validate_authorization_v2",
-    "validate_catalog_resource_bundle",
-    "validate_catalog_transition",
     "validate_catalog_v5",
     "validate_install_record",
-    "validate_license_text_bundle",
-    "validate_output_against_authority",
     "validate_output_binding",
     "validate_source",
 ]

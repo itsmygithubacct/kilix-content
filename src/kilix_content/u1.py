@@ -20,6 +20,7 @@ from jsonschema.exceptions import SchemaError, ValidationError
 
 from .u1_capacity import CAPACITY_VALIDATORS, production_capacity_policy_available
 from .u1_catalog import (
+    _validate_catalog_resource_bundle,
     validate_authority_binding,
     validate_authorization_v2,
     validate_catalog_v5,
@@ -50,7 +51,9 @@ from .u1_retention import RETENTION_VALIDATORS
 
 U1_MANIFEST_NAME = "kilix.content.u1-resources-v1.json"
 U1_LICENSE_NAME = "MIT.txt"
-U1_MANIFEST_SHA256 = "b8ebefbc48f746239c4c209532594f30706639e2f6f6ab28d4049697f4b70ecc"
+U1_CATALOG_PATH = "catalog/u1/plebian-0.2.1.json"
+U1_LICENSE_MANIFEST_PATH = "licenses/u1-0.2.1.json"
+U1_MANIFEST_SHA256 = "ac2f61600985035664c0ff586455006be5e4bc94952c7d778095c9fdf6941bd2"
 SCHEMA_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}/v[0-9]{1,3}$")
 RESOURCE_PATH_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,511}$")
 U1_SCHEMA_NAMES = (
@@ -151,15 +154,43 @@ def _read_packaged(path: str) -> bytes:
     if candidate.is_absolute() or ".." in candidate.parts or "." in candidate.parts:
         refuse("packaged U1 resource path is unsafe")
     try:
-        item = _package_root().joinpath(*candidate.parts)
-        is_symlink = getattr(item, "is_symlink", None)
-        if (callable(is_symlink) and is_symlink()) or not item.is_file():
+        item = _package_root()
+        for part in candidate.parts:
+            item = item.joinpath(part)
+            is_symlink = getattr(item, "is_symlink", None)
+            if callable(is_symlink) and is_symlink():
+                refuse("packaged U1 resource path traverses a linked entry")
+        if not item.is_file():
             refuse("packaged U1 resource is not a regular file")
         return item.read_bytes()
     except U1ContractError:
         raise
     except (FileNotFoundError, IsADirectoryError, OSError) as exc:
         raise U1ContractError("packaged U1 resource is unavailable") from exc
+
+
+def _validate_rooted_json_resource(
+    schema_id: str,
+    raw: bytes,
+    packaged: Mapping[str, bytes],
+    routes: Mapping[str, str],
+) -> Mapping[str, Any]:
+    route = routes.get(schema_id)
+    semantic = _SEMANTIC_VALIDATORS.get(schema_id)
+    if route is None or semantic is None:
+        refuse("packaged U1 data resource has no rooted schema route")
+    value = require_object(parse_json_bytes(raw))
+    if value.get("schema") != schema_id:
+        refuse("packaged U1 data schema diverges from its manifest role")
+    schema = parse_json_bytes(packaged[route])
+    try:
+        Draft202012Validator(schema).validate(value)
+    except ValidationError as exc:
+        raise U1ContractError(
+            "packaged U1 data resource fails its rooted JSON Schema"
+        ) from exc
+    semantic(value)
+    return value
 
 
 def _validate_manifest(raw: bytes) -> tuple[dict[str, bytes], dict[str, str]]:
@@ -172,9 +203,16 @@ def _validate_manifest(raw: bytes) -> tuple[dict[str, bytes], dict[str, str]]:
         or manifest["release_id"] != "0.2.1"
     ):
         refuse("packaged U1 manifest identity is not frozen")
-    entries = require_array(manifest["resources"], minimum=26, maximum=26)
+    entries = require_array(manifest["resources"], minimum=28, maximum=28)
     packaged: dict[str, bytes] = {}
     routes: dict[str, str] = {}
+    entries_by_path: dict[str, Mapping[str, Any]] = {}
+    role_counts = {
+        "schema": 0,
+        "catalog": 0,
+        "license-manifest": 0,
+        "license-text": 0,
+    }
     for raw_entry in entries:
         entry = require_object(raw_entry)
         require_keys(
@@ -189,10 +227,14 @@ def _validate_manifest(raw: bytes) -> tuple[dict[str, bytes], dict[str, str]]:
                 "sdist_disposition",
             ),
         )
-        if entry["role"] not in {"license-text", "schema"}:
+        role = entry["role"]
+        if role not in role_counts:
             refuse("packaged U1 resource role is outside the frozen enum")
-        if entry["role"] == "schema":
+        role_counts[role] += 1
+        if role != "license-text":
             require_text(entry["schema_id"], SCHEMA_ID_RE, maximum=72)
+        elif entry["schema_id"] != "text/plain; charset=utf-8":
+            refuse("packaged U1 license text media type is not frozen")
         path = require_text(entry["path"], RESOURCE_PATH_RE, maximum=512)
         path_parts = PurePosixPath(path).parts
         if PurePosixPath(path).is_absolute() or any(
@@ -201,6 +243,22 @@ def _validate_manifest(raw: bytes) -> tuple[dict[str, bytes], dict[str, str]]:
             refuse("packaged U1 resource path is unsafe")
         if path in packaged:
             refuse("packaged U1 resource path is duplicated")
+        if role == "schema" and (
+            PurePosixPath(path).parent.as_posix() != "contracts/u1"
+            or PurePosixPath(path).name not in U1_SCHEMA_NAMES
+        ):
+            refuse("packaged U1 schema path is outside the frozen inventory")
+        if role == "catalog" and (
+            path != U1_CATALOG_PATH or entry["schema_id"] != "kilix.content.catalog/v5"
+        ):
+            refuse("packaged U1 catalog role is not frozen")
+        if role == "license-manifest" and (
+            path != U1_LICENSE_MANIFEST_PATH
+            or entry["schema_id"] != "kilix.content.license-manifest/v1"
+        ):
+            refuse("packaged U1 license manifest role is not frozen")
+        if role == "license-text" and path != f"licenses/{U1_LICENSE_NAME}":
+            refuse("packaged U1 license text role is not frozen")
         if (
             entry["wheel_disposition"] != "required"
             or entry["sdist_disposition"] != "required"
@@ -212,6 +270,20 @@ def _validate_manifest(raw: bytes) -> tuple[dict[str, bytes], dict[str, str]]:
         if len(payload) != size or hashlib.sha256(payload).hexdigest() != digest:
             refuse("packaged U1 resource size or digest is inconsistent")
         packaged[path] = payload
+        entries_by_path[path] = entry
+
+    require_sorted_unique(entries)
+    if role_counts != {
+        "schema": 25,
+        "catalog": 1,
+        "license-manifest": 1,
+        "license-text": 1,
+    }:
+        refuse("packaged U1 resource role cardinality is not frozen")
+
+    # Pass two begins only after every path/size/hash tuple has been rooted.
+    for path, entry in entries_by_path.items():
+        payload = packaged[path]
         if entry["role"] == "schema":
             if entry["schema_id"] in routes:
                 refuse("packaged U1 schema role is duplicated")
@@ -223,24 +295,63 @@ def _validate_manifest(raw: bytes) -> tuple[dict[str, bytes], dict[str, str]]:
                 raise U1ContractError("packaged U1 JSON Schema is invalid") from exc
             if require_object(schema).get("$id") != entry["schema_id"]:
                 refuse("packaged U1 schema ID diverges from its manifest role")
-        else:
-            try:
-                text = payload.decode("utf-8")
-            except UnicodeDecodeError as exc:
-                raise U1ContractError("packaged license text is not UTF-8") from exc
-            if not text or "\x00" in text:
-                refuse("packaged license text is not canonical")
-    require_sorted_unique(entries)
     if set(routes) != set(_SEMANTIC_VALIDATORS):
         refuse("packaged U1 schema route set is incomplete or has extras")
+
+    catalog = _validate_rooted_json_resource(
+        "kilix.content.catalog/v5",
+        packaged[U1_CATALOG_PATH],
+        packaged,
+        routes,
+    )
+    _validate_rooted_json_resource(
+        "kilix.content.license-manifest/v1",
+        packaged[U1_LICENSE_MANIFEST_PATH],
+        packaged,
+        routes,
+    )
+    if (
+        catalog["release_id"] != "0.2.1"
+        or catalog["license_manifest_id"] != "u1-0.2.1"
+        or any(
+            catalog[field]
+            for field in (
+                "packages",
+                "contents",
+                "assets",
+                "aliases",
+                "system_requirement_profiles",
+                "toolchain_profiles",
+                "sandbox_profiles",
+            )
+        )
+    ):
+        refuse("packaged U1 catalog is not the frozen empty membership set")
+
+    data_resources = {
+        path: packaged[path]
+        for path, entry in entries_by_path.items()
+        if entry["role"] in {"license-manifest", "license-text"}
+    }
+    _validate_catalog_resource_bundle(
+        catalog,
+        data_resources,
+        validate_json_resource=lambda schema_id, payload: (
+            _validate_rooted_json_resource(schema_id, payload, packaged, routes)
+        ),
+    )
 
     expected_paths = set(packaged)
     observed_paths: set[str] = set()
     for directory, prefix in (
         ("contracts/u1", "contracts/u1"),
+        ("catalog/u1", "catalog/u1"),
         ("licenses", "licenses"),
     ):
         location = _package_root().joinpath(*PurePosixPath(directory).parts)
+        is_symlink = getattr(location, "is_symlink", None)
+        if callable(is_symlink) and is_symlink():
+            refuse("packaged U1 resource namespace is linked")
         try:
             children = list(location.iterdir())
         except (FileNotFoundError, NotADirectoryError, OSError) as exc:
@@ -292,7 +403,7 @@ def validate_u1_bytes(
     raw_bytes: bytes,
     packaged_release: PackagedReleaseCapability,
 ) -> ValidatedU1Record:
-    """Run the sole authoritative U1 raw-byte admission path."""
+    """Validate record bytes; this alone does not establish catalog membership."""
     if type(expected_schema_id) is not str or type(raw_bytes) is not bytes:
         refuse("U1 admission arguments have the wrong base type")
     if (

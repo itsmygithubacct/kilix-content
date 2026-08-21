@@ -1807,7 +1807,7 @@ def validate_retention_handoff_proof(value: Any) -> None:
         required=("owner_kind", "phase", "generation", "predecessor_sha256"),
     )
     if (
-        next_fields["owner_kind"] != "retention"
+        next_fields["owner_kind"] != "retention-capacity"
         or next_fields["phase"] != "RETENTION_HANDOFF_PROOFED"
     ):
         refuse("H deterministic next capacity owner or phase is inconsistent")
@@ -1953,7 +1953,7 @@ def validate_marker_against_intent(
     capacity_digest = capacity_generation_digest(capacity)
     prepared_digest = transaction_generation_digest(prepared)
     if (
-        capacity["owner_kind"] != "retention"
+        capacity["owner_kind"] != "retention-capacity"
         or capacity["phase"] != "RETENTION_INTENT_RESERVED"
         or capacity["transaction_id"] != intent["transaction_id"]
         or capacity["reservation_id"] != intent["reservation_id"]
@@ -2116,7 +2116,7 @@ def validate_handoff_provenance(
     ):
         refuse("H transaction ACCOUNTED provenance is inconsistent")
     if (
-        capacity_accounted["owner_kind"] != "retention"
+        capacity_accounted["owner_kind"] != "retention-capacity"
         or capacity_accounted["phase"] != "RETENTION_ACCOUNTED"
         or capacity_accounted["phase_payload"]
         != {
@@ -2130,7 +2130,7 @@ def validate_handoff_provenance(
         refuse("H capacity ACCOUNTED provenance is inconsistent")
     capacity_accounted_digest = capacity_generation_digest(capacity_accounted)
     if (
-        capacity_releasing["owner_kind"] != "retention"
+        capacity_releasing["owner_kind"] != "retention-capacity"
         or capacity_releasing["phase"] != "RETENTION_HANDOFF_RELEASING"
         or capacity_releasing["predecessor_sha256"] != capacity_accounted_digest
         or capacity_releasing["phase_payload"]

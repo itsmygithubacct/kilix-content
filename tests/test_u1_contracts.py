@@ -16,6 +16,7 @@ from unittest import mock
 from jsonschema import Draft202012Validator, ValidationError
 
 import kilix_content.u1 as u1_module
+import kilix_content.u1_core as u1_core_module
 from kilix_content import (
     U1_SCHEMA_NAMES,
     PackagedReleaseCapability,
@@ -34,15 +35,19 @@ from kilix_content import (
 )
 from kilix_content.u1_capacity import (
     CAPACITY_PHASES,
+    _validate_capacity_generation_against_policy,
     validate_capacity_generation_chain,
 )
+import kilix_content.u1_catalog as u1_catalog_module
 from kilix_content.u1_catalog import (
-    validate_authorization_against_records,
-    validate_catalog_resource_bundle,
-    validate_catalog_transition,
-    validate_license_text_bundle,
+    _derive_install_authority_binding,
+    _validate_authorization_against_records,
+    _validate_catalog_resource_bundle,
+    _validate_catalog_transition,
+    _validate_license_text_bundle,
 )
 from kilix_content.u1_core import (
+    MAX_JSON_TOKENS,
     S64_MAX,
     authorization_record_digest,
     canonical_digest,
@@ -64,6 +69,8 @@ from tests.u1_vectors import (
     authorization,
     authority_binding,
     capacity_chain,
+    capacity_generation,
+    capacity_policy,
     catalog,
     clone,
     directory_observation,
@@ -115,12 +122,14 @@ class U1ResourceAndCorpusTests(unittest.TestCase):
         raw_manifest = manifest_root.read_bytes()
         self.assertEqual(raw_manifest, manifest_package.read_bytes())
         self.assertEqual(hashlib.sha256(raw_manifest).hexdigest(), U1_MANIFEST_SHA256)
-        self.assertEqual(raw_manifest, canonical_json_bytes(parse_json_bytes(raw_manifest)))
+        self.assertEqual(
+            raw_manifest, canonical_json_bytes(parse_json_bytes(raw_manifest))
+        )
         self.assertFalse(raw_manifest.endswith(b"\n"))
 
         manifest = parse_json_bytes(raw_manifest)
         entries = manifest["resources"]
-        self.assertEqual(len(entries), 26)
+        self.assertEqual(len(entries), 28)
         schema_entries = [entry for entry in entries if entry["role"] == "schema"]
         self.assertEqual(
             {Path(entry["path"]).name for entry in schema_entries},
@@ -128,14 +137,28 @@ class U1ResourceAndCorpusTests(unittest.TestCase):
         )
         self.assertEqual(
             [entry for entry in entries if entry["role"] == "license-text"],
-            [
-                next(
-                    entry
-                    for entry in entries
-                    if entry["path"] == "licenses/MIT.txt"
-                )
-            ],
+            [next(entry for entry in entries if entry["path"] == "licenses/MIT.txt")],
         )
+        expected_data = {
+            "catalog": "catalog/u1/plebian-0.2.1.json",
+            "license-manifest": "licenses/u1-0.2.1.json",
+            "license-text": "licenses/MIT.txt",
+        }
+        for role, path in expected_data.items():
+            entry = next(item for item in entries if item["role"] == role)
+            self.assertEqual(entry["path"], path)
+            package_payload = (PACKAGE / path).read_bytes()
+            self.assertEqual(len(package_payload), entry["size"])
+            self.assertEqual(
+                hashlib.sha256(package_payload).hexdigest(), entry["sha256"]
+            )
+            if role != "license-text":
+                source_payload = (ROOT / path).read_bytes()
+                self.assertEqual(source_payload, package_payload)
+                self.assertEqual(
+                    package_payload,
+                    canonical_json_bytes(parse_json_bytes(package_payload)),
+                )
         for entry in schema_entries:
             with self.subTest(schema_id=entry["schema_id"]):
                 name = Path(entry["path"]).name
@@ -143,9 +166,28 @@ class U1ResourceAndCorpusTests(unittest.TestCase):
                 package_payload = packaged_resource_bytes(name)
                 self.assertEqual(root_payload, package_payload)
                 self.assertEqual(len(root_payload), entry["size"])
-                self.assertEqual(hashlib.sha256(root_payload).hexdigest(), entry["sha256"])
-                self.assertEqual(root_payload, canonical_json_bytes(parse_json_bytes(root_payload)))
+                self.assertEqual(
+                    hashlib.sha256(root_payload).hexdigest(), entry["sha256"]
+                )
+                self.assertEqual(
+                    root_payload, canonical_json_bytes(parse_json_bytes(root_payload))
+                )
                 Draft202012Validator.check_schema(parse_json_bytes(root_payload))
+        production_catalog = parse_json_bytes(
+            packaged_resource_bytes("plebian-0.2.1.json")
+        )
+        for field in (
+            "packages",
+            "contents",
+            "assets",
+            "aliases",
+            "system_requirement_profiles",
+            "toolchain_profiles",
+            "sandbox_profiles",
+        ):
+            self.assertEqual(production_catalog[field], [])
+        with self.assertRaises(U1ContractError):
+            _derive_install_authority_binding(production_catalog, "caller.member")
         verify_packaged_u1_manifest()
 
     def test_corpus_index_hashes_and_renderer_are_exact(self) -> None:
@@ -236,8 +278,16 @@ class U1AdmissionAndAuthorityTests(unittest.TestCase):
             pass
 
         for schema_id, raw, capability in (
-            (TextSubclass("kilix.content.catalog/v5"), self.catalog_raw, self.capability),
-            ("kilix.content.catalog/v5", BytesSubclass(self.catalog_raw), self.capability),
+            (
+                TextSubclass("kilix.content.catalog/v5"),
+                self.catalog_raw,
+                self.capability,
+            ),
+            (
+                "kilix.content.catalog/v5",
+                BytesSubclass(self.catalog_raw),
+                self.capability,
+            ),
             ("kilix.content.catalog/v5", self.catalog_raw, object()),
         ):
             with self.subTest(schema_id=type(schema_id), raw=type(raw)):
@@ -256,7 +306,9 @@ class U1AdmissionAndAuthorityTests(unittest.TestCase):
         with self.assertRaises(U1ContractError):
             copy.deepcopy(self.capability)
 
-    def test_schema_invocation_is_non_vacuous_and_results_are_deeply_immutable(self) -> None:
+    def test_schema_invocation_is_non_vacuous_and_results_are_deeply_immutable(
+        self,
+    ) -> None:
         result = validate_u1_bytes(
             "kilix.content.catalog/v5", self.catalog_raw, self.capability
         )
@@ -289,6 +341,17 @@ class U1AdmissionAndAuthorityTests(unittest.TestCase):
         ):
             self.assertNotIn(forbidden, public)
             self.assertFalse(hasattr(u1_module, forbidden))
+        for former_helper in (
+            "derive_install_authority_binding",
+            "validate_authorization_against_records",
+            "validate_authority_against_catalog",
+            "validate_catalog_resource_bundle",
+            "validate_catalog_transition",
+            "validate_license_text_bundle",
+            "validate_output_against_authority",
+        ):
+            self.assertNotIn(former_helper, u1_catalog_module.__all__)
+            self.assertFalse(hasattr(u1_catalog_module, former_helper))
 
     def test_diagnostics_are_bounded_fixed_and_do_not_echo_hostile_input(self) -> None:
         hostile = "PRIVATE/path/should-not-appear"
@@ -315,6 +378,38 @@ class U1AdmissionAndAuthorityTests(unittest.TestCase):
         with self.assertRaises(U1ContractError):
             canonical_digest("caller-selected-domain", value)
 
+    def test_lexical_token_limit_precedes_materialization_at_every_boundary(
+        self,
+    ) -> None:
+        self.assertEqual(MAX_JSON_TOKENS, 131_072)
+        property_count = 32_763
+        object_count = 9
+        base: list[dict[str, object]] = []
+        quotient, remainder = divmod(property_count, object_count)
+        for ordinal in range(object_count):
+            count = quotient + (1 if ordinal < remainder else 0)
+            base.append({f"k{index:04d}": 0 for index in range(count)})
+
+        limit_minus_one = canonical_json_bytes(base)
+        self.assertEqual(parse_json_bytes(limit_minus_one), base)
+
+        at_limit = clone(base)
+        at_limit[0]["k0000"] = "\\"
+        at_limit_raw = canonical_json_bytes(at_limit)
+        self.assertEqual(parse_json_bytes(at_limit_raw), at_limit)
+
+        over_limit = clone(base)
+        over_limit[0]["k0000"] = "\\\\"
+        over_limit_raw = canonical_json_bytes(over_limit)
+        with mock.patch.object(
+            u1_core_module.json,
+            "loads",
+            side_effect=AssertionError("materialized over-budget JSON"),
+        ) as loads:
+            with self.assertRaisesRegex(U1ContractError, "lexical token"):
+                parse_json_bytes(over_limit_raw)
+            loads.assert_not_called()
+
     def test_catalog_alias_authority_and_authorization_chain_are_exact(self) -> None:
         package = authority_binding("demo.package")
         self.assertEqual(package, authority_binding("demo.codec"))
@@ -322,10 +417,8 @@ class U1AdmissionAndAuthorityTests(unittest.TestCase):
 
         restricted = catalog()
         restricted["packages"][0]["install"]["licenses"][0]["decision"] = "restricted"
-        from kilix_content.u1_catalog import derive_install_authority_binding
-
         with self.assertRaises(U1ContractError):
-            derive_install_authority_binding(restricted, "demo.codec")
+            _derive_install_authority_binding(restricted, "demo.codec")
 
         changed_kind = catalog()
         direct = changed_kind["contents"].pop(0)
@@ -337,57 +430,82 @@ class U1AdmissionAndAuthorityTests(unittest.TestCase):
             changed_kind["assets"], key=canonical_json_bytes
         )
         with self.assertRaises(U1ContractError):
-            validate_catalog_transition(catalog(), changed_kind)
+            _validate_catalog_transition(catalog(), changed_kind)
 
-        validate_authorization_against_records(
-            authorization(), catalog(), authority_binding(), output_binding(), "demo.codec"
+        _validate_authorization_against_records(
+            authorization(),
+            catalog(),
+            authority_binding(),
+            output_binding(),
+            "demo.codec",
         )
         broken = authorization()
         broken["output_binding_sha256"] = sha("wrong-output")
         broken["record_sha256"] = authorization_record_digest(broken)
         with self.assertRaises(U1ContractError):
-            validate_authorization_against_records(
+            _validate_authorization_against_records(
                 broken, catalog(), authority_binding(), output_binding(), "demo.codec"
             )
 
-    def test_catalog_profiles_and_license_text_are_cross_bound_to_exact_bytes(self) -> None:
+    def test_catalog_profiles_and_license_text_are_cross_bound_to_exact_bytes(
+        self,
+    ) -> None:
         resources = {
             "profiles/system.json": canonical_json_bytes(system_profile()),
             "profiles/toolchain.json": canonical_json_bytes(toolchain_profile()),
             "profiles/sandbox.json": canonical_json_bytes(sandbox_profile()),
             "licenses/licenses.test.json": canonical_json_bytes(license_manifest()),
         }
-        hashes = {
-            path: hashlib.sha256(payload).hexdigest()
-            for path, payload in resources.items()
-        }
+        resources["licenses/MIT.txt"] = packaged_resource_bytes("MIT.txt")
 
         def admit(schema_id: str, raw: bytes) -> MappingProxyType:
             return validate_u1_bytes(schema_id, raw, self.capability).value  # type: ignore[return-value]
 
-        validate_catalog_resource_bundle(
-            catalog(), resources, hashes, validate_json_resource=admit
+        _validate_catalog_resource_bundle(
+            catalog(), resources, validate_json_resource=admit
         )
-        broken_hashes = dict(hashes)
-        broken_hashes["profiles/system.json"] = sha("wrong-resource")
+        broken_resources = dict(resources)
+        broken_resources["profiles/system.json"] = canonical_json_bytes(
+            {**system_profile(), "id": "system.other"}
+        )
         with self.assertRaises(U1ContractError):
-            validate_catalog_resource_bundle(
-                catalog(), resources, broken_hashes, validate_json_resource=admit
+            _validate_catalog_resource_bundle(
+                catalog(), broken_resources, validate_json_resource=admit
+            )
+
+        broken_catalog = catalog()
+        broken_catalog["packages"][0]["install"]["licenses"][0]["text_sha256"] = sha(
+            "caller-license-text"
+        )
+        with self.assertRaises(U1ContractError):
+            _validate_catalog_resource_bundle(
+                broken_catalog, resources, validate_json_resource=admit
+            )
+
+        colliding_catalog = catalog()
+        colliding_catalog["toolchain_profiles"][0]["resource_path"] = (
+            "profiles/system.json"
+        )
+        with self.assertRaises(U1ContractError):
+            _validate_catalog_resource_bundle(
+                colliding_catalog, resources, validate_json_resource=admit
             )
 
         manifest = license_manifest()
-        validate_license_text_bundle(
+        _validate_license_text_bundle(
             manifest, {"licenses/MIT.txt": packaged_resource_bytes("MIT.txt")}
         )
         with self.assertRaises(U1ContractError):
-            validate_license_text_bundle(
-                manifest, {"licenses/MIT.txt": packaged_resource_bytes("MIT.txt") + b"x"}
+            _validate_license_text_bundle(
+                manifest,
+                {"licenses/MIT.txt": packaged_resource_bytes("MIT.txt") + b"x"},
             )
 
 
 class U1ResourceRootMutationTests(unittest.TestCase):
     def _copy_root(self, destination: Path) -> None:
         shutil.copytree(PACKAGE / "contracts", destination / "contracts")
+        shutil.copytree(PACKAGE / "catalog" / "u1", destination / "catalog" / "u1")
         shutil.copytree(PACKAGE / "licenses", destination / "licenses")
 
     def _verify(self, root: Path, raw: bytes, digest: str = U1_MANIFEST_SHA256) -> None:
@@ -405,7 +523,26 @@ class U1ResourceRootMutationTests(unittest.TestCase):
         )
         schema_relative = Path(schema_entry["path"])
 
-        cases = ("resource", "manifest", "both", "external", "extra", "missing", "role", "license", "symlink")
+        cases = (
+            "resource",
+            "manifest",
+            "both",
+            "external",
+            "extra",
+            "missing",
+            "role",
+            "license",
+            "symlink",
+            "catalog-both",
+            "catalog-missing",
+            "catalog-extra",
+            "data-role",
+            "path-collision",
+            "license-reference",
+            "license-manifest-both",
+            "data-symlink",
+            "namespace-symlink",
+        )
         for case in cases:
             with self.subTest(case=case), tempfile.TemporaryDirectory() as temporary:
                 root = Path(temporary)
@@ -428,7 +565,9 @@ class U1ResourceRootMutationTests(unittest.TestCase):
                         if entry["path"] == schema_entry["path"]
                     )
                     changed_entry["size"] += 1
-                    changed_entry["sha256"] = hashlib.sha256(target.read_bytes()).hexdigest()
+                    changed_entry["sha256"] = hashlib.sha256(
+                        target.read_bytes()
+                    ).hexdigest()
                     raw = canonical_json_bytes(changed)
                 elif case == "external":
                     external = "0" * 64
@@ -453,6 +592,97 @@ class U1ResourceRootMutationTests(unittest.TestCase):
                     actual = root / "schema-target.json"
                     target.rename(actual)
                     target.symlink_to(actual)
+                elif case == "catalog-both":
+                    catalog_path = root / "catalog" / "u1" / "plebian-0.2.1.json"
+                    changed_catalog = parse_json_bytes(catalog_path.read_bytes())
+                    changed_catalog["release_id"] = "0.2.2"
+                    catalog_payload = canonical_json_bytes(changed_catalog)
+                    catalog_path.write_bytes(catalog_payload)
+                    changed = clone(manifest)
+                    changed_entry = next(
+                        entry
+                        for entry in changed["resources"]
+                        if entry["role"] == "catalog"
+                    )
+                    changed_entry["size"] = len(catalog_payload)
+                    changed_entry["sha256"] = hashlib.sha256(
+                        catalog_payload
+                    ).hexdigest()
+                    changed["resources"] = sorted(
+                        changed["resources"], key=canonical_json_bytes
+                    )
+                    raw = canonical_json_bytes(changed)
+                    external = hashlib.sha256(raw).hexdigest()
+                elif case == "catalog-missing":
+                    (root / "catalog" / "u1" / "plebian-0.2.1.json").unlink()
+                elif case == "catalog-extra":
+                    (root / "catalog" / "u1" / "extra.json").write_bytes(b"{}")
+                elif case == "data-role":
+                    changed = clone(manifest)
+                    catalog_entry = next(
+                        entry
+                        for entry in changed["resources"]
+                        if entry["role"] == "catalog"
+                    )
+                    catalog_entry["role"] = "license-manifest"
+                    changed["resources"] = sorted(
+                        changed["resources"], key=canonical_json_bytes
+                    )
+                    raw = canonical_json_bytes(changed)
+                    external = hashlib.sha256(raw).hexdigest()
+                elif case == "path-collision":
+                    changed = clone(manifest)
+                    catalog_entry = next(
+                        entry
+                        for entry in changed["resources"]
+                        if entry["role"] == "catalog"
+                    )
+                    catalog_entry["path"] = "licenses/u1-0.2.1.json"
+                    changed["resources"] = sorted(
+                        changed["resources"], key=canonical_json_bytes
+                    )
+                    raw = canonical_json_bytes(changed)
+                    external = hashlib.sha256(raw).hexdigest()
+                elif case in {"license-reference", "license-manifest-both"}:
+                    license_manifest_path = root / "licenses" / "u1-0.2.1.json"
+                    changed_license_manifest = parse_json_bytes(
+                        license_manifest_path.read_bytes()
+                    )
+                    if case == "license-reference":
+                        changed_license_manifest["licenses"][0]["text_sha256"] = (
+                            "0" * 64
+                        )
+                    else:
+                        changed_license_manifest["release_id"] = "0.2.2"
+                    license_manifest_payload = canonical_json_bytes(
+                        changed_license_manifest
+                    )
+                    license_manifest_path.write_bytes(license_manifest_payload)
+                    changed = clone(manifest)
+                    changed_entry = next(
+                        entry
+                        for entry in changed["resources"]
+                        if entry["role"] == "license-manifest"
+                    )
+                    changed_entry["size"] = len(license_manifest_payload)
+                    changed_entry["sha256"] = hashlib.sha256(
+                        license_manifest_payload
+                    ).hexdigest()
+                    changed["resources"] = sorted(
+                        changed["resources"], key=canonical_json_bytes
+                    )
+                    raw = canonical_json_bytes(changed)
+                    external = hashlib.sha256(raw).hexdigest()
+                elif case == "data-symlink":
+                    catalog_path = root / "catalog" / "u1" / "plebian-0.2.1.json"
+                    actual = root / "catalog-target.json"
+                    catalog_path.rename(actual)
+                    catalog_path.symlink_to(actual)
+                elif case == "namespace-symlink":
+                    catalog_directory = root / "catalog" / "u1"
+                    actual = root / "catalog-directory-target"
+                    catalog_directory.rename(actual)
+                    catalog_directory.symlink_to(actual, target_is_directory=True)
                 with self.assertRaises(U1ContractError):
                     self._verify(root, raw, external)
 
@@ -492,8 +722,12 @@ class U1CapacityAndRetentionTests(unittest.TestCase):
             with self.subTest(field=field):
                 changed = dict(value)
                 changed[field] = replacement
-                self.assertNotEqual(filesystem_key_bytes(changed), filesystem_key_bytes(value))
-                self.assertNotEqual(filesystem_key_digest(changed), filesystem_key_digest(value))
+                self.assertNotEqual(
+                    filesystem_key_bytes(changed), filesystem_key_bytes(value)
+                )
+                self.assertNotEqual(
+                    filesystem_key_digest(changed), filesystem_key_digest(value)
+                )
 
     def test_capacity_normal_recovery_and_retention_generation_chains(self) -> None:
         validate_capacity_generation_chain(capacity_chain(list(CAPACITY_PHASES)))
@@ -507,7 +741,9 @@ class U1CapacityAndRetentionTests(unittest.TestCase):
             "RELEASING",
             "RELEASE_PROOFED",
         ]
-        validate_capacity_generation_chain(capacity_chain(recovery_phases), recovery=True)
+        validate_capacity_generation_chain(
+            capacity_chain(recovery_phases), recovery=True
+        )
         bundle = retention_provenance_bundle()
         validate_capacity_generation_chain(bundle["capacity_chain"])
         validate_transaction_generation_chain(bundle["transaction_chain"])
@@ -521,6 +757,27 @@ class U1CapacityAndRetentionTests(unittest.TestCase):
         with self.assertRaises(U1ContractError):
             validate_capacity_generation_chain(replay)
         self.assertFalse(production_capacity_policy_available())
+
+    def test_capacity_generation_joins_exactly_five_policy_maxima(self) -> None:
+        policy = capacity_policy()
+        for phase in ("RESERVED", "RETENTION_ACCOUNTED"):
+            generation = capacity_generation(
+                phase,
+                generation=0 if phase == "RESERVED" else 1,
+            )
+            _validate_capacity_generation_against_policy(generation, policy)
+
+        wrong_policy = clone(policy)
+        wrong_policy["phase_maxima"][0]["owner_kind"] = "transaction"
+        with self.assertRaises(U1ContractError):
+            _validate_capacity_generation_against_policy(
+                capacity_generation(), wrong_policy
+            )
+
+        wrong_digest = capacity_generation()
+        wrong_digest["policy_sha256"] = sha("different-policy")
+        with self.assertRaises(U1ContractError):
+            _validate_capacity_generation_against_policy(wrong_digest, policy)
 
     def test_checked_arithmetic_refuses_overflow(self) -> None:
         self.assertEqual(checked_add((1, 2, 3)), 6)
@@ -577,19 +834,33 @@ class U1CapacityAndRetentionTests(unittest.TestCase):
                 with self.assertRaises(U1ContractError):
                     if record_name == "marker":
                         validate_marker_against_intent(
-                            broken["marker"], broken["intent"], broken["intent_capacity"], broken["prepared_generation"]
+                            broken["marker"],
+                            broken["intent"],
+                            broken["intent_capacity"],
+                            broken["prepared_generation"],
                         )
                     elif record_name == "relation":
                         validate_relation_against_marker(
-                            broken["relation"], broken["marker"], broken["marker_generation"], broken["intent"]
+                            broken["relation"],
+                            broken["marker"],
+                            broken["marker_generation"],
+                            broken["intent"],
                         )
                     elif record_name == "accounted":
                         validate_accounted_provenance(
-                            broken["accounted"], broken["marker"], broken["relation"], broken["ready_generation"], broken["intent_capacity"]
+                            broken["accounted"],
+                            broken["marker"],
+                            broken["relation"],
+                            broken["ready_generation"],
+                            broken["intent_capacity"],
                         )
                     else:
                         validate_handoff_provenance(
-                            broken["handoff"], broken["accounted"], broken["accounted_generation"], broken["capacity_accounted"], broken["capacity_releasing"]
+                            broken["handoff"],
+                            broken["accounted"],
+                            broken["accounted_generation"],
+                            broken["capacity_accounted"],
+                            broken["capacity_releasing"],
                         )
 
     def test_directory_current_temporary_and_admission_equations(self) -> None:
@@ -636,7 +907,9 @@ class U1CapacityAndRetentionTests(unittest.TestCase):
 
 
 class U1ScopeAndWheelTests(unittest.TestCase):
-    def test_u1_modules_are_declarative_and_have_no_mutating_or_execution_imports(self) -> None:
+    def test_u1_modules_are_declarative_and_have_no_mutating_or_execution_imports(
+        self,
+    ) -> None:
         forbidden_imports = {
             "asyncio",
             "fcntl",
@@ -663,7 +936,9 @@ class U1ScopeAndWheelTests(unittest.TestCase):
                 for call in (".unlink(", ".rename(", ".replace(", ".mkdir(", "Popen("):
                     self.assertNotIn(call, source)
 
-    @unittest.skipUnless(os.environ.get("KILIX_CONTENT_WHEEL"), "run with built wheel path")
+    @unittest.skipUnless(
+        os.environ.get("KILIX_CONTENT_WHEEL"), "run with built wheel path"
+    )
     def test_wheel_contains_only_production_u1_authority(self) -> None:
         wheel = Path(os.environ["KILIX_CONTENT_WHEEL"])
         with zipfile.ZipFile(wheel) as archive:
@@ -675,6 +950,12 @@ class U1ScopeAndWheelTests(unittest.TestCase):
             )
         self.assertTrue(
             any(member.endswith(f"/contracts/{U1_MANIFEST_NAME}") for member in names)
+        )
+        self.assertTrue(
+            any(member.endswith("/catalog/u1/plebian-0.2.1.json") for member in names)
+        )
+        self.assertTrue(
+            any(member.endswith("/licenses/u1-0.2.1.json") for member in names)
         )
         self.assertTrue(any(member.endswith("/licenses/MIT.txt") for member in names))
         self.assertFalse(any("tests/" in name or "fixtures/" in name for name in names))

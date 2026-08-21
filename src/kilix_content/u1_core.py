@@ -147,7 +147,7 @@ def walk_json(value: Any) -> None:
     def walk(item: Any, depth: int) -> None:
         nonlocal array_items, nodes, properties, string_bytes, string_codepoints
         nodes += 1
-        if nodes > MAX_JSON_NODES or nodes > MAX_JSON_TOKENS:
+        if nodes > MAX_JSON_NODES:
             refuse("JSON value exceeds the aggregate node bound")
         if depth > MAX_JSON_DEPTH:
             refuse("JSON value exceeds the nesting bound")
@@ -213,12 +213,70 @@ def canonical_json_bytes(value: Any) -> bytes:
     return encoded
 
 
-def parse_json_bytes(data: bytes, *, require_canonical: bool = True) -> Any:
-    """Parse bounded JSON with duplicate detection and optional byte identity."""
+def _enforce_json_token_budget(text: str) -> None:
+    """Count JSON lexical tokens without first materializing the value graph."""
+    tokens = 0
+    index = 0
+    length = len(text)
+
+    def consume() -> None:
+        nonlocal tokens
+        tokens += 1
+        if tokens > MAX_JSON_TOKENS:
+            refuse("JSON input exceeds the lexical token bound")
+
+    while index < length:
+        character = text[index]
+        if character in " \t\r\n":
+            index += 1
+            continue
+        if character in "{}[],:":
+            consume()
+            index += 1
+            continue
+        if character == '"':
+            consume()
+            index += 1
+            while index < length:
+                if text[index] == '"':
+                    index += 1
+                    break
+                if text[index] == "\\":
+                    # Escape sequences are separate lexical work even though
+                    # they remain inside one JSON string token.  Counting
+                    # them also makes every consecutive budget boundary
+                    # representable by canonical JSON.
+                    consume()
+                    index += 2
+                else:
+                    index += 1
+            continue
+        if character in "-0123456789":
+            consume()
+            index += 1
+            while index < length and text[index] not in ' \t\r\n{}[],:"':
+                index += 1
+            continue
+        matched = False
+        for literal in ("true", "false", "null"):
+            if text.startswith(literal, index):
+                consume()
+                index += len(literal)
+                matched = True
+                break
+        if matched:
+            continue
+        consume()
+        index += 1
+
+
+def parse_json_bytes(data: bytes) -> Any:
+    """Parse bounded canonical JSON with duplicate and lexical-token limits."""
     if type(data) is not bytes or not data or len(data) > MAX_JSON_BYTES:
         refuse("JSON input is outside the encoded-byte bound")
     try:
         text = data.decode("utf-8")
+        _enforce_json_token_budget(text)
         value = json.loads(
             text,
             object_pairs_hook=_pairs,
@@ -237,7 +295,7 @@ def parse_json_bytes(data: bytes, *, require_canonical: bool = True) -> Any:
     ) as exc:
         raise U1ContractError("JSON input is not valid bounded UTF-8 JSON") from exc
     walk_json(value)
-    if require_canonical and data != canonical_json_bytes(value):
+    if data != canonical_json_bytes(value):
         refuse("JSON input is not the canonical byte representation")
     return value
 
