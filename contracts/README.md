@@ -61,9 +61,19 @@ Manifest admission is two-pass and set-equal. Every path, role, size and digest
 is checked before the data graph is followed; then the catalog and license
 manifest are validated through their externally rooted schemas and semantic
 validators, and every manifest license path/digest is joined to exact packaged
-text. Root source copies, package copies, sdist, both reproducible wheels and
-installed resources must contain the same 28-resource set. The wheel contains
-no fixture, requirements-ledger, synthetic catalog or other test authority.
+text. The wheel has two supported presentations: the importable
+`kilix_content/<manifest path>` root and exactly one
+`<distribution>.data/data/share/kilix-content/<manifest path>` external root.
+Root source copies, package copies, sdist, both reproducible wheels and both
+installed presentations must contain the same 28-resource set, with identical
+sizes, digests and bytes. The external license manifest must resolve
+`licenses/MIT.txt` locally. The wheel contains no fixture,
+requirements-ledger, synthetic catalog or other test authority.
+The physical allowlists deliberately retain co-resident legacy files: the
+package `catalog`/`contracts`/`licenses` subtrees contain exactly 33 files, and
+the external root contains exactly 31. The checker applies the 28-member U1
+manifest projection separately, so these historical files are preserved while
+any unlisted file—including one directly below the external root—is refused.
 
 The U1 implementation is pure parsing/canonicalization/validation: it does not
 open a store, acquire locks, recover a transaction, or sequence authorization.
@@ -98,7 +108,7 @@ The build backend and wheel tooling are pinned in both `build-system` and the
 records the exact Python and `/usr/local/bin/uv` executable digests plus the
 closed build/test environment. The reviewed offline wheelhouse contains 24
 wheels; its canonical manifest SHA-256 is
-`d9fc8fbcc4522dd9422611a82fa11e35323223107ae800c6c7ab57780aa7a1f8`,
+`56eb2a5734937a7b2e0eab03df36ef77387d6c91e9724ef03cd054d1e21e776c`,
 and `uv.lock` is
 `fd20b7915e3e198f65e236964426b6803dea61434d593f52ede9fa104da8b8af`.
 
@@ -120,8 +130,11 @@ first exact sdist, runs the full locked test suite from that sdist, rebuilds its
 wheel, installs the wheel with `uv pip --no-index` into a disposable venv, and
 probes it from a controlled external cwd/import path. It audits archive CRCs,
 special files, duplicate normalized members, modes, wheel RECORD digest/size
-rows, production-resource equality across source/sdist/direct-wheel/
-sdist-wheel/installed-wheel, and forbidden test authority. It invokes
+rows, exact package and external production-resource roots across
+source/sdist/direct-wheel/sdist-wheel/installed-wheel, and forbidden test
+authority. The same audit has causal controls for absent or duplicate external
+roots, missing `MIT.txt`, extra or renamed resources, package-root fallback,
+and path/size/digest mismatches. It invokes
 `python -m build --no-isolation`, so the synchronized uv environment—not an
 unbounded backend resolver—owns every build tool. Its source and exact-sdist
 bootstrap directories each contain a newly created `empty-uv-cache`; dependency
