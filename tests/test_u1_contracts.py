@@ -45,6 +45,7 @@ from kilix_content.u1_catalog import (
     _validate_catalog_resource_bundle,
     _validate_catalog_transition,
     _validate_license_text_bundle,
+    validate_catalog_v5,
 )
 from kilix_content.u1_core import (
     MAX_JSON_TOKENS,
@@ -74,6 +75,7 @@ from tests.u1_vectors import (
     catalog,
     clone,
     directory_observation,
+    install_record,
     license_manifest,
     logical_state,
     output_binding,
@@ -92,22 +94,88 @@ ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS = ROOT / "contracts"
 PACKAGE = ROOT / "src" / "kilix_content"
 FIXTURES = ROOT / "tests" / "fixtures" / "u1"
+LEDGER = FIXTURES / "requirements-ledger.json"
+LEDGER_SHA256 = "7ca39301c25eca66a5f31f12a3054837257cede6dd336b8d124f5e94dc7b78bf"
+EXPECTED_CORPUS_COUNT = 260
 
 
 def load_json(path: Path) -> object:
     return json.loads(path.read_bytes())
 
 
-def expected_sums() -> str:
+def expected_sums(root: Path = FIXTURES) -> str:
     paths = sorted(
-        [FIXTURES / "index.json", *(FIXTURES / "corpus").rglob("*.json")],
-        key=lambda path: path.relative_to(ROOT).as_posix(),
+        [root / "index.json", *(root / "corpus").rglob("*.json")],
+        key=lambda path: path.relative_to(root).as_posix(),
     )
     return "".join(
         f"{hashlib.sha256(path.read_bytes()).hexdigest()}  "
-        f"{path.relative_to(ROOT).as_posix()}\n"
+        f"tests/fixtures/u1/{path.relative_to(root).as_posix()}\n"
         for path in paths
     )
+
+
+def audit_corpus_tree(
+    root: Path,
+    expected_ids: set[str],
+    required_ids: set[str],
+    expected_ledger_sha256: str,
+) -> None:
+    """Audit one corpus copy without consulting the renderer or source tree."""
+    index_path = root / "index.json"
+    index_raw = index_path.read_bytes()
+    index = json.loads(index_raw.decode("utf-8"))
+    if canonical_json_bytes(index) != index_raw:
+        raise AssertionError("corpus index is not canonical")
+    entries = index.get("entries")
+    if type(entries) is not list:
+        raise AssertionError("corpus index entries are not a list")
+    ids = [entry.get("id") for entry in entries]
+    if any(type(identifier) is not str for identifier in ids):
+        raise AssertionError("corpus index has a non-string fixture ID")
+    if len(ids) != len(set(ids)) or set(ids) != expected_ids:
+        raise AssertionError("corpus index ID set is not the frozen set")
+    if not required_ids <= set(ids):
+        raise AssertionError("a required fixture ID is absent")
+    indexed_paths: set[str] = set()
+    for entry in entries:
+        relative = entry.get("path")
+        if type(relative) is not str or relative in indexed_paths:
+            raise AssertionError("corpus index path is invalid or duplicated")
+        path = Path(relative)
+        if path.is_absolute() or ".." in path.parts or not relative.startswith("corpus/"):
+            raise AssertionError("corpus index path escapes the fixture root")
+        indexed_paths.add(relative)
+        payload_path = root / relative
+        try:
+            payload = payload_path.read_bytes()
+        except OSError as exc:
+            raise AssertionError("indexed fixture is missing or unreadable") from exc
+        if entry.get("size") != len(payload):
+            raise AssertionError("fixture size does not match the index")
+        if entry.get("sha256") != hashlib.sha256(payload).hexdigest():
+            raise AssertionError("fixture digest does not match the index")
+    actual_paths = {
+        path.relative_to(root).as_posix()
+        for path in (root / "corpus").rglob("*.json")
+    }
+    if actual_paths != indexed_paths:
+        raise AssertionError("fixture files and index paths are not closed")
+    if (root / "SHA256SUMS").read_text("ascii") != expected_sums(root):
+        raise AssertionError("corpus SHA256SUMS is not exact")
+
+    ledger_path = root / "requirements-ledger.json"
+    ledger_raw = ledger_path.read_bytes()
+    if hashlib.sha256(ledger_raw).hexdigest() != expected_ledger_sha256:
+        raise AssertionError("requirements ledger digest changed")
+    if not ledger_raw.endswith(b"\n"):
+        raise AssertionError("requirements ledger lacks its terminal newline")
+    ledger = json.loads(ledger_raw[:-1].decode("utf-8"))
+    if canonical_json_bytes(ledger) != ledger_raw[:-1]:
+        raise AssertionError("requirements ledger is not canonical")
+    ledger_ids = [identifier for row in ledger["requirements"] for identifier in row["fixture_ids"]]
+    if len(ledger_ids) != len(set(ledger_ids)) or set(ledger_ids) != expected_ids:
+        raise AssertionError("requirements ledger does not close over the corpus")
 
 
 class U1ResourceAndCorpusTests(unittest.TestCase):
@@ -198,7 +266,7 @@ class U1ResourceAndCorpusTests(unittest.TestCase):
         indexed = {entry["id"]: entry for entry in index["entries"]}
         self.assertEqual(set(indexed), set(rendered))
         self.assertTrue(set(REQUIRED_VECTOR_IDS) <= set(indexed))
-        self.assertEqual(len(indexed), 151)
+        self.assertEqual(len(indexed), EXPECTED_CORPUS_COUNT)
 
         indexed_paths: set[str] = set()
         for identifier, entry in indexed.items():
@@ -210,6 +278,7 @@ class U1ResourceAndCorpusTests(unittest.TestCase):
                 self.assertEqual(entry["schema_id"], vector["schema_id"])
                 self.assertEqual(entry["expected_stage"], vector["expected_stage"])
                 self.assertEqual(entry["expected_code"], vector["expected_code"])
+                self.assertEqual(entry.get("disposition"), vector.get("disposition"))
                 payload = (FIXTURES / entry["path"]).read_bytes()
                 self.assertEqual(payload, vector["raw"])
                 self.assertEqual(entry["size"], len(payload))
@@ -222,12 +291,151 @@ class U1ResourceAndCorpusTests(unittest.TestCase):
         self.assertEqual(actual_paths, indexed_paths)
         self.assertEqual((FIXTURES / "SHA256SUMS").read_text("ascii"), expected_sums())
 
+    def test_hand_authored_requirements_ledger_is_frozen_and_complete(self) -> None:
+        raw = LEDGER.read_bytes()
+        self.assertEqual(hashlib.sha256(raw).hexdigest(), LEDGER_SHA256)
+        self.assertTrue(raw.endswith(b"\n"))
+        payload = raw[:-1]
+        parsed = json.loads(payload.decode("utf-8"))
+        self.assertEqual(canonical_json_bytes(parsed), payload)
+        self.assertEqual(parsed["schema"], "kilix.content.u1-requirements-ledger/v1")
+        self.assertEqual(parsed["release_id"], "0.2.1")
+        rows = parsed["requirements"]
+        requirement_ids = [row["requirement_id"] for row in rows]
+        self.assertEqual(len(requirement_ids), len(set(requirement_ids)))
+        self.assertTrue(
+            all(
+                any(requirement_id.startswith(prefix) for prefix in ("H1.", "H2.", "H3.", "H4.", "H5.", "H6.", "M1.", "M2."))
+                for requirement_id in requirement_ids
+            )
+        )
+        indexed = parse_json_bytes((FIXTURES / "index.json").read_bytes())
+        indexed_by_id = {entry["id"]: entry for entry in indexed["entries"]}
+        indexed_ids = set(indexed_by_id)
+        ledger_ids = [identifier for row in rows for identifier in row["fixture_ids"]]
+        self.assertTrue(ledger_ids)
+        self.assertEqual(len(ledger_ids), len(set(ledger_ids)))
+        self.assertEqual(set(ledger_ids), indexed_ids)
+        for row in rows:
+            self.assertTrue(row["fixture_ids"])
+            self.assertIn(row["paired_positive_id"], indexed_ids)
+            paired = indexed_by_id[row["paired_positive_id"]]
+            self.assertEqual(paired["expected_code"], "accepted")
+            for identifier in row["fixture_ids"]:
+                entry = indexed_by_id[identifier]
+                if entry["expected_stage"] == "operation":
+                    self.assertEqual(entry["expected_stage"], paired["expected_stage"])
+                    self.assertEqual(
+                        entry["disposition"]["operation"],
+                        paired["disposition"]["operation"],
+                    )
+                elif entry["expected_stage"] in {"join", "admission"}:
+                    self.assertEqual(entry["expected_stage"], paired["expected_stage"])
+                    self.assertEqual(entry["schema_id"], paired["schema_id"])
+                else:
+                    self.assertEqual(entry["schema_id"], paired["schema_id"])
+        self.assertEqual(
+            {row["requirement_id"].split(".", 1)[0] for row in rows},
+            {"H1", "H2", "H3", "H4", "H5", "H6", "M1", "M2"},
+        )
+
+    def test_deletion_of_fixture_index_or_ledger_is_not_silent(self) -> None:
+        index = parse_json_bytes((FIXTURES / "index.json").read_bytes())
+        entries = list(index["entries"])
+        self.assertTrue(entries)
+        expected_ids = {entry["id"] for entry in entries}
+        required_ids = set(REQUIRED_VECTOR_IDS)
+        audit_corpus_tree(FIXTURES, expected_ids, required_ids, LEDGER_SHA256)
+
+        def fresh_copy(parent: Path) -> Path:
+            parent.mkdir(parents=True, exist_ok=True)
+            destination = parent / "u1"
+            shutil.copytree(FIXTURES, destination)
+            return destination
+
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            with self.subTest(case="fixture-file"):
+                root = fresh_copy(parent / "fixture")
+                (root / entries[0]["path"]).unlink()
+                with self.assertRaises(AssertionError):
+                    audit_corpus_tree(root, expected_ids, required_ids, LEDGER_SHA256)
+
+            with self.subTest(case="index-row"):
+                root = fresh_copy(parent / "index")
+                edited = json.loads((root / "index.json").read_bytes())
+                edited["entries"].pop()
+                (root / "index.json").write_bytes(canonical_json_bytes(edited))
+                with self.assertRaises(AssertionError):
+                    audit_corpus_tree(root, expected_ids, required_ids, LEDGER_SHA256)
+
+            with self.subTest(case="ledger-row"):
+                root = fresh_copy(parent / "ledger")
+                ledger = json.loads((root / "requirements-ledger.json").read_bytes()[:-1])
+                ledger["requirements"].pop()
+                (root / "requirements-ledger.json").write_bytes(
+                    canonical_json_bytes(ledger) + b"\n"
+                )
+                with self.assertRaises(AssertionError):
+                    audit_corpus_tree(root, expected_ids, required_ids, LEDGER_SHA256)
+
+            with self.subTest(case="required-fixture-id"):
+                root = fresh_copy(parent / "required")
+                ledger = json.loads((root / "requirements-ledger.json").read_bytes()[:-1])
+                required_id = next(iter(required_ids))
+                for row in ledger["requirements"]:
+                    if required_id in row["fixture_ids"]:
+                        row["fixture_ids"].remove(required_id)
+                        break
+                else:
+                    self.fail(f"required fixture ID is not ledger-owned: {required_id}")
+                (root / "requirements-ledger.json").write_bytes(
+                    canonical_json_bytes(ledger) + b"\n"
+                )
+                with self.assertRaises(AssertionError):
+                    audit_corpus_tree(root, expected_ids, required_ids, LEDGER_SHA256)
+
     def test_every_corpus_record_fails_at_its_declared_earliest_stage(self) -> None:
         index = parse_json_bytes((FIXTURES / "index.json").read_bytes())
         for entry in index["entries"]:
             with self.subTest(identifier=entry["id"]):
                 raw = (FIXTURES / entry["path"]).read_bytes()
                 expected_stage = entry["expected_stage"]
+                if expected_stage == "operation":
+                    self.assertTrue(entry["schema_id"].startswith("test-only."))
+                    self.assertTrue(entry["disposition"]["source_only"])
+                    with self.assertRaises(U1ContractError):
+                        validate_u1_bytes(entry["schema_id"], raw, self.capability)
+                    continue
+                if expected_stage == "join":
+                    value = json.loads(raw)
+                    try:
+                        _validate_capacity_generation_against_policy(
+                            value["generation"], value["policy"]
+                        )
+                    except U1ContractError:
+                        self.assertEqual(entry["expected_code"], "refused")
+                    else:
+                        self.assertEqual(entry["expected_code"], "accepted")
+                    continue
+                if expected_stage == "admission":
+                    value = json.loads(raw)
+                    validate_retention_admission(
+                        value["logical"], value["physical"], value["limits"]
+                    )
+                    exceeded = (
+                        value["logical"]["retained_unique_objects"]
+                        > value["limits"]["retained_unique_objects_max"]
+                        or any(
+                            item["count"]
+                            > value["limits"]["retained_versions_per_stable_slot_max"]
+                            for item in value["logical"]["retained_versions"]
+                        )
+                    )
+                    self.assertEqual(entry["expected_code"], "refused" if exceeded else "accepted")
+                    continue
+                if expected_stage == "blocker":
+                    self.fail("unreviewed boundary blocker remained in the corpus")
                 if expected_stage in {"parser", "canonical"}:
                     with self.assertRaises(U1ContractError) as caught:
                         parse_json_bytes(raw)
@@ -262,6 +470,123 @@ class U1ResourceAndCorpusTests(unittest.TestCase):
                 result = validate_u1_bytes(entry["schema_id"], raw, self.capability)
                 self.assertEqual(result.raw_bytes, raw)
                 self.assertIsInstance(result.value, MappingProxyType)
+
+    def test_source_only_boundary_operations_are_non_vacuous(self) -> None:
+        index = parse_json_bytes((FIXTURES / "index.json").read_bytes())
+        operations = [
+            entry for entry in index["entries"] if entry["expected_stage"] == "operation"
+        ]
+        self.assertTrue(operations)
+        for entry in operations:
+            with self.subTest(identifier=entry["id"]):
+                raw = (FIXTURES / entry["path"]).read_bytes()
+                disposition = entry["disposition"]
+                value = json.loads(raw)
+                operation = disposition["operation"]
+                expected = entry["expected_code"]
+                if operation == "walk_json":
+                    patches: dict[str, object] = {}
+                    for name in disposition.get("patch_siblings", []):
+                        patches[name] = 10_000_000
+                    with mock.patch.multiple(u1_core_module, **patches):
+                        try:
+                            u1_core_module.walk_json(value)
+                        except U1ContractError as caught:
+                            self.assertEqual(caught.code, expected)
+                        else:
+                            self.assertEqual(expected, "accepted")
+                    continue
+                if operation == "catalog_graph":
+                    self._assert_graph_recipe(value, expected)
+                    continue
+                if operation == "admission_authority":
+                    self._assert_admission_authority_operation(value, expected)
+                    continue
+                self.fail(f"unknown source-only operation {operation!r}")
+
+    def _assert_admission_authority_operation(
+        self, record: dict[str, object], expected: str
+    ) -> None:
+        case = record["case"]
+        expected_schema = "kilix.content.catalog/v5"
+        capability: object = self.capability
+        if case == "genuine-capability":
+            result = validate_u1_bytes(
+                expected_schema, canonical_json_bytes(catalog()), capability
+            )
+            self.assertEqual(result.raw_bytes, canonical_json_bytes(catalog()))
+            self.assertEqual(expected, "accepted")
+            return
+        if case == "missing-capability":
+            capability = None
+        elif case == "caller-dict":
+            capability = {}
+        elif case == "test-authority":
+            fake = object.__new__(PackagedReleaseCapability)
+            object.__setattr__(fake, "_token", object())
+            object.__setattr__(fake, "_manifest_sha256", U1_MANIFEST_SHA256)
+            object.__setattr__(fake, "_resources", MappingProxyType({}))
+            object.__setattr__(fake, "_routes", MappingProxyType({}))
+            capability = fake
+        elif case == "unknown-route":
+            expected_schema = "kilix.content.unknown/v1"
+        else:
+            self.fail(f"unknown admission-authority case {case!r}")
+        with self.assertRaises(U1ContractError) as caught:
+            validate_u1_bytes(
+                expected_schema, canonical_json_bytes(catalog()), capability
+            )  # type: ignore[arg-type]
+        self.assertEqual(caught.exception.code, expected)
+
+    def _assert_graph_recipe(self, recipe: dict[str, object], expected: str) -> None:
+        nodes = int(recipe["nodes"])
+        edges = int(recipe["edges"])
+        graph = catalog()
+        extra_count = nodes - 4
+        extra_ids = [f"recipe-{index:04d}" for index in range(extra_count)]
+        base_targets = ["demo.git", "demo.mirror", "demo.input", "demo.package"]
+        for index, identifier in enumerate(extra_ids):
+            install = install_record("mirrored")
+            if edges:
+                if edges >= 16_383:
+                    first_count = 4 + (edges - 16_383)
+                    targets = base_targets + extra_ids[1:]
+                    dependency_ids = targets[:first_count] if index == 0 else base_targets
+                    install["dependencies"] = [
+                        {"id": target, "role": "runtime"} for target in dependency_ids
+                    ]
+                    install["dependencies"].sort(key=canonical_json_bytes)
+                else:
+                    install["dependencies"] = []
+            graph["contents"].append(
+                {
+                    "id": identifier,
+                    "stable_slot": f"recipe-slot-{index:04d}",
+                    "install": install,
+                }
+            )
+        graph["contents"] = sorted(
+            graph["contents"], key=canonical_json_bytes
+        )
+
+        original_require_array = u1_catalog_module.require_array
+
+        def allow_large_collections(
+            candidate: object, *, minimum: int = 0, maximum: int = 4_096
+        ) -> list[object]:
+            if type(candidate) is list and len(candidate) > maximum and maximum == 4_096:
+                return candidate
+            return original_require_array(candidate, minimum=minimum, maximum=maximum)
+
+        with mock.patch.object(
+            u1_catalog_module, "require_array", allow_large_collections
+        ):
+            try:
+                validate_catalog_v5(graph)
+            except U1ContractError as caught:
+                self.assertEqual(caught.code, expected)
+            else:
+                self.assertEqual(expected, "accepted")
 
 
 class U1AdmissionAndAuthorityTests(unittest.TestCase):

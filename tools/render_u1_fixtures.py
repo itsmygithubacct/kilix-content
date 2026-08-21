@@ -8,20 +8,38 @@ filesystem-recovery, acquisition, or authorization behavior.
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from pathlib import Path
 from typing import Any
 
 from kilix_content import U1ContractError, canonical_json_bytes
-from kilix_content.u1_core import MAX_JSON_BYTES, S64_MAX, U64_MAX
+from kilix_content.u1_core import (
+    MAX_ARRAY_ITEMS,
+    MAX_JSON_BYTES,
+    MAX_JSON_NODES,
+    MAX_OBJECT_PROPERTIES,
+    MAX_STRING_CODEPOINTS,
+    MAX_TOTAL_ARRAY_ITEMS,
+    MAX_TOTAL_PROPERTIES,
+    MAX_TOTAL_STRING_BYTES,
+    MAX_TOTAL_STRING_CODEPOINTS,
+    S64_MAX,
+    U64_MAX,
+)
 from tests.u1_vectors import (
+    authority_binding,
+    authorization,
     capacity_generation,
     capacity_policy,
     catalog,
     clone,
+    directory_observation,
     install_record,
+    license_manifest,
     logical_state,
     ordered,
+    output_binding,
     physical_state,
     positive_records,
     recovery_vector,
@@ -30,10 +48,12 @@ from tests.u1_vectors import (
     retention_intent,
     retention_marker,
     retention_relation,
+    retention_accounted,
     sandbox_profile,
     sha,
     system_profile,
     toolchain_profile,
+    transaction_generation,
 )
 
 
@@ -42,6 +62,7 @@ FIXTURE_ROOT = ROOT / "tests" / "fixtures" / "u1"
 CORPUS_ROOT = FIXTURE_ROOT / "corpus"
 INDEX_PATH = FIXTURE_ROOT / "index.json"
 SUMS_PATH = FIXTURE_ROOT / "SHA256SUMS"
+LEDGER_PATH = FIXTURE_ROOT / "requirements-ledger.json"
 RELEASE_ID = "0.2.1"
 SCHEMA_FAILURE = "U1_U1_JSON_SCHEMA_VALIDATION_REFUSED_THE_RECORD"
 
@@ -136,6 +157,34 @@ def _canonical(value: Any) -> bytes:
     return canonical_json_bytes(value)
 
 
+def _ledger_vector_ids() -> set[str]:
+    """Read the hand-authored ledger only as a coverage requirement.
+
+    The renderer never creates, edits, or infers ledger rows.  The independent
+    test freezes the ledger bytes and its row/ID grammar.
+    """
+    raw = LEDGER_PATH.read_bytes()
+    value = json.loads(raw.decode("utf-8"))
+    if raw != _canonical(value) + b"\n":
+        raise SystemExit("requirements ledger is not one canonical JSON line")
+    rows = value.get("requirements")
+    if (
+        value.get("schema") != "kilix.content.u1-requirements-ledger/v1"
+        or value.get("release_id") != RELEASE_ID
+        or type(rows) is not list
+    ):
+        raise SystemExit("requirements ledger has an invalid envelope")
+    result: set[str] = set()
+    for row in rows:
+        if type(row) is not dict or type(row.get("requirement_id")) is not str:
+            raise SystemExit("requirements ledger has an invalid requirement row")
+        ids = row.get("fixture_ids")
+        if type(ids) is not list or any(type(identifier) is not str for identifier in ids):
+            raise SystemExit("requirements ledger has invalid fixture IDs")
+        result.update(ids)
+    return result
+
+
 def build_vectors() -> list[dict[str, Any]]:
     vectors: list[dict[str, Any]] = []
 
@@ -146,9 +195,9 @@ def build_vectors() -> list[dict[str, Any]]:
         raw: bytes,
         stage: str,
         code: str,
+        disposition: dict[str, Any] | None = None,
     ) -> None:
-        vectors.append(
-            {
+        entry = {
                 "id": _safe_id(identifier),
                 "class": vector_class,
                 "schema_id": schema_id,
@@ -156,7 +205,9 @@ def build_vectors() -> list[dict[str, Any]]:
                 "expected_stage": stage,
                 "expected_code": code,
             }
-        )
+        if disposition is not None:
+            entry["disposition"] = disposition
+        vectors.append(entry)
 
     def add_value(
         identifier: str,
@@ -165,8 +216,17 @@ def build_vectors() -> list[dict[str, Any]]:
         value: Any,
         stage: str,
         code: str,
+        disposition: dict[str, Any] | None = None,
     ) -> None:
-        add_raw(identifier, vector_class, schema_id, _canonical(value), stage, code)
+        add_raw(
+            identifier,
+            vector_class,
+            schema_id,
+            _canonical(value),
+            stage,
+            code,
+            disposition,
+        )
 
     records = positive_records()
     for name, (schema_id, value) in records.items():
@@ -213,6 +273,47 @@ def build_vectors() -> list[dict[str, Any]]:
             extra,
             "schema",
             SCHEMA_FAILURE,
+        )
+
+    def add_schema_mutation(
+        identifier: str, schema_id: str, value: Any, vector_class: str = "mutation"
+    ) -> None:
+        add_value(identifier, vector_class, schema_id, value, "schema", SCHEMA_FAILURE)
+
+    def add_semantic_mutation(
+        identifier: str, schema_id: str, value: Any, message: str,
+        vector_class: str = "mutation",
+    ) -> None:
+        add_value(identifier, vector_class, schema_id, value, "semantic", error_code(message))
+
+    def add_join_oracle(identifier: str, value: Any, expected: str) -> None:
+        add_value(
+            identifier,
+            "join",
+            "test-only.capacity-policy-join/v1",
+            value,
+            "join",
+            expected,
+            disposition={
+                "operation": "validate_capacity_generation_against_policy",
+                "paired_positive_id": value["paired_positive_id"],
+                "source_only": True,
+            },
+        )
+
+    def add_admission_oracle(identifier: str, value: Any, expected: str) -> None:
+        add_value(
+            identifier,
+            "admission-oracle",
+            "test-only.retention-admission-oracle/v1",
+            value,
+            "admission",
+            expected,
+            disposition={
+                "operation": "validate_retention_admission",
+                "paired_positive_id": value["paired_positive_id"],
+                "source_only": True,
+            },
         )
 
     # H1 catalog/source/package/profile authority mutations.
@@ -271,6 +372,152 @@ def build_vectors() -> list[dict[str, Any]]:
         "semantic",
         error_code("source length exceeds its frozen maximum"),
     )
+    value = catalog()
+    value["packages"][0]["members"][0]["member_path"] = "../escape"
+    add_schema_mutation("mutation-catalog-member-path", "kilix.content.catalog/v5", value)
+    value = catalog()
+    value["system_requirement_profiles"][0]["manifest_sha256"] = 1
+    add_schema_mutation(
+        "mutation-catalog-system-profile-reference",
+        "kilix.content.catalog/v5",
+        value,
+    )
+    value = catalog()
+    value["toolchain_profiles"][0]["profile_sha256"] = 1
+    add_schema_mutation(
+        "mutation-catalog-toolchain-profile-reference",
+        "kilix.content.catalog/v5",
+        value,
+    )
+    value = catalog()
+    value["license_manifest_id"] = ""
+    add_schema_mutation("mutation-catalog-license-manifest", "kilix.content.catalog/v5", value)
+    value = install_record("archive", output_manifest=True)
+    value["version"] = 1
+    add_schema_mutation("mutation-install-version", "kilix.content.install-record/v5", value)
+    value = install_record("archive", output_manifest=True)
+    value["source"]["sha256"] = 1
+    add_schema_mutation("mutation-install-source-digest", "kilix.content.install-record/v5", value)
+    value = install_record("archive", output_manifest=True)
+    value["source_bytes_max"] = 1
+    add_semantic_mutation(
+        "mutation-install-source-bytes-max",
+        "kilix.content.install-record/v5",
+        value,
+        "install and source maximums diverge",
+    )
+    value = install_record("archive", output_manifest=True)
+    value["dependencies"][0]["role"] = "runtime+build"
+    add_schema_mutation("mutation-install-dependency-role", "kilix.content.install-record/v5", value)
+    value = install_record("archive", output_manifest=True)
+    value["build_argv"] = [1]
+    add_schema_mutation("mutation-install-build-argv", "kilix.content.install-record/v5", value)
+    value = authority_binding()
+    value["install_record_sha256"] = 1
+    add_schema_mutation(
+        "mutation-authority-install-record-digest",
+        "kilix.content.install-authority-binding/v1",
+        value,
+    )
+    value = output_binding()
+    value["selected_bytes"] = -1
+    add_schema_mutation("mutation-output-binding-selected-bytes", "kilix.content.output-binding/v1", value)
+    value = authorization()
+    value["record_sha256"] = _replace_digest(value["record_sha256"])
+    add_semantic_mutation(
+        "mutation-authorization-record-digest",
+        "kilix.install.authorization/v2",
+        value,
+        "authorization record digest is inconsistent",
+    )
+    value = system_profile()
+    value["packages"][0]["sha256"] = 1
+    add_schema_mutation(
+        "mutation-system-profile-package-digest",
+        "kilix.content.system-requirements/v1",
+        value,
+    )
+    value = toolchain_profile()
+    value["entrypoints"][0]["executable"] = 1
+    add_schema_mutation(
+        "mutation-toolchain-entrypoint",
+        "kilix.content.toolchain-profile/v1",
+        value,
+    )
+    value = sandbox_profile()
+    value["devices"][0] = "/dev/does-not-exist"
+    add_schema_mutation(
+        "mutation-sandbox-device",
+        "kilix.content.sandbox-profile/v1",
+        value,
+    )
+    value = license_manifest()
+    value["licenses"][0]["text_sha256"] = 1
+    add_schema_mutation(
+        "mutation-license-text-digest",
+        "kilix.content.license-manifest/v1",
+        value,
+    )
+
+    # These records model meaningful packaging/test-authority claims as inert,
+    # rejected data.  The disposition metadata is carried in the fixture index
+    # and is tested independently; the payload itself is deliberately rejected
+    # by the production catalog schema and can never mint authority.
+    disposition_payload = {
+        "schema": "kilix.content.catalog/v5",
+        "release_id": RELEASE_ID,
+        "packages": [],
+        "contents": [],
+        "assets": [],
+        "aliases": [],
+        "system_requirement_profiles": [],
+        "toolchain_profiles": [],
+        "sandbox_profiles": [],
+        "license_manifest_id": "licenses.test",
+    }
+    for identifier, disposition, claim in (
+        (
+            "disposition-resource-only",
+            "resource-only",
+            "a schema/resource member must not be treated as catalog authority",
+        ),
+        (
+            "disposition-manifest-only",
+            "manifest-only",
+            "a resource manifest entry without catalog membership is inert",
+        ),
+        (
+            "disposition-wheel-test-authority",
+            "wheel-test-authority",
+            "wheel tests and golden fixtures cannot mint installed authority",
+        ),
+        (
+            "disposition-sdist-test-authority",
+            "sdist-test-authority",
+            "sdist test authority is development-only and cannot authorize install",
+        ),
+    ):
+        value = clone(disposition_payload)
+        value["disposition_claim"] = {
+            "claim": claim,
+            "paired_positive_id": "positive-catalog-v5",
+            "source_only": True,
+            "installed_authority": False,
+        }
+        add_value(
+            identifier,
+            "invalid",
+            "kilix.content.catalog/v5",
+            value,
+            "schema",
+            SCHEMA_FAILURE,
+            disposition={
+                "kind": disposition,
+                "paired_positive_id": "positive-catalog-v5",
+                "claim": claim,
+                "expected_authority": "refuse",
+            },
+        )
     for name, schema_id, constructor, field, message in (
         (
             "system-profile-self-digest",
@@ -335,6 +582,187 @@ def build_vectors() -> list[dict[str, Any]]:
         value,
         "semantic",
         error_code("generation zero is not the accepted capacity RESERVED root"),
+    )
+    value = capacity_generation("RESERVED", generation=0)
+    value["owner_kind"] = "unknown-owner"
+    add_schema_mutation(
+        "mutation-capacity-owner-kind",
+        "kilix.content.capacity-generation/v2",
+        value,
+    )
+    value = capacity_generation("RESERVED", generation=0)
+    value["phase_payload"]["reservation_name"] = 1
+    add_schema_mutation(
+        "mutation-capacity-phase-payload",
+        "kilix.content.capacity-generation/v2",
+        value,
+    )
+    value = capacity_generation("RESERVED", generation=0)
+    value["root_identities"][0]["descriptor_identity_sha256"] = 1
+    add_schema_mutation(
+        "mutation-capacity-root-identity",
+        "kilix.content.capacity-generation/v2",
+        value,
+    )
+    value = capacity_generation("RESERVED", generation=0)
+    value["policy_sha256"] = 1
+    add_schema_mutation(
+        "mutation-capacity-policy-digest",
+        "kilix.content.capacity-generation/v2",
+        value,
+    )
+    policy = capacity_policy()
+    generation = capacity_generation("RESERVED", generation=0)
+    add_join_oracle(
+        "join-capacity-owner-phase-five-roots-positive",
+        {
+            "schema": "test-only.capacity-policy-join/v1",
+            "policy": policy,
+            "generation": generation,
+            "paired_positive_id": "positive-capacity-generation-reserved",
+        },
+        "accepted",
+    )
+    wrong_policy = clone(policy)
+    wrong_policy["phase_maxima"].pop()
+    add_join_oracle(
+        "join-capacity-owner-phase-missing-root",
+        {
+            "schema": "test-only.capacity-policy-join/v1",
+            "policy": wrong_policy,
+            "generation": generation,
+            "paired_positive_id": "positive-capacity-generation-reserved",
+        },
+        "refused",
+    )
+    wrong_generation = clone(generation)
+    wrong_generation["policy_sha256"] = sha("wrong-capacity-policy")
+    add_join_oracle(
+        "join-capacity-policy-digest-mismatch",
+        {
+            "schema": "test-only.capacity-policy-join/v1",
+            "policy": policy,
+            "generation": wrong_generation,
+            "paired_positive_id": "positive-capacity-generation-reserved",
+        },
+        "refused",
+    )
+    wrong_owner = clone(generation)
+    wrong_owner["owner_kind"] = "retention-capacity"
+    wrong_owner["phase"] = "RETENTION_ACCOUNTED"
+    wrong_owner["generation"] = 1
+    wrong_owner["predecessor_sha256"] = sha("previous-generation")
+    add_join_oracle(
+        "join-capacity-owner-phase-mismatch",
+        {
+            "schema": "test-only.capacity-policy-join/v1",
+            "policy": policy,
+            "generation": wrong_owner,
+            "paired_positive_id": "positive-capacity-generation-reserved",
+        },
+        "refused",
+    )
+    def two_object_logical() -> dict[str, Any]:
+        value = logical_state()
+        first = clone(value["O_materialized"][0])
+        second = clone(first)
+        second["output_binding_sha256"] = sha("second-output-binding")
+        objects = ordered([first, second])
+        first_relation = clone(value["R_present"][0])
+        second_relation = clone(first_relation)
+        second_relation["output_binding_sha256"] = second["output_binding_sha256"]
+        relations = ordered([first_relation, second_relation])
+        value["O_materialized"] = objects
+        value["O_referenced"] = objects
+        value["O_counted"] = objects
+        value["R_present"] = relations
+        value["R_counted"] = relations
+        value["retained_unique_objects"] = 2
+        value["retained_versions"] = [
+            {"stable_slot_sha256": sha("stable-slot"), "count": 2}
+        ]
+        return value
+
+    for field, observed, suffixes in (
+        ("retained_unique_objects_max", 2, (1, 2, 3)),
+        ("retained_versions_per_stable_slot_max", 2, (1, 2, 3)),
+    ):
+        for suffix, limit in zip(("limit-minus-one", "exact", "limit-plus-one"), suffixes):
+            logical = two_object_logical()
+            closed = limit < observed
+            logical["retention_admission_closed"] = closed
+            logical["admission_closed_reasons"] = ["limit-exceeded"] if closed else []
+            limits = {
+                "retained_unique_objects_max": 2,
+                "retained_allocated_bytes_max": 1_000_000,
+                "retained_inodes_max": 10,
+                "retained_versions_per_stable_slot_max": 2,
+                "ambiguous_retained_objects_max": 2,
+            }
+            limits[field] = limit
+            add_admission_oracle(
+                f"boundary-retention-admission-{field}-{suffix}",
+                {
+                    "schema": "test-only.retention-admission-oracle/v1",
+                    "logical": logical,
+                    "physical": physical_state(),
+                    "limits": limits,
+                    "paired_positive_id": "positive-retention-intent-d0",
+                },
+                "refused" if closed else "accepted",
+            )
+    value = capacity_policy()
+    value["scan_bounds"]["graph_nodes_max"] = 0
+    add_schema_mutation(
+        "mutation-capacity-scan-bound",
+        "kilix.content.capacity-reserve/v2",
+        value,
+    )
+    value = capacity_policy()
+    value["retention_limits"]["retained_unique_objects_max"] = 0
+    add_schema_mutation(
+        "boundary-retention-global-limit-minus-one",
+        "kilix.content.capacity-reserve/v2",
+        value,
+        vector_class="boundary",
+    )
+    value = capacity_policy()
+    value["retention_limits"]["retained_versions_per_stable_slot_max"] = 0
+    add_schema_mutation(
+        "boundary-retention-per-slot-limit-minus-one",
+        "kilix.content.capacity-reserve/v2",
+        value,
+        vector_class="boundary",
+    )
+    value = catalog()
+    value["packages"][0]["install"]["build_argv"] = []
+    value["packages"][0]["install"]["dependencies"] = [
+        {"id": "demo.git", "role": "runtime"}
+    ]
+    value["contents"][0]["install"]["dependencies"] = [
+        {"id": "demo.package", "role": "runtime"}
+    ]
+    add_semantic_mutation(
+        "cycle-catalog-dependency-two-node",
+        "kilix.content.catalog/v5",
+        value,
+        "dependency graph contains a cycle or exceeds its depth bound",
+        vector_class="cycle",
+    )
+    value = catalog()
+    value["packages"][0]["install"]["build_argv"] = []
+    value["packages"][0]["install"]["dependencies"] = [
+        {"id": "demo.git", "role": "runtime"}
+    ]
+    value["contents"][0]["install"]["dependencies"] = [
+        {"id": "demo.codec", "role": "runtime"}
+    ]
+    add_semantic_mutation(
+        "cycle-catalog-alias-normalized-two-node",
+        "kilix.content.catalog/v5",
+        value,
+        "dependency graph contains a cycle or exceeds its depth bound",
+        vector_class="cycle",
     )
 
     # H3-H5 acyclic digest, descriptor, set, physical, intent, and H mutations.
@@ -408,7 +836,7 @@ def build_vectors() -> list[dict[str, Any]]:
         "semantic",
         error_code("physical filesystem envelope digest is inconsistent"),
     )
-    value = retention_intent()
+    value = retention_intent(directory_count=1)
     value["component_envelope_sha256"] = _replace_digest(
         value["component_envelope_sha256"]
     )
@@ -451,6 +879,127 @@ def build_vectors() -> list[dict[str, Any]]:
         value,
         "semantic",
         error_code("handoff recovery row diverges from the frozen oracle"),
+    )
+    value = retention_intent()
+    value["object_identity"]["install_authority_sha256"] = 1
+    add_schema_mutation(
+        "mutation-retention-intent-authority-binding",
+        "kilix.content.retention-intent/v1",
+        value,
+    )
+    value = retention_intent(directory_count=1)
+    value["directory_child_rules"][0]["phase"] = "FUTURE"
+    add_schema_mutation(
+        "mutation-retention-directory-phase",
+        "kilix.content.retention-intent/v1",
+        value,
+    )
+    value = retention_envelope()
+    value["entries"][0]["max_bytes"] += 1
+    add_semantic_mutation(
+        "mutation-retention-envelope-component-maximum",
+        "kilix.content.retention-envelope/v1",
+        value,
+        "retention envelope digest is inconsistent",
+    )
+    value = retention_marker()
+    value["predecessor_transaction_generation_sha256"] = _replace_digest(
+        value["predecessor_transaction_generation_sha256"]
+    )
+    add_semantic_mutation(
+        "mutation-retention-marker-predecessor",
+        "kilix.content.retention-marker/v1",
+        value,
+        "retention marker semantic payload digest is inconsistent",
+    )
+    value = retention_relation()
+    value["relation_identity"]["stable_slot_sha256"] = 1
+    add_schema_mutation(
+        "mutation-retention-relation-authority",
+        "kilix.content.retention-relation/v1",
+        value,
+    )
+    value = retention_accounted()
+    value["logical_state_sha256"] = _replace_digest(value["logical_state_sha256"])
+    add_semantic_mutation(
+        "mutation-retention-accounted-logical-digest",
+        "kilix.content.retention-accounted/v1",
+        value,
+        "P logical-state digest is inconsistent",
+    )
+    value = retention_accounted()
+    value["p_final_relative_path"] = "other/path"
+    add_semantic_mutation(
+        "mutation-retention-accounted-final-path",
+        "kilix.content.retention-accounted/v1",
+        value,
+        "P final path diverges from its intent component",
+    )
+    value = retention_handoff()
+    value["handoff_nonce"] = 1
+    add_schema_mutation(
+        "mutation-retention-handoff-nonce",
+        "kilix.content.retention-handoff-proof/v1",
+        value,
+    )
+    value = retention_handoff()
+    value["next_capacity_fields"]["phase"] = "RETENTION_ACCOUNTED"
+    add_schema_mutation(
+        "mutation-retention-handoff-next-phase",
+        "kilix.content.retention-handoff-proof/v1",
+        value,
+    )
+    value = directory_observation()
+    value["filesystem_key"] = 1
+    add_schema_mutation(
+        "mutation-directory-filesystem-key",
+        "kilix.content.directory-observation/v1",
+        value,
+    )
+    value = directory_observation()
+    value["phase"] = "UNIT_MAYBE_SENT"
+    add_schema_mutation(
+        "mutation-directory-phase",
+        "kilix.content.directory-observation/v1",
+        value,
+    )
+    value = directory_observation()
+    value["observed_children"] = []
+    add_semantic_mutation(
+        "mutation-directory-observed-child-set",
+        "kilix.content.directory-observation/v1",
+        value,
+        "directory observed child set is outside baseline plus phase delta",
+    )
+    value = transaction_generation("RETENTION_PREPARED")
+    value["phase_payload"]["component_envelope_sha256"] = 1
+    add_schema_mutation(
+        "mutation-transaction-phase-payload",
+        "kilix.content.transaction-generation/v1",
+        value,
+    )
+    value = transaction_generation("RETENTION_PREPARED")
+    value["phase"] = "FUTURE"
+    add_schema_mutation(
+        "cycle-transaction-future-phase",
+        "kilix.content.transaction-generation/v1",
+        value,
+        vector_class="cycle",
+    )
+    value = logical_state()
+    value["retained_unique_objects"] = -1
+    add_schema_mutation(
+        "boundary-retention-logical-global-minus-one",
+        "kilix.content.retention-logical-state/v1",
+        value,
+        vector_class="boundary",
+    )
+    value = physical_state(charge_source="actual", component_role="M")
+    value["filesystem_unions"][0]["filesystem_key"] = 1
+    add_schema_mutation(
+        "mutation-retention-physical-filesystem-key",
+        "kilix.content.retention-physical-state/v1",
+        value,
     )
 
     # M1 duplicate, Unicode, lexical-number, and canonical-byte attacks.
@@ -679,10 +1228,501 @@ def build_vectors() -> list[dict[str, Any]]:
         error_code("JSON input is outside the encoded-byte bound"),
     )
 
+    def raw_byte_budget(target: int) -> bytes:
+        count = 16
+        prefix = b'{"x":['
+        suffix = b"]}"
+        overhead = len(prefix) + len(suffix) + count * 2 + (count - 1)
+        remaining = target - overhead
+        quotient, remainder = divmod(remaining, count)
+        chunks: list[bytes] = []
+        for index in range(count):
+            length = quotient + (1 if index < remainder else 0)
+            emoji_count, ascii_count = divmod(length, 4)
+            chunks.append(("\U0001f600" * emoji_count + "a" * ascii_count).encode())
+        return prefix + b",".join(b'"' + chunk + b'"' for chunk in chunks) + suffix
+
+    raw_bytes_minus_one = raw_byte_budget(MAX_JSON_BYTES - 1)
+    raw_bytes_exact = raw_byte_budget(MAX_JSON_BYTES)
+    add_raw(
+        "boundary-json-bytes-limit-minus-one",
+        "boundary",
+        catalog_schema,
+        raw_bytes_minus_one,
+        "schema",
+        error_code("U1 admission schema does not match the expected resource role"),
+    )
+    add_raw(
+        "boundary-json-bytes-limit-exact",
+        "boundary",
+        catalog_schema,
+        raw_bytes_exact,
+        "schema",
+        error_code("U1 admission schema does not match the expected resource role"),
+    )
+    add_raw(
+        "boundary-json-bytes-limit-plus-one",
+        "boundary",
+        catalog_schema,
+        raw_bytes_exact + b" ",
+        "parser",
+        error_code("JSON input is outside the encoded-byte bound"),
+    )
+
+    # R3-5 parser and aggregate-bound corpus.  Large aggregate cases are
+    # source-only operation recipes: the boundary test patches only sibling
+    # earlier limits, then invokes the real walker for the named bound.  The
+    # ordinary production-admission loop must refuse these test-only schemas.
+    def object_with_properties(count: int) -> bytes:
+        fields = [f'"k{index:04d}":0'.encode() for index in range(count)]
+        return b"{" + b",".join(fields) + b"}"
+
+    add_raw(
+        "boundary-object-properties-limit-minus-one",
+        "boundary",
+        catalog_schema,
+        object_with_properties(MAX_OBJECT_PROPERTIES - 1),
+        "schema",
+        error_code("U1 admission schema does not match the expected resource role"),
+    )
+    add_raw(
+        "boundary-object-properties-limit-exact",
+        "boundary",
+        catalog_schema,
+        object_with_properties(MAX_OBJECT_PROPERTIES),
+        "schema",
+        error_code("U1 admission schema does not match the expected resource role"),
+    )
+    add_raw(
+        "boundary-object-properties-limit-plus-one",
+        "boundary",
+        catalog_schema,
+        object_with_properties(MAX_OBJECT_PROPERTIES + 1),
+        "parser",
+        error_code("JSON object exceeds the property bound"),
+    )
+
+    def array_with_items(count: int) -> bytes:
+        return b"[" + b",".join(b"0" for _ in range(count)) + b"]"
+
+    add_raw(
+        "boundary-array-items-limit-minus-one",
+        "boundary",
+        catalog_schema,
+        array_with_items(MAX_ARRAY_ITEMS - 1),
+        "schema",
+        error_code("value must be an object"),
+    )
+    add_raw(
+        "boundary-array-items-limit-exact",
+        "boundary",
+        catalog_schema,
+        array_with_items(MAX_ARRAY_ITEMS),
+        "schema",
+        error_code("value must be an object"),
+    )
+    add_raw(
+        "boundary-array-items-limit-plus-one",
+        "boundary",
+        catalog_schema,
+        array_with_items(MAX_ARRAY_ITEMS + 1),
+        "parser",
+        error_code("JSON array exceeds the item bound"),
+    )
+
+    property_count = 32_763
+    object_count = 9
+    token_objects: list[dict[str, int]] = []
+    quotient, remainder = divmod(property_count, object_count)
+    for ordinal in range(object_count):
+        count = quotient + (1 if ordinal < remainder else 0)
+        token_objects.append({f"k{index:04d}": 0 for index in range(count)})
+    token_minus_one = _canonical(token_objects)
+    token_exact = _canonical([dict(token_objects[0], k0000="\\"), *token_objects[1:]])
+    token_plus_one = _canonical([dict(token_objects[0], k0000="\\\\"), *token_objects[1:]])
+    add_raw(
+        "boundary-lexical-tokens-limit-minus-one",
+        "boundary",
+        catalog_schema,
+        token_minus_one,
+        "schema",
+        error_code("value must be an object"),
+    )
+    add_raw(
+        "boundary-lexical-tokens-limit-exact",
+        "boundary",
+        catalog_schema,
+        token_exact,
+        "schema",
+        error_code("value must be an object"),
+    )
+    add_raw(
+        "boundary-lexical-tokens-limit-plus-one",
+        "boundary",
+        catalog_schema,
+        token_plus_one,
+        "parser",
+        error_code("JSON input exceeds the lexical token bound"),
+    )
+
+    def string_value(character: str, count: int) -> bytes:
+        return _canonical({"x": character * count})
+
+    add_raw(
+        "boundary-string-codepoints-limit-minus-one",
+        "boundary",
+        catalog_schema,
+        string_value("a", MAX_STRING_CODEPOINTS - 1),
+        "schema",
+        error_code("U1 admission schema does not match the expected resource role"),
+    )
+    add_raw(
+        "boundary-string-codepoints-limit-exact",
+        "boundary",
+        catalog_schema,
+        string_value("a", MAX_STRING_CODEPOINTS),
+        "schema",
+        error_code("U1 admission schema does not match the expected resource role"),
+    )
+    add_raw(
+        "boundary-string-codepoints-limit-plus-one",
+        "boundary",
+        catalog_schema,
+        b'{"x":"' + b"a" * (MAX_STRING_CODEPOINTS + 1) + b'"}',
+        "parser",
+        error_code("JSON text is outside the canonical Unicode bound"),
+    )
+    four_byte = "\U0001f600"
+    add_raw(
+        "boundary-string-bytes-limit-exact",
+        "boundary",
+        catalog_schema,
+        string_value(four_byte, MAX_STRING_CODEPOINTS),
+        "schema",
+        error_code("U1 admission schema does not match the expected resource role"),
+    )
+    add_raw(
+        "boundary-string-bytes-limit-minus-one",
+        "boundary",
+        catalog_schema,
+        string_value(four_byte, MAX_STRING_CODEPOINTS - 1)[:-2]
+        + "€\"}".encode(),
+        "schema",
+        error_code("U1 admission schema does not match the expected resource role"),
+    )
+    add_raw(
+        "boundary-string-bytes-limit-plus-one",
+        "boundary",
+        catalog_schema,
+        b'{"x":"'
+        + (four_byte * MAX_STRING_CODEPOINTS + "a").encode("utf-8")
+        + b'"}',
+        "parser",
+        error_code("JSON text is outside the canonical Unicode bound"),
+    )
+
+    def ascii_string_array(total_codepoints: int) -> bytes:
+        count = 33
+        quotient, remainder = divmod(total_codepoints, count)
+        values = [
+            "a" * (quotient + (1 if index < remainder else 0))
+            for index in range(count)
+        ]
+        return b'{"x":[' + b",".join(b'"' + value.encode() + b'"' for value in values) + b"]}"
+
+    for suffix, codepoint_count in (
+        ("minus-one", MAX_TOTAL_STRING_CODEPOINTS - 2),
+        ("exact", MAX_TOTAL_STRING_CODEPOINTS - 1),
+    ):
+        add_raw(
+            f"boundary-total-string-codepoints-{suffix}",
+            "boundary",
+            catalog_schema,
+            ascii_string_array(codepoint_count),
+            "schema",
+            error_code("U1 admission schema does not match the expected resource role"),
+        )
+    add_raw(
+        "boundary-total-string-codepoints-plus-one",
+        "boundary",
+        catalog_schema,
+        ascii_string_array(MAX_TOTAL_STRING_CODEPOINTS),
+        "parser",
+        error_code("JSON value exceeds the aggregate string bound"),
+    )
+
+    add_raw(
+        "boundary-integer-digits-limit-minus-one",
+        "boundary",
+        catalog_schema,
+        b'{"x":1234567890123456789}',
+        "schema",
+        error_code("U1 admission schema does not match the expected resource role"),
+    )
+    add_raw(
+        "boundary-integer-digits-limit-exact",
+        "boundary",
+        catalog_schema,
+        f"{{\"x\":{U64_MAX}}}".encode(),
+        "schema",
+        error_code("U1 admission schema does not match the expected resource role"),
+    )
+    add_raw(
+        "boundary-integer-digits-limit-plus-one",
+        "boundary",
+        catalog_schema,
+        b'{"x":100000000000000000000}',
+        "parser",
+        error_code("JSON integer is outside the token bound"),
+    )
+    add_raw(
+        "boundary-integer-domain-limit-minus-one",
+        "boundary",
+        catalog_schema,
+        f"{{\"x\":{U64_MAX - 1}}}".encode(),
+        "schema",
+        error_code("U1 admission schema does not match the expected resource role"),
+    )
+    add_raw(
+        "boundary-integer-domain-limit-exact",
+        "boundary",
+        catalog_schema,
+        f"{{\"x\":{U64_MAX}}}".encode(),
+        "schema",
+        error_code("U1 admission schema does not match the expected resource role"),
+    )
+    add_raw(
+        "boundary-integer-domain-limit-plus-one",
+        "boundary",
+        catalog_schema,
+        b'{"x":18446744073709551616}',
+        "parser",
+        error_code("JSON integer is outside the representation bound"),
+    )
+    add_raw(
+        "boundary-json-depth-63-limit-minus-one",
+        "boundary",
+        catalog_schema,
+        nested(62),
+        "schema",
+        SCHEMA_FAILURE,
+    )
+
+    def graph_catalog(chain_nodes: int) -> dict[str, Any]:
+        value = catalog()
+        for index in range(chain_nodes):
+            install = install_record("mirrored")
+            if index + 1 < chain_nodes:
+                install["dependencies"] = [
+                    {"id": f"graph-{index + 1:03d}", "role": "runtime"}
+                ]
+            value["contents"].append(
+                {
+                    "id": f"graph-{index:03d}",
+                    "stable_slot": f"graph-slot-{index:03d}",
+                    "install": install,
+                }
+            )
+        value["contents"] = ordered(value["contents"])
+        return value
+
+    for suffix, nodes in (("limit-minus-one", 64), ("exact", 65)):
+        add_value(
+            f"boundary-graph-depth-{suffix}",
+            "boundary",
+            catalog_schema,
+            graph_catalog(nodes),
+            "accepted",
+            "accepted",
+        )
+    add_value(
+        "boundary-graph-depth-limit-plus-one",
+        "boundary",
+        catalog_schema,
+        graph_catalog(66),
+        "semantic",
+        error_code("dependency graph contains a cycle or exceeds its depth bound"),
+    )
+
+    def operation_raw(identifier: str, raw: bytes, disposition: dict[str, Any]) -> None:
+        add_raw(
+            identifier,
+            "operation",
+            disposition["schema_id"],
+            raw,
+            "operation",
+            disposition["expected"],
+            disposition,
+        )
+
+    operation_schema = "test-only.u1-boundary-operation/v1"
+    for suffix, count, expected in (
+        ("minus-one", MAX_TOTAL_PROPERTIES - 1, "accepted"),
+        ("exact", MAX_TOTAL_PROPERTIES, "accepted"),
+        ("plus-one", MAX_TOTAL_PROPERTIES + 1, error_code("JSON value exceeds the aggregate property bound")),
+    ):
+        operation_raw(
+            f"boundary-aggregate-properties-{suffix}",
+            object_with_properties(count),
+            {
+                "schema_id": operation_schema,
+                "operation": "walk_json",
+                "bound": "MAX_TOTAL_PROPERTIES",
+                "expected": expected,
+                "patch_siblings": ["MAX_OBJECT_PROPERTIES", "MAX_JSON_NODES"],
+                "paired_positive_id": "boundary-aggregate-properties-exact",
+                "source_only": True,
+            },
+        )
+    for suffix, count, expected in (
+        ("minus-one", MAX_TOTAL_ARRAY_ITEMS - 1, "accepted"),
+        ("exact", MAX_TOTAL_ARRAY_ITEMS, "accepted"),
+        ("plus-one", MAX_TOTAL_ARRAY_ITEMS + 1, error_code("JSON value exceeds the aggregate array-item bound")),
+    ):
+        operation_raw(
+            f"boundary-aggregate-items-{suffix}",
+            array_with_items(count),
+            {
+                "schema_id": operation_schema,
+                "operation": "walk_json",
+                "bound": "MAX_TOTAL_ARRAY_ITEMS",
+                "expected": expected,
+                "patch_siblings": ["MAX_ARRAY_ITEMS", "MAX_JSON_NODES"],
+                "paired_positive_id": "boundary-aggregate-items-exact",
+                "source_only": True,
+            },
+        )
+    for suffix, count, expected in (
+        ("minus-one", MAX_JSON_NODES - 1, "accepted"),
+        ("exact", MAX_JSON_NODES, "accepted"),
+        ("plus-one", MAX_JSON_NODES + 1, error_code("JSON value exceeds the aggregate node bound")),
+    ):
+        operation_raw(
+            f"boundary-aggregate-nodes-{suffix}",
+            array_with_items(count - 1),
+            {
+                "schema_id": operation_schema,
+                "operation": "walk_json",
+                "bound": "MAX_JSON_NODES",
+                "expected": expected,
+                "patch_siblings": [
+                    "MAX_ARRAY_ITEMS",
+                    "MAX_TOTAL_ARRAY_ITEMS",
+                ],
+                "paired_positive_id": "boundary-aggregate-nodes-exact",
+                "source_only": True,
+            },
+        )
+
+    def total_string_bytes_raw(total: int) -> bytes:
+        count = 16
+        quotient, remainder = divmod(total, count)
+        values = [
+            "a" * (quotient + (1 if index < remainder else 0))
+            for index in range(count)
+        ]
+        return b'{"x":[' + b",".join(b'"' + value.encode() + b'"' for value in values) + b"]}"
+
+    for suffix, value_bytes, expected in (
+        ("minus-one", MAX_TOTAL_STRING_BYTES - 2, "accepted"),
+        ("exact", MAX_TOTAL_STRING_BYTES - 1, "accepted"),
+        ("plus-one", MAX_TOTAL_STRING_BYTES, error_code("JSON value exceeds the aggregate string bound")),
+    ):
+        operation_raw(
+            f"boundary-total-string-bytes-{suffix}",
+            total_string_bytes_raw(value_bytes),
+            {
+                "schema_id": operation_schema,
+                "operation": "walk_json",
+                "bound": "MAX_TOTAL_STRING_BYTES",
+                "expected": expected,
+                "patch_siblings": ["MAX_STRING_BYTES", "MAX_STRING_CODEPOINTS", "MAX_TOTAL_STRING_CODEPOINTS"],
+                "paired_positive_id": "boundary-total-string-bytes-exact",
+                "source_only": True,
+            },
+        )
+
+    graph_recipe_schema = "test-only.catalog-graph-recipe/v1"
+    for suffix, nodes, expected in (
+        ("minus-one", 8_191, "accepted"),
+        ("exact", 8_192, "accepted"),
+        ("plus-one", 8_193, error_code("dependency graph exceeds the node bound")),
+    ):
+        operation_raw(
+            f"boundary-graph-nodes-{suffix}",
+            _canonical({"schema": graph_recipe_schema, "nodes": nodes, "edges": 3}),
+            {
+                "schema_id": graph_recipe_schema,
+                "operation": "catalog_graph",
+                "bound": "MAX_GRAPH_NODES",
+                "expected": expected,
+                "paired_positive_id": "boundary-graph-nodes-exact",
+                "source_only": True,
+            },
+        )
+    for suffix, edges, expected in (
+        ("minus-one", 16_383, "accepted"),
+        ("exact", 16_384, "accepted"),
+        ("plus-one", 16_385, error_code("dependency graph exceeds the edge bound")),
+    ):
+        operation_raw(
+            f"boundary-graph-edges-{suffix}",
+            _canonical({"schema": graph_recipe_schema, "nodes": 4_099, "edges": edges}),
+            {
+                "schema_id": graph_recipe_schema,
+                "operation": "catalog_graph",
+                "bound": "MAX_GRAPH_EDGES",
+                "expected": expected,
+                "paired_positive_id": "boundary-graph-edges-exact",
+                "source_only": True,
+            },
+        )
+
+    admission_authority_schema = "test-only.u1-admission-authority/v1"
+    admission_authority_cases = (
+        ("genuine-capability", "accepted"),
+        (
+            "missing-capability",
+            error_code("U1 admission lacks the genuine packaged release capability"),
+        ),
+        (
+            "caller-dict",
+            error_code("U1 admission lacks the genuine packaged release capability"),
+        ),
+        (
+            "test-authority",
+            error_code("U1 admission lacks the genuine packaged release capability"),
+        ),
+        (
+            "unknown-route",
+            error_code(
+                "U1 admission expected schema is outside the frozen route table"
+            ),
+        ),
+    )
+    for case, expected in admission_authority_cases:
+        operation_raw(
+            f"admission-authority-{case}",
+            _canonical(
+                {
+                    "case": case,
+                    "schema": admission_authority_schema,
+                }
+            ),
+            {
+                "schema_id": admission_authority_schema,
+                "operation": "admission_authority",
+                "bound": "sole-packaged-capability-and-route",
+                "expected": expected,
+                "paired_positive_id": "positive-catalog-v5",
+                "source_only": True,
+            },
+        )
+
     ids = [entry["id"] for entry in vectors]
     if len(ids) != len(set(ids)):
         raise SystemExit("fixture vector IDs are duplicated")
-    missing = set(REQUIRED_VECTOR_IDS) - set(ids)
+    missing = (set(REQUIRED_VECTOR_IDS) | _ledger_vector_ids()) - set(ids)
     if missing:
         raise SystemExit(f"mandatory fixture vectors are absent: {sorted(missing)!r}")
     return sorted(vectors, key=lambda entry: entry["id"])
@@ -704,8 +1744,7 @@ def render() -> tuple[int, str]:
         path = directory / f"{vector['id']}.json"
         path.write_bytes(vector["raw"])
         relative = path.relative_to(FIXTURE_ROOT).as_posix()
-        entries.append(
-            {
+        entry = {
                 "id": vector["id"],
                 "class": vector["class"],
                 "schema_id": vector["schema_id"],
@@ -715,7 +1754,9 @@ def render() -> tuple[int, str]:
                 "expected_stage": vector["expected_stage"],
                 "expected_code": vector["expected_code"],
             }
-        )
+        if "disposition" in vector:
+            entry["disposition"] = vector["disposition"]
+        entries.append(entry)
     entries = ordered(entries)
     index = {
         "schema": "kilix.content.u1-fixture-index/v1",
