@@ -420,7 +420,7 @@ class U1ResourceAndCorpusTests(unittest.TestCase):
                         validate_u1_bytes(entry["schema_id"], raw, self.capability)
                     self.assertEqual(
                         caught.exception.code,
-                        "U1_U1_ADMISSION_EXPECTED_SCHEMA_IS_OUTSIDE_THE_FROZEN_ROUTE_TAB",
+                        "U1_ADMISSION_EXPECTED_SCHEMA_IS_OUTSIDE_THE_FROZEN_ROUTE_TABLE",
                     )
                 if expected_stage == "operation":
                     self.assertTrue(entry["schema_id"].startswith("test-only."))
@@ -1200,6 +1200,40 @@ class U1AdmissionAndAuthorityTests(unittest.TestCase):
                 self.assertNotIn(hostile, str(caught.exception))
                 self.assertLessEqual(len(str(caught.exception)), 160)
                 self.assertRegex(caught.exception.code, r"^U1_[A-Z0-9_]+$")
+
+    def test_generated_diagnostic_codes_are_stable_complete_and_distinct(self) -> None:
+        cases = (
+            ("short problem", "U1_SHORT_PROBLEM"),
+            (
+                "U1 admission expected schema is outside the frozen route table",
+                "U1_ADMISSION_EXPECTED_SCHEMA_IS_OUTSIDE_THE_FROZEN_ROUTE_TABLE",
+            ),
+            ("U1 U1 repeated prefix", "U1_REPEATED_PREFIX"),
+            ("", "U1_ERROR_E3B0C44298"),
+        )
+        for message, expected in cases:
+            with self.subTest(message=message):
+                code = U1ContractError(message).code
+                self.assertEqual(code, expected)
+                self.assertLessEqual(len(code), 63)
+                self.assertRegex(code, r"^U1_[A-Z0-9_]+$")
+                self.assertNotIn("U1_U1_", code)
+
+        common = "U1 admission expected schema is outside the frozen route table"
+        alpha = U1ContractError(f"{common} alpha").code
+        beta = U1ContractError(f"{common} beta").code
+        self.assertEqual(
+            alpha,
+            "U1_ADMISSION_EXPECTED_SCHEMA_IS_OUTSIDE_THE_FROZEN_E44CEADFB0",
+        )
+        self.assertEqual(
+            beta,
+            "U1_ADMISSION_EXPECTED_SCHEMA_IS_OUTSIDE_THE_FROZEN_1C44C7D4DC",
+        )
+        self.assertNotEqual(alpha, beta)
+        self.assertTrue(alpha.startswith("U1_ADMISSION_EXPECTED_SCHEMA_IS_OUTSIDE_THE_FROZEN_"))
+        self.assertEqual(U1ContractError("A" * 80).code, "U1_ERROR_D9B1F3E2C6")
+        self.assertEqual(U1ContractError("ignored", code="CALLER_FIXED").code, "CALLER_FIXED")
 
     def test_canonical_bytes_have_one_representation_and_typed_domains(self) -> None:
         value = {"b": 1, "a": [True, None, "é"]}

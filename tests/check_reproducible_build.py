@@ -827,7 +827,7 @@ for license_entry in license_manifest["licenses"]:
     assert hashlib.sha256(license_path.read_bytes()).hexdigest() == license_entry["text_sha256"]
 index = json.loads((fixture_root / "index.json").read_bytes())
 capability = packaged_release_capability()
-source_only_route_code = "U1_U1_ADMISSION_EXPECTED_SCHEMA_IS_OUTSIDE_THE_FROZEN_ROUTE_TAB"
+source_only_route_code = "U1_ADMISSION_EXPECTED_SCHEMA_IS_OUTSIDE_THE_FROZEN_ROUTE_TABLE"
 for entry in index["entries"]:
     raw = (fixture_root / entry["path"]).read_bytes()
     if entry.get("disposition", {}).get("source_only") is True:

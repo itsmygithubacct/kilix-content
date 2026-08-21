@@ -16,15 +16,41 @@ from collections.abc import Iterable, Mapping, Sequence
 from typing import Any, NoReturn
 
 
+def _generated_u1_error_code(bounded_message: str) -> str:
+    """Return one stable, readable and collision-bounded U1 diagnostic code."""
+
+    normalized = re.sub(
+        r"[^A-Z0-9]+", "_", bounded_message.upper()
+    ).strip("_")
+    tokens = [token for token in normalized.split("_") if token]
+    while tokens and tokens[0] == "U1":
+        tokens.pop(0)
+
+    body = "_".join(tokens)
+    if body and len(body) <= 60:
+        return f"U1_{body}"
+
+    suffix = hashlib.sha256(bounded_message.encode("utf-8")).hexdigest()[:10].upper()
+    if not tokens:
+        return f"U1_ERROR_{suffix}"
+
+    readable_tokens: list[str] = []
+    for token in tokens:
+        candidate = "_".join((*readable_tokens, token))
+        if len(candidate) > 49:
+            break
+        readable_tokens.append(token)
+    readable = "_".join(readable_tokens) or "ERROR"
+    return f"U1_{readable}_{suffix}"
+
+
 class U1ContractError(ValueError):
     """A value is outside the frozen U1 language."""
 
     def __init__(self, message: str, *, code: str | None = None) -> None:
         bounded = message[:160]
         super().__init__(bounded)
-        self.code = (
-            code or "U1_" + re.sub(r"[^A-Z0-9]+", "_", bounded.upper()).strip("_")[:60]
-        )
+        self.code = code if code is not None else _generated_u1_error_code(bounded)
 
 
 MAX_JSON_BYTES = 4 * 1024 * 1024

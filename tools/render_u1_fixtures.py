@@ -65,7 +65,6 @@ INDEX_PATH = FIXTURE_ROOT / "index.json"
 SUMS_PATH = FIXTURE_ROOT / "SHA256SUMS"
 LEDGER_PATH = FIXTURE_ROOT / "requirements-ledger.json"
 RELEASE_ID = "0.2.1"
-SCHEMA_FAILURE = "U1_U1_JSON_SCHEMA_VALIDATION_REFUSED_THE_RECORD"
 
 # These anchors are intentionally handwritten.  Dynamic generation and index
 # equality catch every rendered row; this set additionally prevents accidental
@@ -141,6 +140,9 @@ REQUIRED_VECTOR_IDS = (
 
 def error_code(message: str) -> str:
     return U1ContractError(message).code
+
+
+SCHEMA_FAILURE = error_code("U1 JSON Schema validation refused the record")
 
 
 def _safe_id(value: str) -> str:
