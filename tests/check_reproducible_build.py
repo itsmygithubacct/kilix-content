@@ -612,8 +612,19 @@ for path, expected in expected_resources.items():
     assert hashlib.sha256(payload).hexdigest() == expected
 index = json.loads((fixture_root / "index.json").read_bytes())
 capability = packaged_release_capability()
+source_only_route_code = "U1_U1_ADMISSION_EXPECTED_SCHEMA_IS_OUTSIDE_THE_FROZEN_ROUTE_TAB"
 for entry in index["entries"]:
     raw = (fixture_root / entry["path"]).read_bytes()
+    if entry.get("disposition", {}).get("source_only") is True:
+        assert entry["schema_id"].startswith("test-only.")
+        assert entry["expected_stage"] in {"admission", "join", "operation"}
+        try:
+            validate_u1_bytes(entry["schema_id"], raw, capability)
+        except U1ContractError as exc:
+            assert exc.code == source_only_route_code
+        else:
+            raise AssertionError(entry["id"])
+        continue
     if entry["expected_stage"] == "accepted":
         validate_u1_bytes(entry["schema_id"], raw, capability)
     else:

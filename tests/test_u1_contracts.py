@@ -413,11 +413,18 @@ class U1ResourceAndCorpusTests(unittest.TestCase):
             with self.subTest(identifier=entry["id"]):
                 raw = (FIXTURES / entry["path"]).read_bytes()
                 expected_stage = entry["expected_stage"]
+                if entry.get("disposition", {}).get("source_only") is True:
+                    self.assertTrue(entry["schema_id"].startswith("test-only."))
+                    self.assertIn(expected_stage, {"admission", "join", "operation"})
+                    with self.assertRaises(U1ContractError) as caught:
+                        validate_u1_bytes(entry["schema_id"], raw, self.capability)
+                    self.assertEqual(
+                        caught.exception.code,
+                        "U1_U1_ADMISSION_EXPECTED_SCHEMA_IS_OUTSIDE_THE_FROZEN_ROUTE_TAB",
+                    )
                 if expected_stage == "operation":
                     self.assertTrue(entry["schema_id"].startswith("test-only."))
                     self.assertTrue(entry["disposition"]["source_only"])
-                    with self.assertRaises(U1ContractError):
-                        validate_u1_bytes(entry["schema_id"], raw, self.capability)
                     continue
                 if expected_stage == "join":
                     value = json.loads(raw)
