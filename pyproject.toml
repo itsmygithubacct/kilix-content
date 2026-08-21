@@ -30,7 +30,7 @@ include-package-data = true
 where = ["src"]
 
 [tool.setuptools.package-data]
-kilix_content = ["catalog/*.json", "contracts/*.json", "py.typed"]
+kilix_content = ["catalog/*.json", "contracts/*.json", "licenses/*.txt", "py.typed"]
 
 [tool.setuptools.data-files]
-"share/kilix-content/contracts" = ["contracts/*.schema.json"]
+"share/kilix-content/contracts" = ["contracts/*.schema.json", "contracts/kilix.content.u1-resources-v1.json"]

@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kilix.content.output-binding/v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema", "authority_digest", "source_digest", "input_digest", "dependency_digests", "toolchain_digest", "sandbox_digest", "selected_tree_digest", "byte_count", "file_count", "journal_schema", "output_format_version"],
+  "properties": {
+    "schema": {"const": "kilix.content.output-binding/v1"},
+    "authority_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "source_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "input_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "dependency_digests": {"type": "array", "items": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}, "toolchain_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "sandbox_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "selected_tree_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "byte_count": {"type": "integer", "minimum": 0}, "file_count": {"type": "integer", "minimum": 0}, "journal_schema": {"type": "string", "minLength": 1}, "output_format_version": {"type": "integer", "minimum": 1}
+  }
+}

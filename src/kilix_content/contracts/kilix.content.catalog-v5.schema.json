@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "kilix.content.catalog/v5",
+  "title": "Kilix catalog v5",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "release_id", "catalog_sha256", "packages", "content", "aliases"],
+  "properties": {
+    "schema": {"const": "kilix.content.catalog/v5"},
+    "release_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"},
+    "catalog_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "packages": {"type": "array", "maxItems": 4096, "items": {"$ref": "#/$defs/package"}},
+    "content": {"type": "array", "maxItems": 4096, "items": {"$ref": "#/$defs/content"}},
+    "aliases": {"type": "object", "maxProperties": 4096, "additionalProperties": {"$ref": "#/$defs/alias"}}
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$"},
+    "quota": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+    "ref": {"type": "object", "additionalProperties": false, "required": ["id", "sha256"], "properties": {"id": {"$ref": "#/$defs/id"}, "sha256": {"$ref": "#/$defs/digest"}}},
+    "system": {"type": "object", "additionalProperties": false, "required": ["id", "manifest_sha256"], "properties": {"id": {"$ref": "#/$defs/id"}, "manifest_sha256": {"$ref": "#/$defs/digest"}}},
+    "dependency": {"type": "object", "additionalProperties": false, "required": ["id", "role"], "properties": {"id": {"$ref": "#/$defs/id"}, "role": {"enum": ["build", "conversion", "runtime"]}}},
+    "license": {"type": "object", "additionalProperties": false, "required": ["id", "text_sha256", "decision"], "properties": {"id": {"$ref": "#/$defs/id"}, "text_sha256": {"$ref": "#/$defs/digest"}, "decision": {"enum": ["informational", "affirmative", "user-supplied", "restricted"]}}},
+    "install": {"type": "object", "additionalProperties": false, "required": ["version", "source_mode", "source_bytes_max", "temporary_bytes_max", "process_memory_bytes_max", "installed_bytes_max", "temporary_files_max", "installed_files_max", "dependencies", "system_requirements", "toolchain", "sandbox", "licenses"], "properties": {
+      "version": {"type": "string", "minLength": 1, "maxLength": 4096},
+      "source_mode": {"enum": ["git", "archive", "mirrored", "user-supplied"]},
+      "source_bytes": {"type": "integer", "minimum": 1, "maximum": 9223372036854775807},
+      "source_bytes_max": {"$ref": "#/$defs/quota"},
+      "temporary_bytes_max": {"$ref": "#/$defs/quota"},
+      "process_memory_bytes_max": {"$ref": "#/$defs/quota"},
+      "installed_bytes_max": {"$ref": "#/$defs/quota"},
+      "temporary_files_max": {"$ref": "#/$defs/quota"},
+      "installed_files_max": {"$ref": "#/$defs/quota"},
+      "dependencies": {"type": "array", "maxItems": 4096, "uniqueItems": true, "items": {"$ref": "#/$defs/dependency"}},
+      "system_requirements": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/system"}},
+      "toolchain": {"$ref": "#/$defs/ref"},
+      "sandbox": {"$ref": "#/$defs/ref"},
+      "licenses": {"type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": {"$ref": "#/$defs/license"}}
+    }},
+    "package": {"type": "object", "additionalProperties": false, "required": ["id", "kind", "members", "stable_slot", "install"], "properties": {"id": {"$ref": "#/$defs/id"}, "kind": {"const": "package"}, "members": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}, "stable_slot": {"$ref": "#/$defs/id"}, "install": {"$ref": "#/$defs/install"}}},
+    "content": {"oneOf": [
+      {"type": "object", "additionalProperties": false, "required": ["id", "kind", "package_id", "member_path"], "properties": {"id": {"$ref": "#/$defs/id"}, "kind": {"enum": ["content", "asset"]}, "package_id": {"$ref": "#/$defs/id"}, "member_path": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._/-]{0,255}$"}}},
+      {"type": "object", "additionalProperties": false, "required": ["id", "kind", "stable_slot", "install"], "properties": {"id": {"$ref": "#/$defs/id"}, "kind": {"enum": ["content", "asset"]}, "stable_slot": {"$ref": "#/$defs/id"}, "install": {"$ref": "#/$defs/install"}}}
+    ]},
+    "alias": {"type": "object", "additionalProperties": false, "required": ["package_id", "member_path"], "properties": {"package_id": {"$ref": "#/$defs/id"}, "member_path": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._/-]{0,255}$"}}}
+  }
+}

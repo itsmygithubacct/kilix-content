@@ -1,0 +1,10 @@
+{
+  "children": ["M", "R", "P"],
+  "counts": {"global": 1, "per_slot": 1},
+  "kind": "terminal-reuse",
+  "permanent": true,
+  "release_id": "release-0.2.1",
+  "schema": "kilix.content.retention/v1",
+  "state": "TERMINAL_REUSE",
+  "version": 1
+}

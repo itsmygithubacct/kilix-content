@@ -1,0 +1,13 @@
+{
+  "capacity_phase": "RETENTION_HANDOFF_RELEASING",
+  "handoff_nonce": "0000000000000000000000000000000000000000000000000000000000000029",
+  "kind": "handoff-proof",
+  "p_paths": ["retention/slot-1/p-accounted"],
+  "permanent": false,
+  "proof_digest": "0000000000000000000000000000000000000000000000000000000000000030",
+  "release_id": "release-0.2.1",
+  "release_kind": "retention_handoff",
+  "schema": "kilix.content.retention/v1",
+  "transaction_phase": "RETENTION_ACCOUNTED",
+  "version": 1
+}

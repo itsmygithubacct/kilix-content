@@ -1,0 +1,29 @@
+{
+  "aliases": {},
+  "catalog_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "content": [],
+  "packages": [{
+    "id": "cycle-a",
+    "install": {
+      "dependencies": [{"id": "cycle-a", "role": "runtime"}],
+      "installed_bytes_max": 1,
+      "installed_files_max": 1,
+      "licenses": [{"decision": "informational", "id": "project-license", "text_sha256": "938e0db7e6acd7e99d205863bcbdeda47f5fbd053802519f411dbefe0799071e"}],
+      "process_memory_bytes_max": 1,
+      "sandbox": {"id": "sandbox.profile", "sha256": "0000000000000000000000000000000000000000000000000000000000000002"},
+      "source_bytes": 1,
+      "source_bytes_max": 1,
+      "source_mode": "archive",
+      "system_requirements": [],
+      "temporary_bytes_max": 1,
+      "temporary_files_max": 1,
+      "toolchain": {"id": "toolchain.profile", "sha256": "0000000000000000000000000000000000000000000000000000000000000001"},
+      "version": "cycle-1"
+    },
+    "kind": "package",
+    "members": [],
+    "stable_slot": "cycle-slot"
+  }],
+  "release_id": "release-0.2.1",
+  "schema": "kilix.content.catalog/v5"
+}

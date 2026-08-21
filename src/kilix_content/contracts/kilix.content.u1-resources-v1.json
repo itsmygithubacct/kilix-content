@@ -1,0 +1,27 @@
+{
+  "resources": [
+    {"name": "kilix.content.asset-v1.schema.json", "sha256": "89d4865d11d6a537328965a8a903ac07d7dcf0ea14e1b360888f22af7ba5a1a8"},
+    {"name": "kilix.content.catalog-v5.schema.json", "sha256": "bf697a1dc43c87a51ada38c99f417bef6cc3b8e6877c7ef097ffd9b6c6d8af51"},
+    {"name": "kilix.content.capacity-reserve-v2.schema.json", "sha256": "db4535326225de27efa6c78172b1b03d6461ed9f2e8adbc152fdad9ecb1b66bc"},
+    {"name": "kilix.content.install-authority-binding-v1.schema.json", "sha256": "00ce499bbab40f3a00a37a1e7ed519b3e3320b64ee273f76d8a08cbf76a5446b"},
+    {"name": "kilix.content.output-binding-v1.schema.json", "sha256": "000a33e05921df072f14803709fe0af1cfb565f39efaeec5a755085dd03b2d83"},
+    {"name": "kilix.content.retention-accounted-v1.schema.json", "sha256": "01527d55a0a6c48fa44762899a3b84731210ad73c5151412f6a13fc14a61b191"},
+    {"name": "kilix.content.retention-admission-v1.schema.json", "sha256": "daedac2598e527d4fd9a5b8a33f613b999e9d706f9d7de952d807ded2ef2def8"},
+    {"name": "kilix.content.retention-capacity-state-v1.schema.json", "sha256": "984411f57f884c4357878c32ac23b63a35d413da853bb9062f8d9d3ececff4ad"},
+    {"name": "kilix.content.retention-counts-v1.schema.json", "sha256": "687fe147288de22dc48da86de7cbaf0063aeec404245f1d2bc233de20f4e55b4"},
+    {"name": "kilix.content.retention-directory-phase-v1.schema.json", "sha256": "3fae17bca3f2433de07e87efc678768891c3de1d198987f86237417d6eed71d6"},
+    {"name": "kilix.content.retention-envelope-v1.schema.json", "sha256": "6b5932c44d13306367d0119f6f281ad874a381c91f0cf014ef0302e53257cd25"},
+    {"name": "kilix.content.retention-handoff-proof-v1.schema.json", "sha256": "1e9999417a7d16166331fac2263941df5d8bcf7726274eab450270e5d10634dd"},
+    {"name": "kilix.content.retention-impossible-state-v1.schema.json", "sha256": "729a9b946060c70c6a01d29687d6f199b572529a97ac53de6429fa96ec1a41b1"},
+    {"name": "kilix.content.retention-intent-v1.schema.json", "sha256": "29df917bbc0f2d2a677b44d776518cfda42a271d43d60c1ae3ab5f6cf38d98fc"},
+    {"name": "kilix.content.retention-journal-v1.schema.json", "sha256": "edb1ae336eb718a0c9ff73304014b76432ca9194837d4b078be87ffa75c31a7a"},
+    {"name": "kilix.content.retention-terminal-reuse-v1.schema.json", "sha256": "9f1a5190c6d6e126f926562ce92b71f1a46a69a0dab494afd4c42b4d77a9f75a"},
+    {"name": "kilix.content.sandbox-profile-v1.schema.json", "sha256": "d61c90ea65e82c0642e83828f3cb1c17b010259c26402b9a062c40c2f20f2ca1"},
+    {"name": "kilix.content.toolchain-profile-v1.schema.json", "sha256": "2e5d45d9f5a00ab4f6e63759873b2e1df3568408996d6febad4e70ace05ec8f8"},
+    {"name": "kilix.install.authorization-v2.schema.json", "sha256": "657b1d1768c83171422c3086740a6e472feb353aac1f7362ecde1b8e685a95d3"},
+    {"name": "kilix.install.license-v1.schema.json", "sha256": "2f352856b4bd712e6030b2c74a690f7c0ed250e5730a69aa04b601643dbf1736"},
+    {"name": "kilix.pleb.system-requirements-v1.schema.json", "sha256": "552087f42f20cf7247fc6339d5b6a6343bbe03dffe0b67a84e95b709ce93644e"},
+    {"name": "MIT.txt", "sha256": "938e0db7e6acd7e99d205863bcbdeda47f5fbd053802519f411dbefe0799071e"}
+  ],
+  "schema": "kilix.content.u1-resources/v1"
+}

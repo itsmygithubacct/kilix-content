@@ -1,0 +1,11 @@
+{
+  "authority_digest": "0000000000000000000000000000000000000000000000000000000000000010",
+  "hardware_tier": "tier-1",
+  "phase_maxima": {},
+  "release_id": "release-0.2.1",
+  "reservation": {"disk_bytes": 1, "inode_count": 1, "memory_bytes": 1},
+  "retention_limits": {"global": 1, "objects": 1, "per_slot": 1, "relations": 1},
+  "root_roles": {},
+  "schema": "kilix.content.capacity-reserve/v2",
+  "tier_inputs": {}
+}

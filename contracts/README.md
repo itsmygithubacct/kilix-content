@@ -24,6 +24,46 @@ normative v1 requirements and every implementation must enforce them:
 
 The fixture suite executes these rules independently of structural schema
 validation. Future non-Python readers must pass the same golden fixtures.
+
+## F100 Step-6 U1 freeze
+
+U1 adds the closed catalog-v5 authority shape. `install.version` is opaque
+upstream text. An installable package or directly installable content record
+owns one `install` object and one stable slot; a package-provided alias is only
+the read-only `package_id`/`member_path` mapping. The install object binds the
+source mode, bounded byte/file/memory quotas, dependency DAG roles, licenses,
+and the exact `{id, manifest_sha256}` system-requirement references. Git
+installations omit `source_bytes`; archive, mirrored, and user-supplied
+installations require it and it must not exceed `source_bytes_max`.
+
+The packaged U1 resource set includes separate closed schemas for:
+
+- system-requirement manifests (`id`, distribution/version/architecture,
+  package manifest and package digests);
+- toolchain profiles (Debian snapshot, architecture, package/executable/
+  library manifests, Python and uv identities, fixed environment, and ABI);
+- sandbox profiles (mount manifest, namespaces, capabilities, seccomp,
+  resource limits, and enforced quota backend); and
+- install/output bindings, authorization/v2, capacity-v2, and the R11--R13
+  retention intent, envelope, journal, capacity-state, count/admission,
+  directory-phase, accounted, handoff-proof, terminal-reuse, and impossible
+  records.
+
+`kilix.content.u1-resources-v1.json` is the production authority manifest for
+the 21 schemas and the genuine packaged `MIT.txt` release resource. Root
+contract bytes and importable package bytes must match every manifest digest;
+the wheel carries only those production resources, while sdist carries the
+schemas, manifest, fixtures, fixture hash manifest, tests, and update helper.
+The U1 implementation is pure parsing/canonicalization/validation: it does not
+open a store, acquire locks, recover a transaction, or sequence authorization.
+
+The U1 fixture matrix is regenerated and checked with:
+
+```sh
+uv run --locked --no-sync python tests/update_u1_hashes.py --check
+uv run --locked --no-sync python -m unittest tests.test_u1_contracts -v
+```
+
 Frozen schema SHA-256 values:
 
 - `kilix.content.asset/v1`: `89d4865d11d6a537328965a8a903ac07d7dcf0ea14e1b360888f22af7ba5a1a8`
@@ -47,7 +87,7 @@ and ends with one newline. Regenerate the manifest only after reviewing the
 semantic diff:
 
 ```sh
-python tests/update_contract_hashes.py
+uv run --locked --no-sync python tests/update_contract_hashes.py
 ```
 
 Run the contract gate from the repository root with:
