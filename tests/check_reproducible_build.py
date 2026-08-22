@@ -8,6 +8,7 @@ import io
 import hashlib
 import importlib.metadata
 import json
+import os
 import posixpath
 import re
 import shutil
@@ -71,6 +72,8 @@ EXPECTED_WHEEL_DISTRIBUTIONS = {
 EXPECTED_WHEEL_FILE_MODE = 0o644
 EXPECTED_WHEEL_RECORD_MODE = 0o664
 EXPECTED_WHEEL_DIRECTORY_MODE = 0o755
+EXPECTED_SDIST_FILE_MODE = 0o644
+EXPECTED_SDIST_DIRECTORY_MODE = 0o755
 GENERATED_SDIST_FILES = {
     "PKG-INFO",
     "setup.cfg",
@@ -526,13 +529,17 @@ def expected_wheel_members(
                     f"{left_name}/{right_name}={sorted(overlap)!r}"
                 )
     expected = set().union(*categories.values())
-    expected_count = 80 + bool(scripts)
+    expected_count = sum(len(category) for category in categories.values())
     if len(expected) != expected_count:
         fail(
             "source-derived wheel closure has an unexpected member count: "
-            f"expected={expected_count} observed={len(expected)}"
+            f"derived={expected_count} observed={len(expected)}"
         )
     return expected
+
+
+def sdist_distribution_root(root: Path) -> str:
+    return wheel_distribution_root(root)
 
 
 def source_sdist_files(root: Path) -> set[str]:
@@ -593,12 +600,48 @@ def compare_member_sets(
     )
 
 
+def sdist_payload_audit(
+    archive: Path,
+    source_root: Path,
+    top: str,
+) -> None:
+    with tarfile.open(archive, "r:gz") as handle:
+        for member in handle.getmembers():
+            key = safe_member_name(member.name)
+            if member.isdir() or key == top:
+                continue
+            relative = key.removeprefix(top + "/")
+            if relative in GENERATED_SDIST_FILES:
+                continue
+            source = source_root / relative
+            if source.is_symlink() or not source.is_file():
+                fail(f"sdist payload source member is absent: {relative}")
+            payload_file = handle.extractfile(member)
+            if payload_file is None:
+                fail(f"sdist payload cannot be read: {relative}")
+            payload = payload_file.read()
+            expected = source.read_bytes()
+            if (
+                len(payload) != len(expected)
+                or hashlib.sha256(payload).hexdigest()
+                != hashlib.sha256(expected).hexdigest()
+                or payload != expected
+            ):
+                fail(f"sdist payload differs from source: {relative}")
+
+
 def extract_sdist(archive: Path, destination: Path) -> Path:
     with tarfile.open(archive, "r:gz") as handle:
         members = handle.getmembers()
         if not members:
             fail("sdist is empty")
         top = PurePosixPath(members[0].name).parts[0]
+        expected_top = sdist_distribution_root(PROJECT)
+        if top != expected_top:
+            fail(
+                "sdist root identity differs: "
+                f"expected={expected_top!r} observed={top!r}"
+            )
         normalized: set[str] = set()
         observed: set[str] = set()
         for member in members:
@@ -606,8 +649,20 @@ def extract_sdist(archive: Path, destination: Path) -> Path:
             if key in normalized or PurePosixPath(member.name).parts[0] != top:
                 fail("sdist has duplicate or split-root members")
             normalized.add(key)
-            if not (member.isdir() or member.isfile()) or member.mode & 0o444 != 0o444:
-                fail("sdist contains a linked, special, or unreadable member")
+            if not (member.isdir() or member.isfile()):
+                fail("sdist contains a linked or special member")
+            expected_mode = (
+                EXPECTED_SDIST_DIRECTORY_MODE
+                if member.isdir()
+                else EXPECTED_SDIST_FILE_MODE
+            )
+            if stat.S_IMODE(member.mode) != expected_mode:
+                relative = key if key == top else key.removeprefix(top + "/")
+                fail(
+                    f"sdist member permissions differ: {relative} "
+                    f"expected={oct(expected_mode)} "
+                    f"observed={oct(stat.S_IMODE(member.mode))}"
+                )
             if member.isdir():
                 if key != top:
                     observed.add(key.removeprefix(top + "/") + "/")
@@ -618,6 +673,7 @@ def extract_sdist(archive: Path, destination: Path) -> Path:
             observed,
             expected_sdist_members(PROJECT),
         )
+        sdist_payload_audit(archive, PROJECT, top)
         handle.extractall(destination, filter="data")
     root = destination / top
     required = (
@@ -921,6 +977,13 @@ def filesystem_resource_mapping(
         if path.is_symlink():
             fail(f"installed production resource is a symlink: {relative}")
         if path.is_dir():
+            observed_mode = stat.S_IMODE(path.lstat().st_mode)
+            if observed_mode != EXPECTED_WHEEL_DIRECTORY_MODE:
+                fail(
+                    f"installed production resource permissions differ: {relative} "
+                    f"expected={oct(EXPECTED_WHEEL_DIRECTORY_MODE)} "
+                    f"observed={oct(observed_mode)}"
+                )
             if relative.parts:
                 observed_directories.add(relative.as_posix())
             for child in sorted(path.iterdir()):
@@ -928,6 +991,13 @@ def filesystem_resource_mapping(
             return
         if not path.is_file():
             fail(f"installed production resource is not regular: {relative}")
+        observed_mode = stat.S_IMODE(path.lstat().st_mode)
+        if observed_mode != EXPECTED_WHEEL_FILE_MODE:
+            fail(
+                f"installed production resource permissions differ: {relative} "
+                f"expected={oct(EXPECTED_WHEEL_FILE_MODE)} "
+                f"observed={oct(observed_mode)}"
+            )
         observed_files[relative.as_posix()] = path.read_bytes()
 
     if package_subtrees:
@@ -1046,23 +1116,28 @@ def installed_wheel_audit(
         base_env,
         install_project=False,
     )
-    run(
-        [
-            str(uv_path),
-            "pip",
-            "install",
-            "--python",
-            str(python),
-            "--no-index",
-            "--find-links",
-            str(PROJECT / WHEELHOUSE_NAME),
-            "--no-deps",
-            str(wheel),
-        ],
-        cwd=destination,
-        env=environment,
-        label="isolated wheel installation",
-    )
+    install_command = [
+        str(uv_path),
+        "pip",
+        "install",
+        "--python",
+        str(python),
+        "--no-index",
+        "--find-links",
+        str(PROJECT / WHEELHOUSE_NAME),
+        "--no-deps",
+        str(wheel),
+    ]
+    previous_umask = os.umask(0o022)
+    try:
+        run(
+            install_command,
+            cwd=destination,
+            env=environment,
+            label="isolated wheel installation",
+        )
+    finally:
+        os.umask(previous_umask)
     external = temporary / "external-cwd"
     external.mkdir()
     probe = r"""
@@ -1281,8 +1356,12 @@ def rewrite_sdist(
     *,
     extra_files: dict[str, bytes] | None = None,
     extra_directories: tuple[str, ...] = (),
+    replace: dict[str, bytes] | None = None,
+    modes: dict[str, int] | None = None,
 ) -> None:
     additions = extra_files or {}
+    replacements = replace or {}
+    mode_changes = modes or {}
     with tarfile.open(source, "r:gz") as source_archive, tarfile.open(
         destination, "w:gz"
     ) as destination_archive:
@@ -1292,8 +1371,17 @@ def rewrite_sdist(
         top = PurePosixPath(members[0].name).parts[0]
         for member in members:
             copied = copy(member)
+            key = safe_member_name(member.name)
+            relative = key.removeprefix(top + "/")
+            if relative in mode_changes:
+                copied.mode = mode_changes[relative]
             if copied.isfile():
-                destination_archive.addfile(copied, source_archive.extractfile(member))
+                source_file = source_archive.extractfile(member)
+                if source_file is None:
+                    fail(f"cannot read sdist member while rewriting: {relative}")
+                payload = replacements.get(relative, source_file.read())
+                copied.size = len(payload)
+                destination_archive.addfile(copied, io.BytesIO(payload))
             else:
                 destination_archive.addfile(copied)
         for relative, payload in additions.items():
@@ -1304,8 +1392,33 @@ def rewrite_sdist(
         for relative in extra_directories:
             name = relative.rstrip("/") + "/"
             info = tarfile.TarInfo(f"{top}/{name}")
+            info.type = tarfile.DIRTYPE
             info.mode = 0o755
             destination_archive.addfile(info)
+
+
+def rewrite_sdist_root(
+    source: Path,
+    destination: Path,
+    new_root: str,
+) -> None:
+    with tarfile.open(source, "r:gz") as source_archive, tarfile.open(
+        destination, "w:gz"
+    ) as destination_archive:
+        members = source_archive.getmembers()
+        if not members:
+            fail("cannot rewrite an empty sdist")
+        old_root = PurePosixPath(members[0].name).parts[0]
+        for member in members:
+            copied = copy(member)
+            copied.name = new_root + member.name[len(old_root) :]
+            if copied.isfile():
+                source_file = source_archive.extractfile(member)
+                if source_file is None:
+                    fail("cannot read sdist member while renaming its root")
+                destination_archive.addfile(copied, source_file)
+            else:
+                destination_archive.addfile(copied)
 
 
 def expect_audit_failure(label: str, action: Any, fragment: str) -> None:
@@ -1340,11 +1453,21 @@ def materialize_resource_tree(
     root: Path,
     expected: dict[str, tuple[str, bytes]],
 ) -> None:
-    root.mkdir(parents=True, exist_ok=True)
+    root.mkdir(parents=True, exist_ok=True, mode=EXPECTED_WHEEL_DIRECTORY_MODE)
+    root.chmod(EXPECTED_WHEEL_DIRECTORY_MODE)
     for path, (_, payload) in expected.items():
         destination = root / path
-        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+            mode=EXPECTED_WHEEL_DIRECTORY_MODE,
+        )
+        destination.parent.chmod(EXPECTED_WHEEL_DIRECTORY_MODE)
         destination.write_bytes(payload)
+        destination.chmod(EXPECTED_WHEEL_FILE_MODE)
+    for directory in root.rglob("*"):
+        if directory.is_dir() and not directory.is_symlink():
+            directory.chmod(EXPECTED_WHEEL_DIRECTORY_MODE)
 
 
 def legacy_r5_member_audit_for_control(wheel: Path) -> None:
@@ -1565,6 +1688,14 @@ def sdist_member_closure_negative_controls(
     temporary: Path,
 ) -> None:
     temporary.mkdir(parents=True, exist_ok=True)
+    renamed_root = temporary / "sdist-wrong-root.tar.gz"
+    rewrite_sdist_root(archive, renamed_root, "reviewer-r7-unbound-root")
+    expect_audit_failure(
+        "sdist distribution-root identity control",
+        lambda: extract_sdist(renamed_root, temporary / "extract-wrong-root"),
+        "sdist root identity differs",
+    )
+
     cases = (
         ("root", "r6-unmanifested.py"),
         ("source", "src/kilix_content/r6-unmanifested.py"),
@@ -1598,6 +1729,47 @@ def sdist_member_closure_negative_controls(
         "sdist complete member set differs",
     )
     print("exact sdist member closure controls: PASS")
+
+    payload_cases = (
+        ("source", "src/kilix_content/u1.py"),
+        ("tests", "tests/test_u1_contracts.py"),
+        ("tooling", "tools/render_u1_fixtures.py"),
+        ("documentation", "README.md"),
+        ("contract-documentation", "contracts/README.md"),
+    )
+    for label, relative in payload_cases:
+        original = (PROJECT / relative).read_bytes()
+        altered = bytes([original[0] ^ 1]) + original[1:]
+        mutated = temporary / f"sdist-payload-{label}.tar.gz"
+        rewrite_sdist(archive, mutated, replace={relative: altered})
+        expect_audit_failure(
+            f"sdist payload {label} control",
+            lambda mutated=mutated, label=label: extract_sdist(
+                mutated, temporary / f"extract-payload-{label}"
+            ),
+            f"sdist payload differs from source: {relative}",
+        )
+    print("sdist source-payload byte controls: PASS")
+
+    mode_cases = (
+        ("setuid", 0o4755),
+        ("setgid", 0o2755),
+        ("sticky", 0o1755),
+        ("world-writable", 0o777),
+        ("unreadable", 0o000),
+    )
+    mode_target = "tests/test_u1_contracts.py"
+    for label, mode in mode_cases:
+        mutated = temporary / f"sdist-mode-{label}.tar.gz"
+        rewrite_sdist(archive, mutated, modes={mode_target: mode})
+        expect_audit_failure(
+            f"sdist {label} mode control",
+            lambda mutated=mutated: extract_sdist(
+                mutated, temporary / f"extract-mode-{label}"
+            ),
+            f"sdist member permissions differ: {mode_target}",
+        )
+    print("sdist member mode controls: PASS")
 
 
 def honest_entrypoint_control(
@@ -1682,6 +1854,77 @@ def honest_entrypoint_control(
     if not wrapper.is_file() or stat.S_IMODE(wrapper.stat().st_mode) != 0o711:
         fail("honest entrypoint wrapper is absent or not mode 0711")
     print("honest entrypoint expectation and mode-0711 installation: PASS")
+
+
+def source_module_derivation_controls(
+    package_expected: dict[str, tuple[str, bytes]],
+    external_expected: dict[str, tuple[str, bytes]],
+    manifest_expected: dict[str, tuple[str, bytes]],
+    source_python: Path,
+    source_env: dict[str, str],
+    temporary: Path,
+) -> None:
+    def copy_source(destination: Path) -> None:
+        shutil.copytree(
+            PROJECT,
+            destination,
+            ignore=shutil.ignore_patterns(
+                ".git",
+                ".venv",
+                ".ruff_cache",
+                "__pycache__",
+                "*.pyc",
+                "*.egg-info",
+                "build",
+                "dist",
+            ),
+        )
+
+    added_source = temporary / "module-added-source"
+    copy_source(added_source)
+    (added_source / "src/kilix_content/r7_added.py").write_text(
+        "R7_ADDED_MODULE = True\n"
+    )
+    added_wheel = build(
+        added_source,
+        temporary / "module-added-wheel",
+        source_python,
+        source_env,
+        "--wheel",
+    )["wheel"]
+    added_expected = expected_wheel_members(
+        added_source, package_expected, external_expected
+    )
+    record_audit(added_wheel)
+    wheel_archive_audit(added_wheel, added_expected)
+    wheel_resource_audit(
+        added_wheel, package_expected, external_expected, manifest_expected
+    )
+
+    removed_source = temporary / "module-removed-source"
+    copy_source(removed_source)
+    removed_module = removed_source / "src/kilix_content/u1_profiles.py"
+    if not removed_module.is_file():
+        fail("module derivation control source fixture is missing")
+    removed_module.unlink()
+    removed_wheel = build(
+        removed_source,
+        temporary / "module-removed-wheel",
+        source_python,
+        source_env,
+        "--wheel",
+    )["wheel"]
+    removed_expected = expected_wheel_members(
+        removed_source, package_expected, external_expected
+    )
+    record_audit(removed_wheel)
+    wheel_archive_audit(removed_wheel, removed_expected)
+    wheel_resource_audit(
+        removed_wheel, package_expected, external_expected, manifest_expected
+    )
+    if len(added_expected) != len(removed_expected) + 2:
+        fail("module derivation controls did not move the source closure")
+    print("source-derived module add/remove controls: PASS")
 
 
 def resource_negative_controls(
@@ -1900,6 +2143,7 @@ def resource_negative_controls(
     installed_external = temporary / "installed-external"
     materialize_resource_tree(installed_external, external_expected)
     installed_external.joinpath("fourth").mkdir()
+    installed_external.joinpath("fourth").chmod(EXPECTED_WHEEL_DIRECTORY_MODE)
     external_files, external_directories = filesystem_resource_mapping(
         installed_external, package_subtrees=False
     )
@@ -1917,6 +2161,9 @@ def resource_negative_controls(
     installed_package = temporary / "installed-package"
     materialize_resource_tree(installed_package, package_expected)
     installed_package.joinpath("licenses", "unmanifested").mkdir()
+    installed_package.joinpath("licenses", "unmanifested").chmod(
+        EXPECTED_WHEEL_DIRECTORY_MODE
+    )
     package_files, package_directories = filesystem_resource_mapping(
         installed_package, package_subtrees=True
     )
@@ -1930,6 +2177,31 @@ def resource_negative_controls(
         ),
         "installed package production resource directories differ",
     )
+
+    installed_mode_cases = (
+        ("setuid", 0o4755),
+        ("setgid", 0o2755),
+        ("sticky", 0o1755),
+        ("world-writable", 0o777),
+        ("unreadable", 0o000),
+    )
+    for presentation, expected, package_subtrees in (
+        ("external", external_expected, False),
+        ("package", package_expected, True),
+    ):
+        for mode_name, mode in installed_mode_cases:
+            mode_root = temporary / f"installed-{presentation}-{mode_name}"
+            materialize_resource_tree(mode_root, expected)
+            target = mode_root / "licenses" / "MIT.txt"
+            target.chmod(mode)
+            expect_audit_failure(
+                f"installed {presentation} {mode_name} mode control",
+                lambda mode_root=mode_root, package_subtrees=package_subtrees: filesystem_resource_mapping(
+                    mode_root, package_subtrees=package_subtrees
+                ),
+                "installed production resource permissions differ: licenses/MIT.txt",
+            )
+    print("installed-tree resource mode controls: PASS")
 
     missing_external = temporary / "missing-external-mit.whl"
     rewrite_wheel(
@@ -2168,7 +2440,7 @@ def main() -> int:
         env=environment,
         label="uv lock check",
     )
-    with tempfile.TemporaryDirectory(prefix="kilix-u1-r3-") as temporary_name:
+    with tempfile.TemporaryDirectory(prefix="kilix-u1-r7-") as temporary_name:
         temporary = Path(temporary_name)
         verify_export(
             PROJECT,
@@ -2269,6 +2541,14 @@ def main() -> int:
             source_python,
             source_env,
             temporary / "entrypoint-control",
+        )
+        source_module_derivation_controls(
+            source_package,
+            source_external,
+            source_resources,
+            source_python,
+            source_env,
+            temporary / "module-controls",
         )
         resource_negative_controls(
             direct_one["wheel"],

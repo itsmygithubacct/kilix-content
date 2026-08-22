@@ -117,7 +117,7 @@ never from the candidate worktree:
 
 ```sh
 candidate_commit="$(git rev-parse HEAD)"
-review_export="$(mktemp -d /tmp/kilix-content-u1-r6-review.XXXXXX)"
+review_export="$(mktemp -d /tmp/kilix-content-u1-r7-review.XXXXXX)"
 git archive "$candidate_commit" | tar -x -C "$review_export"
 cd "$review_export"
 /usr/local/bin/uv run --python 3.12.8 --locked --offline --all-groups \
@@ -156,8 +156,8 @@ R6 adjacent-property disposition:
 
 | Property | Disposition and bounded authority |
 | --- | --- |
-| Complete wheel member set | Enforced by the source-derived 80-member closure: 33 package resources, importable modules, five exact `.dist-info` members, and 31 external data files; only `kilix_content/`, the matching `.data/`, and the matching `.dist-info/` roots are admitted. This project declares no `[project.scripts]`, so `entry_points.txt` is refused; if an honest future project declaration produces it, the same source-derived metadata expectation must include it. |
-| Complete sdist member set | Enforced by the source-derived file and canonical-parent closure, including the five generated egg-info members and the two root metadata members required by the backend. |
+| Complete wheel member set | Enforced by the disjoint source-derived category sets: currently 80 members comprising 33 package resources, importable modules, five exact `.dist-info` members, and 31 external data files; only `kilix_content/`, the matching `.data/`, and the matching `.dist-info/` roots are admitted. This project declares no `[project.scripts]`, so `entry_points.txt` is refused; an honest declaration causes the derived expectation to include it. |
+| Complete sdist member set and distribution root | Enforced by the source-derived file/canonical-parent closure and exact normalized project-name/version root, including five generated egg-info members and two backend root metadata members. |
 | Upper ZIP mode word, creator/type, name/type/payload coherence | Enforced by the archive classifier; only regular `0644` files, `0664` `RECORD`, and empty canonical `0755` directories are admitted. Symlinks, special/ambiguous types, unsafe names, noncanonical directory spellings, nonempty directories, setuid, world-writable, and unreadable members are rejected. |
 | Wheel RECORD membership, SHA-256 digest, and size | Enforced for every untouched and repaired control wheel. |
 | Exact 28-member production-resource projection | Enforced by the manifest digest/size/byte audit in both package and external presentations. |
@@ -165,7 +165,10 @@ R6 adjacent-property disposition:
 | Non-resource wheel member digests versus source | Not separately asserted; bounded by the source-derived member closure, the pinned clean build, and direct-wheel/sdist-derived-wheel byte identity. |
 | Recorded expected artifact digest | Not enforced as a pinned value; the gate compares two direct builds and the exact-sdist-derived wheel. A release evidence bundle must record the resulting hashes. |
 | ZIP archive comment and per-entry extra fields | Out of scope; not used by installation or U1 resource authority, and bounded only by reproducible direct/sdist-derived artifact identity. |
-| Sdist compression metadata beyond member safety/closure | Out of scope; the candidate gate owns exact source membership, safe types/modes, and byte-reproducible derived wheels. |
+| Sdist source-managed payload bytes | Enforced by `sdist_payload_audit`, which checks size, SHA-256 and bytes against the exact source tree for every non-generated member; causal source, test, tooling and documentation mutations refuse. |
+| Sdist backend-generated metadata payload bytes | Bounded by the pinned backend, exact member closure, exact-sdist test/lint gate and direct/sdist-derived wheel identity; these generated files have no source-tree payload counterpart. |
+| Installed production-resource file and directory modes | Enforced by the shared `filesystem_resource_mapping`: regular files must be `0644` and directories `0755`; setuid, setgid, sticky, world-writable and unreadable controls refuse. |
+| Sdist compression metadata beyond member safety/closure | Out of scope; the candidate gate owns exact source membership, root identity, safe types/modes, source-managed bytes, and byte-reproducible derived wheels. |
 | Interpreter/toolchain identity | Enforced separately by `build-toolchain.json`, uv lock/export checks, and the pinned R02 build gate; this R6 audit does not alter that authority. |
 
 Frozen schema SHA-256 values:
