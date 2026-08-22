@@ -117,7 +117,7 @@ never from the candidate worktree:
 
 ```sh
 candidate_commit="$(git rev-parse HEAD)"
-review_export="$(mktemp -d /tmp/kilix-content-u1-r3-review.XXXXXX)"
+review_export="$(mktemp -d /tmp/kilix-content-u1-r6-review.XXXXXX)"
 git archive "$candidate_commit" | tar -x -C "$review_export"
 cd "$review_export"
 /usr/local/bin/uv run --python 3.12.8 --locked --offline --all-groups \
@@ -151,6 +151,22 @@ installation uses only `wheelhouse/requirements.txt` with `--no-index`,
 artifacts, an identical exact-sdist-derived wheel, installed-wheel resource and
 corpus probes, and the final package audit. Ignored residue in a development
 worktree is never candidate identity or acceptable review evidence.
+
+R6 adjacent-property disposition:
+
+| Property | Disposition and bounded authority |
+| --- | --- |
+| Complete wheel member set | Enforced by the source-derived 80-member closure: 33 package resources, importable modules, five exact `.dist-info` members, and 31 external data files; only `kilix_content/`, the matching `.data/`, and the matching `.dist-info/` roots are admitted. This project declares no `[project.scripts]`, so `entry_points.txt` is refused; if an honest future project declaration produces it, the same source-derived metadata expectation must include it. |
+| Complete sdist member set | Enforced by the source-derived file and canonical-parent closure, including the five generated egg-info members and the two root metadata members required by the backend. |
+| Upper ZIP mode word, creator/type, name/type/payload coherence | Enforced by the archive classifier; only regular `0644` files, `0664` `RECORD`, and empty canonical `0755` directories are admitted. Symlinks, special/ambiguous types, unsafe names, noncanonical directory spellings, nonempty directories, setuid, world-writable, and unreadable members are rejected. |
+| Wheel RECORD membership, SHA-256 digest, and size | Enforced for every untouched and repaired control wheel. |
+| Exact 28-member production-resource projection | Enforced by the manifest digest/size/byte audit in both package and external presentations. |
+| Exact 33/31 co-resident resource allowlists and semantic directories | Enforced independently of the 28-member projection, preserving the five legacy/package co-residents and the three external co-residents. |
+| Non-resource wheel member digests versus source | Not separately asserted; bounded by the source-derived member closure, the pinned clean build, and direct-wheel/sdist-derived-wheel byte identity. |
+| Recorded expected artifact digest | Not enforced as a pinned value; the gate compares two direct builds and the exact-sdist-derived wheel. A release evidence bundle must record the resulting hashes. |
+| ZIP archive comment and per-entry extra fields | Out of scope; not used by installation or U1 resource authority, and bounded only by reproducible direct/sdist-derived artifact identity. |
+| Sdist compression metadata beyond member safety/closure | Out of scope; the candidate gate owns exact source membership, safe types/modes, and byte-reproducible derived wheels. |
+| Interpreter/toolchain identity | Enforced separately by `build-toolchain.json`, uv lock/export checks, and the pinned R02 build gate; this R6 audit does not alter that authority. |
 
 Frozen schema SHA-256 values:
 

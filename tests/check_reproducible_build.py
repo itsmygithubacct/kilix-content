@@ -9,11 +9,14 @@ import hashlib
 import importlib.metadata
 import json
 import posixpath
+import re
+import shutil
 import stat
 import subprocess
 import sys
 import tarfile
 import tempfile
+import tomllib
 import zipfile
 from copy import copy
 from pathlib import Path, PurePosixPath
@@ -64,6 +67,18 @@ EXPECTED_WHEEL_DISTRIBUTIONS = {
     "uri-template": "1.3.0",
     "webcolors": "25.10.0",
     "wheel": "0.45.1",
+}
+EXPECTED_WHEEL_FILE_MODE = 0o644
+EXPECTED_WHEEL_RECORD_MODE = 0o664
+EXPECTED_WHEEL_DIRECTORY_MODE = 0o755
+GENERATED_SDIST_FILES = {
+    "PKG-INFO",
+    "setup.cfg",
+    "src/kilix_content.egg-info/PKG-INFO",
+    "src/kilix_content.egg-info/SOURCES.txt",
+    "src/kilix_content.egg-info/dependency_links.txt",
+    "src/kilix_content.egg-info/requires.txt",
+    "src/kilix_content.egg-info/top_level.txt",
 }
 
 
@@ -427,6 +442,157 @@ def build(
     return artifacts
 
 
+def wheel_distribution_root(root: Path) -> str:
+    try:
+        project = tomllib.loads((root / "pyproject.toml").read_text())["project"]
+        name = project["name"]
+        version = project["version"]
+    except (OSError, KeyError, TypeError, tomllib.TOMLDecodeError) as exc:
+        fail(f"wheel distribution identity is not source-derived: {exc}")
+    if type(name) is not str or type(version) is not str:
+        fail("wheel distribution name/version are not text")
+    normalized = re.sub(r"[-_.]+", "_", name)
+    return f"{normalized}-{version}"
+
+
+def source_importable_members(
+    root: Path,
+    package_expected: dict[str, tuple[str, bytes]],
+) -> set[str]:
+    source = root / "src" / "kilix_content"
+    if source.is_symlink() or not source.is_dir():
+        fail("source importable package root is not a real directory")
+    resource_members = {f"kilix_content/{path}" for path in package_expected}
+    observed: set[str] = set()
+    for path in sorted(source.rglob("*")):
+        if path.is_symlink():
+            fail(f"source importable tree contains a symlink: {path}")
+        if path.is_dir():
+            continue
+        if not path.is_file():
+            fail(f"source importable tree contains a special member: {path}")
+        relative = path.relative_to(source)
+        if path.suffix not in {".py", ".pyi"} and path.name != "py.typed":
+            continue
+        member = PurePosixPath("kilix_content", *relative.parts).as_posix()
+        if member not in resource_members:
+            observed.add(member)
+    return observed
+
+
+def expected_wheel_members(
+    root: Path,
+    package_expected: dict[str, tuple[str, bytes]],
+    external_expected: dict[str, tuple[str, bytes]],
+) -> set[str]:
+    package = {f"kilix_content/{path}" for path in package_expected}
+    importable = source_importable_members(root, package_expected)
+    distribution = wheel_distribution_root(root)
+    external = {
+        f"{distribution}.data/data/share/kilix-content/{path}"
+        for path in external_expected
+    }
+    metadata_names = {
+        "licenses/LICENSE",
+        "METADATA",
+        "WHEEL",
+        "top_level.txt",
+        "RECORD",
+    }
+    scripts = tomllib.loads((root / "pyproject.toml").read_text())["project"].get(
+        "scripts", {}
+    )
+    if type(scripts) is not dict:
+        fail("project.scripts is not a closed table")
+    if scripts:
+        metadata_names.add("entry_points.txt")
+    metadata = {
+        f"{distribution}.dist-info/{path}"
+        for path in metadata_names
+    }
+    categories = {
+        "package resource": package,
+        "importable package": importable,
+        "external data": external,
+        "distribution metadata": metadata,
+    }
+    category_names = list(categories)
+    for index, left_name in enumerate(category_names):
+        for right_name in category_names[index + 1 :]:
+            overlap = categories[left_name] & categories[right_name]
+            if overlap:
+                fail(
+                    "wheel member categories overlap: "
+                    f"{left_name}/{right_name}={sorted(overlap)!r}"
+                )
+    expected = set().union(*categories.values())
+    expected_count = 80 + bool(scripts)
+    if len(expected) != expected_count:
+        fail(
+            "source-derived wheel closure has an unexpected member count: "
+            f"expected={expected_count} observed={len(expected)}"
+        )
+    return expected
+
+
+def source_sdist_files(root: Path) -> set[str]:
+    excluded_parts = {
+        ".git",
+        ".venv",
+        ".ruff_cache",
+        "__pycache__",
+        "build",
+        "dist",
+        ".eggs",
+    }
+    observed: set[str] = set()
+    for path in sorted(root.rglob("*")):
+        relative = path.relative_to(root)
+        if any(
+            part in excluded_parts or part.endswith(".egg-info")
+            for part in relative.parts
+        ):
+            continue
+        if path.is_symlink():
+            fail(f"sdist source tree contains a symlink: {relative}")
+        if path.is_dir():
+            continue
+        if not path.is_file():
+            fail(f"sdist source tree contains a special member: {relative}")
+        if path.name == ".gitignore" or path.suffix == ".pyc":
+            continue
+        observed.add(PurePosixPath(*relative.parts).as_posix())
+    observed.update(GENERATED_SDIST_FILES)
+    return observed
+
+
+def expected_sdist_members(root: Path) -> set[str]:
+    files = source_sdist_files(root)
+    directories: set[str] = set()
+    for file_name in files:
+        parts = PurePosixPath(file_name).parts
+        directories.update(
+            PurePosixPath(*parts[:index]).as_posix() + "/"
+            for index in range(1, len(parts))
+        )
+    return files | directories
+
+
+def compare_member_sets(
+    label: str,
+    observed: set[str],
+    expected: set[str],
+) -> None:
+    if observed == expected:
+        return
+    fail(
+        f"{label} complete member set differs: "
+        f"expected_count={len(expected)} observed_count={len(observed)} "
+        f"missing={sorted(expected - observed)!r} "
+        f"extra={sorted(observed - expected)!r}"
+    )
+
+
 def extract_sdist(archive: Path, destination: Path) -> Path:
     with tarfile.open(archive, "r:gz") as handle:
         members = handle.getmembers()
@@ -434,6 +600,7 @@ def extract_sdist(archive: Path, destination: Path) -> Path:
             fail("sdist is empty")
         top = PurePosixPath(members[0].name).parts[0]
         normalized: set[str] = set()
+        observed: set[str] = set()
         for member in members:
             key = safe_member_name(member.name)
             if key in normalized or PurePosixPath(member.name).parts[0] != top:
@@ -441,6 +608,16 @@ def extract_sdist(archive: Path, destination: Path) -> Path:
             normalized.add(key)
             if not (member.isdir() or member.isfile()) or member.mode & 0o444 != 0o444:
                 fail("sdist contains a linked, special, or unreadable member")
+            if member.isdir():
+                if key != top:
+                    observed.add(key.removeprefix(top + "/") + "/")
+            elif key != top:
+                observed.add(key.removeprefix(top + "/"))
+        compare_member_sets(
+            "sdist",
+            observed,
+            expected_sdist_members(PROJECT),
+        )
         handle.extractall(destination, filter="data")
     root = destination / top
     required = (
@@ -459,7 +636,12 @@ def extract_sdist(archive: Path, destination: Path) -> Path:
     return root
 
 
-def classify_wheel_member(archive: zipfile.ZipFile, info: zipfile.ZipInfo) -> int:
+def classify_wheel_member(
+    archive: zipfile.ZipFile,
+    info: zipfile.ZipInfo,
+    *,
+    check_permissions: bool = True,
+) -> int:
     name = info.filename
     safe_member_name(name)
     if info.create_system != 3:
@@ -468,6 +650,21 @@ def classify_wheel_member(archive: zipfile.ZipFile, info: zipfile.ZipInfo) -> in
     kind = stat.S_IFMT(mode_word)
     if kind not in (stat.S_IFREG, stat.S_IFDIR):
         fail(f"wheel member has an unsupported or unknown type: {name}")
+    permissions = stat.S_IMODE(mode_word)
+    if check_permissions:
+        if kind == stat.S_IFREG:
+            expected_mode = (
+                EXPECTED_WHEEL_RECORD_MODE
+                if name.endswith(".dist-info/RECORD")
+                else EXPECTED_WHEEL_FILE_MODE
+            )
+        else:
+            expected_mode = EXPECTED_WHEEL_DIRECTORY_MODE
+        if permissions != expected_mode:
+            fail(
+                f"wheel member permissions differ: {name} "
+                f"expected={oct(expected_mode)} observed={oct(permissions)}"
+            )
     is_directory_name = name.endswith("/")
     if kind == stat.S_IFREG:
         if is_directory_name:
@@ -480,7 +677,10 @@ def classify_wheel_member(archive: zipfile.ZipFile, info: zipfile.ZipInfo) -> in
     return kind
 
 
-def wheel_archive_audit(wheel: Path) -> set[str]:
+def wheel_archive_audit(
+    wheel: Path,
+    expected_members: set[str] | None = None,
+) -> set[str]:
     with zipfile.ZipFile(wheel) as archive:
         if archive.testzip() is not None:
             fail("wheel CRC check failed")
@@ -489,6 +689,10 @@ def wheel_archive_audit(wheel: Path) -> set[str]:
         normalized = {safe_member_name(name) for name in names}
         if len(normalized) != len(names):
             fail("wheel has duplicate normalized members")
+        for info in infos:
+            classify_wheel_member(archive, info, check_permissions=False)
+        if expected_members is not None:
+            compare_member_sets("wheel", set(names), expected_members)
         for info in infos:
             classify_wheel_member(archive, info)
         forbidden = (
@@ -1006,11 +1210,13 @@ def rewrite_wheel(
     rename: dict[str, str] | None = None,
     mutate: dict[str, Callable[[zipfile.ZipInfo], None]] | None = None,
     extra_directories: tuple[str, ...] = (),
+    extra_modes: dict[str, int] | None = None,
     rebuild_record: bool = False,
 ) -> None:
     removed = remove or set()
     replacements = replace or {}
     additions = extra or {}
+    addition_modes = extra_modes or {}
     renames = rename or {}
     mutations = mutate or {}
     with zipfile.ZipFile(source) as source_archive, zipfile.ZipFile(
@@ -1046,7 +1252,10 @@ def rewrite_wheel(
                 fail(f"cannot duplicate absent wheel member: {name}")
             entries.append((copy(source_info), source_archive.read(name)))
         for name, payload in additions.items():
-            entries.append((regular_zip_info(name), payload))
+            info = regular_zip_info(name)
+            if name in addition_modes:
+                info.external_attr = (stat.S_IFREG | addition_modes[name]) << 16
+            entries.append((info, payload))
         for name in extra_directories:
             entries.append((directory_zip_info(name), b""))
         if rebuild_record:
@@ -1058,12 +1267,45 @@ def rewrite_wheel(
                 if info.filename == record_name
             )
             record_info.create_system = 3
-            record_info.external_attr = (stat.S_IFREG | 0o644) << 16
+            record_info.external_attr = (stat.S_IFREG | EXPECTED_WHEEL_RECORD_MODE) << 16
             entries.append(
                 (record_info, build_record_payload(entries, record_name))
             )
         for info, payload in entries:
             destination_archive.writestr(info, payload)
+
+
+def rewrite_sdist(
+    source: Path,
+    destination: Path,
+    *,
+    extra_files: dict[str, bytes] | None = None,
+    extra_directories: tuple[str, ...] = (),
+) -> None:
+    additions = extra_files or {}
+    with tarfile.open(source, "r:gz") as source_archive, tarfile.open(
+        destination, "w:gz"
+    ) as destination_archive:
+        members = source_archive.getmembers()
+        if not members:
+            fail("cannot rewrite an empty sdist")
+        top = PurePosixPath(members[0].name).parts[0]
+        for member in members:
+            copied = copy(member)
+            if copied.isfile():
+                destination_archive.addfile(copied, source_archive.extractfile(member))
+            else:
+                destination_archive.addfile(copied)
+        for relative, payload in additions.items():
+            info = tarfile.TarInfo(f"{top}/{relative}")
+            info.mode = 0o644
+            info.size = len(payload)
+            destination_archive.addfile(info, io.BytesIO(payload))
+        for relative in extra_directories:
+            name = relative.rstrip("/") + "/"
+            info = tarfile.TarInfo(f"{top}/{name}")
+            info.mode = 0o755
+            destination_archive.addfile(info)
 
 
 def expect_audit_failure(label: str, action: Any, fragment: str) -> None:
@@ -1105,6 +1347,343 @@ def materialize_resource_tree(
         destination.write_bytes(payload)
 
 
+def legacy_r5_member_audit_for_control(wheel: Path) -> None:
+    """Model the pre-R6 acceptance surface for the installation control only."""
+    with zipfile.ZipFile(wheel) as archive:
+        if archive.testzip() is not None:
+            fail("legacy R5 control wheel has an invalid CRC")
+        names = [info.filename for info in archive.infolist()]
+        if len(names) != len({safe_member_name(name) for name in names}):
+            fail("legacy R5 control wheel has duplicate normalized members")
+        for info in archive.infolist():
+            classify_wheel_member(archive, info, check_permissions=False)
+        forbidden = (
+            "tests/",
+            "fixtures/",
+            "u1_vectors",
+            "wheelhouse/",
+            "fixture-index",
+            "synthetic",
+        )
+        if any(any(token in name.lower() for token in forbidden) for name in names):
+            fail("legacy R5 control wheel has forbidden test authority")
+
+
+def wheel_member_closure_negative_controls(
+    wheel: Path,
+    expected_members: set[str],
+    uv_path: Path,
+    base_python: Path,
+    base_env: dict[str, str],
+    temporary: Path,
+) -> None:
+    temporary.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(wheel) as archive:
+        package_prefix, external_prefix = wheel_resource_prefixes(archive)
+        distribution = wheel_distribution_name(archive)
+
+    cases: tuple[tuple[str, str, bytes], ...] = (
+        (
+            "data-scripts",
+            f"{distribution}.data/scripts/kilix-content-helper",
+            b"#!/bin/sh\nexit 0\n",
+        ),
+        (
+            "data-purelib",
+            f"{distribution}.data/purelib/r6-extra.py",
+            b"# extra purelib\n",
+        ),
+        (
+            "data-platlib",
+            f"{distribution}.data/platlib/r6-extra.py",
+            b"# extra platlib\n",
+        ),
+        (
+            "data-headers",
+            f"{distribution}.data/headers/r6-extra.h",
+            b"/* extra header */\n",
+        ),
+        (
+            "data-other-share",
+            f"{distribution}.data/data/share/other/r6-extra.txt",
+            b"extra\n",
+        ),
+        (
+            "data-profile",
+            f"{distribution}.data/data/etc/profile.d/r6-extra.sh",
+            b"# extra profile\n",
+        ),
+        ("wheel-root-module", "r6_extra.py", b"# extra root module\n"),
+        (
+            "wheel-root-package",
+            "r6_extra/__init__.py",
+            b"# extra root package\n",
+        ),
+        (
+            "package-module",
+            "kilix_content/r6_extra.py",
+            b"# extra package module\n",
+        ),
+        (
+            "dist-info-extra",
+            f"{distribution}.dist-info/r6-extra.txt",
+            b"extra metadata\n",
+        ),
+        (
+            "dist-info-entry-points",
+            f"{distribution}.dist-info/entry_points.txt",
+            b"[console_scripts]\nkilix-content-helper = r6_extra:main\n",
+        ),
+        (
+            "external-root-file-without-slash",
+            external_prefix.rstrip("/"),
+            b"not a directory\n",
+        ),
+        ("package-root-file-without-slash", package_prefix.rstrip("/"), b"root\n"),
+        (
+            "data-root-file-without-slash",
+            f"{distribution}.data",
+            b"root\n",
+        ),
+        (
+            "metadata-root-file-without-slash",
+            f"{distribution}.dist-info",
+            b"root\n",
+        ),
+        (
+            "external-purelib-root",
+            f"{distribution}.data/purelib/share/kilix-content/",
+            b"",
+        ),
+        (
+            "external-purelib-file",
+            f"{distribution}.data/purelib/share/kilix-content/r6.txt",
+            b"extra\n",
+        ),
+        (
+            "external-data-stray-file",
+            f"{distribution}.data/data/share/stray.txt",
+            b"extra\n",
+        ),
+    )
+    for label, name, payload in cases:
+        mutated = temporary / f"member-{label}.whl"
+        if name.endswith("/"):
+            rewrite_wheel(
+                wheel,
+                mutated,
+                extra_directories=(name,),
+                rebuild_record=True,
+            )
+        else:
+            rewrite_wheel(
+                wheel,
+                mutated,
+                extra={name: payload},
+                rebuild_record=True,
+            )
+        expect_repaired_wheel_failure(
+            f"wheel member closure {label}",
+            mutated,
+            lambda mutated=mutated: wheel_archive_audit(mutated, expected_members),
+            "wheel complete member set differs",
+        )
+
+    external_stray_directory = temporary / "member-external-data-stray-directory.whl"
+    rewrite_wheel(
+        wheel,
+        external_stray_directory,
+        extra_directories=(f"{distribution}.data/data/share/stray/",),
+        rebuild_record=True,
+    )
+    expect_repaired_wheel_failure(
+        "wheel member closure external stray directory",
+        external_stray_directory,
+        lambda: wheel_archive_audit(external_stray_directory, expected_members),
+        "wheel complete member set differs",
+    )
+
+    script_wheel = temporary / "kilix_content-0.4.0-py3-none-any.whl"
+    script_name = f"{distribution}.data/scripts/kilix-content-helper"
+    rewrite_wheel(
+        wheel,
+        script_wheel,
+        extra={script_name: b"#!/bin/sh\nexit 0\n"},
+        extra_modes={script_name: 0o755},
+        rebuild_record=True,
+    )
+    legacy_r5_member_audit_for_control(script_wheel)
+    record_audit(script_wheel)
+    install_root = temporary / "pre-r6-script-install"
+    install_root.mkdir()
+    environment = dict(base_env)
+    environment["UV_CACHE_DIR"] = str(install_root / "empty-uv-cache")
+    venv = install_root / "venv"
+    run(
+        [
+            str(uv_path),
+            "venv",
+            "--no-project",
+            "--python",
+            str(base_python),
+            "--no-python-downloads",
+            str(venv),
+        ],
+        cwd=install_root,
+        env=environment,
+        label="pre-R6 script installation venv",
+    )
+    python = venv / "bin" / "python"
+    run(
+        [
+            str(uv_path),
+            "pip",
+            "install",
+            "--python",
+            str(python),
+            "--no-index",
+            "--no-deps",
+            str(script_wheel),
+        ],
+        cwd=install_root,
+        env=environment,
+        label="pre-R6 executable PATH installation control",
+    )
+    installed_script = venv / "bin" / "kilix-content-helper"
+    if not installed_script.is_file() or not installed_script.stat().st_mode & 0o111:
+        fail("pre-R6 script installation control did not reach executable PATH")
+    print("pre-R6 executable PATH placement control: PASS")
+    expect_audit_failure(
+        "global wheel closure rejects executable PATH member",
+        lambda: wheel_archive_audit(script_wheel, expected_members),
+        "wheel complete member set differs",
+    )
+
+
+def sdist_member_closure_negative_controls(
+    archive: Path,
+    temporary: Path,
+) -> None:
+    temporary.mkdir(parents=True, exist_ok=True)
+    cases = (
+        ("root", "r6-unmanifested.py"),
+        ("source", "src/kilix_content/r6-unmanifested.py"),
+        ("tests", "tests/r6-unmanifested.py"),
+        ("wheelhouse", "wheelhouse/r6-unmanifested.whl"),
+        ("data", "kilix_content-0.4.0.data/r6-unmanifested"),
+    )
+    for label, relative in cases:
+        mutated = temporary / f"sdist-{label}.tar.gz"
+        rewrite_sdist(
+            archive,
+            mutated,
+            extra_files={relative: b"unlisted\n"},
+        )
+        expect_audit_failure(
+            f"sdist member closure {label}",
+            lambda mutated=mutated, label=label: extract_sdist(
+                mutated, temporary / f"extract-{label}"
+            ),
+            "sdist complete member set differs",
+        )
+    directory = temporary / "sdist-directory-extra.tar.gz"
+    rewrite_sdist(
+        archive,
+        directory,
+        extra_directories=("tests/r6-unmanifested/",),
+    )
+    expect_audit_failure(
+        "sdist member closure directory",
+        lambda: extract_sdist(directory, temporary / "extract-directory"),
+        "sdist complete member set differs",
+    )
+    print("exact sdist member closure controls: PASS")
+
+
+def honest_entrypoint_control(
+    source_package: dict[str, tuple[str, bytes]],
+    source_external: dict[str, tuple[str, bytes]],
+    uv_path: Path,
+    base_python: Path,
+    base_env: dict[str, str],
+    source_python: Path,
+    source_env: dict[str, str],
+    temporary: Path,
+) -> None:
+    """Prove a declared script is expected, installed, and mode-bounded."""
+    source_copy = temporary / "honest-entrypoint-source"
+    shutil.copytree(
+        PROJECT,
+        source_copy,
+        ignore=shutil.ignore_patterns(
+            ".git",
+            ".venv",
+            ".ruff_cache",
+            "__pycache__",
+            "*.pyc",
+            "*.egg-info",
+            "build",
+            "dist",
+        ),
+    )
+    pyproject = source_copy / "pyproject.toml"
+    pyproject.write_text(
+        pyproject.read_text()
+        + '\n[project.scripts]\nkilix-content-admin = "kilix_content.u1:packaged_release_capability"\n'
+    )
+    artifact = build(
+        source_copy,
+        temporary / "honest-entrypoint-wheel",
+        source_python,
+        source_env,
+        "--wheel",
+    )["wheel"]
+    expected = expected_wheel_members(
+        source_copy, source_package, source_external
+    )
+    record_audit(artifact)
+    wheel_archive_audit(artifact, expected)
+    install_root = temporary / "honest-entrypoint-install"
+    install_root.mkdir()
+    environment = dict(base_env)
+    environment["UV_CACHE_DIR"] = str(install_root / "empty-uv-cache")
+    venv = install_root / "venv"
+    run(
+        [
+            str(uv_path),
+            "venv",
+            "--no-project",
+            "--python",
+            str(base_python),
+            "--no-python-downloads",
+            str(venv),
+        ],
+        cwd=install_root,
+        env=environment,
+        label="honest entrypoint installation venv",
+    )
+    python = venv / "bin" / "python"
+    run(
+        [
+            str(uv_path),
+            "pip",
+            "install",
+            "--python",
+            str(python),
+            "--no-index",
+            "--no-deps",
+            str(artifact),
+        ],
+        cwd=install_root,
+        env=environment,
+        label="honest entrypoint installation",
+    )
+    wrapper = venv / "bin" / "kilix-content-admin"
+    if not wrapper.is_file() or stat.S_IMODE(wrapper.stat().st_mode) != 0o711:
+        fail("honest entrypoint wrapper is absent or not mode 0711")
+    print("honest entrypoint expectation and mode-0711 installation: PASS")
+
+
 def resource_negative_controls(
     wheel: Path,
     package_expected: dict[str, tuple[str, bytes]],
@@ -1143,6 +1722,30 @@ def resource_negative_controls(
                 special, package_expected, external_expected, manifest_expected
             ),
             "wheel member has an unsupported or unknown type",
+        )
+
+    permission_types = (
+        ("setuid", stat.S_IFREG | 0o4755),
+        ("world-writable", stat.S_IFREG | 0o777),
+        ("unreadable", stat.S_IFREG | 0o000),
+    )
+    for permission_name, mode in permission_types:
+        unsafe_permissions = temporary / f"unsafe-permissions-{permission_name}.whl"
+        rewrite_wheel(
+            wheel,
+            unsafe_permissions,
+            mutate={mit_member: set_zip_mode(mode)},
+        )
+        expect_repaired_wheel_failure(
+            f"{permission_name} permission control",
+            unsafe_permissions,
+            lambda unsafe_permissions=unsafe_permissions: wheel_resource_audit(
+                unsafe_permissions,
+                package_expected,
+                external_expected,
+                manifest_expected,
+            ),
+            "wheel member permissions differ",
         )
 
     regular_with_directory_spelling = temporary / "regular-directory-spelling.whl"
@@ -1602,6 +2205,9 @@ def main() -> int:
             "--sdist",
             "--wheel",
         )
+        sdist_member_closure_negative_controls(
+            direct_one["sdist"], temporary / "sdist-controls"
+        )
         source_root = extract_sdist(direct_one["sdist"], temporary / "extracted-sdist")
         verify_wheelhouse(source_root)
         verify_export(
@@ -1630,8 +2236,15 @@ def main() -> int:
             "--wheel",
         )
 
+        _, source_resources = production_resources(PROJECT)
+        source_package, source_external = coresident_resources(
+            PROJECT, source_resources
+        )
+        expected_members = expected_wheel_members(
+            PROJECT, source_package, source_external
+        )
         for wheel in (direct_one["wheel"], direct_two["wheel"], rebuilt["wheel"]):
-            wheel_archive_audit(wheel)
+            wheel_archive_audit(wheel, expected_members)
             record_audit(wheel)
         wheels = {
             "direct wheel 1": direct_one["wheel"],
@@ -1639,9 +2252,23 @@ def main() -> int:
             "sdist-derived wheel": rebuilt["wheel"],
         }
         manifest_digest = resource_audit(PROJECT, source_root, wheels)
-        _, source_resources = production_resources(PROJECT)
-        source_package, source_external = coresident_resources(
-            PROJECT, source_resources
+        wheel_member_closure_negative_controls(
+            direct_one["wheel"],
+            expected_members,
+            uv_path,
+            base_python,
+            environment,
+            temporary / "member-controls",
+        )
+        honest_entrypoint_control(
+            source_package,
+            source_external,
+            uv_path,
+            base_python,
+            environment,
+            source_python,
+            source_env,
+            temporary / "entrypoint-control",
         )
         resource_negative_controls(
             direct_one["wheel"],
