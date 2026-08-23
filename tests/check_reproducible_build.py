@@ -697,14 +697,38 @@ def sdist_generated_metadata_audit(first: Path, second: Path) -> None:
     print("generated sdist metadata reproducibility audit: PASS")
 
 
+def read_sdist_members(handle: tarfile.TarFile) -> list[tarfile.TarInfo]:
+    members: list[tarfile.TarInfo] = []
+    while True:
+        member = handle.next()
+        if member is None:
+            return members
+        members.append(member)
+        if member.isdir() and member.size:
+            if handle.fileobj is None or member.offset_data is None:
+                fail("sdist directory payload has no readable data offset")
+            blocks = (member.size + tarfile.BLOCKSIZE - 1) // tarfile.BLOCKSIZE
+            handle.offset = member.offset_data + blocks * tarfile.BLOCKSIZE
+            handle.fileobj.seek(handle.offset)
+
+
 def ordered_sdist_member_records(
     archive: Path,
 ) -> list[tuple[str, bytes, int, int, bytes]]:
     with tarfile.open(archive, "r:gz") as handle:
         records: list[tuple[str, bytes, int, int, bytes]] = []
-        for member in handle.getmembers():
-            payload_file = handle.extractfile(member)
-            payload = b"" if payload_file is None else payload_file.read()
+        for member in read_sdist_members(handle):
+            if member.isdir() and member.size:
+                if handle.fileobj is None or member.offset_data is None:
+                    fail("sdist directory payload has no readable data offset")
+                handle.fileobj.seek(member.offset_data)
+                payload = handle.fileobj.read(member.size)
+                if len(payload) != member.size:
+                    fail("sdist directory payload is truncated")
+                handle.fileobj.seek(handle.offset)
+            else:
+                payload_file = handle.extractfile(member)
+                payload = b"" if payload_file is None else payload_file.read()
             records.append(
                 (
                     safe_member_name(member.name),
@@ -717,11 +741,33 @@ def ordered_sdist_member_records(
         return records
 
 
+def raw_sdist_member_payload(archive: Path, target: str) -> bytes:
+    with tarfile.open(archive, "r:gz") as handle:
+        matches = [
+            member
+            for member in read_sdist_members(handle)
+            if safe_member_name(member.name) == target
+        ]
+        if len(matches) != 1:
+            fail(
+                "sdist raw-payload control requires exactly one target member: "
+                f"{target!r}"
+            )
+        member = matches[0]
+        if handle.fileobj is None or member.offset_data is None:
+            fail("sdist raw-payload control cannot address target payload")
+        handle.fileobj.seek(member.offset_data)
+        payload = handle.fileobj.read(member.size)
+        if len(payload) != member.size:
+            fail("sdist raw-payload control truncated target payload")
+        return payload
+
+
 def assert_sdist_nonempty_directory_control(
     source: Path,
     mutated: Path,
     target: str,
-    declared_payload_size: int,
+    declared_payload: bytes,
 ) -> None:
     source_records = ordered_sdist_member_records(source)
     mutated_records = ordered_sdist_member_records(mutated)
@@ -739,11 +785,13 @@ def assert_sdist_nonempty_directory_control(
             fail("sdist nonempty-directory control lost directory type")
         if source_record[2] != mutated_record[2] or source_record[3] != 0:
             fail("sdist nonempty-directory control changed directory mode")
-        if mutated_record[3] != declared_payload_size:
+        if mutated_record[3] != len(declared_payload):
             fail("sdist nonempty-directory control is not nonempty")
         changed += 1
     if changed != 1:
         fail("sdist nonempty-directory control did not change exactly one record")
+    if raw_sdist_member_payload(mutated, target) != declared_payload:
+        fail("sdist nonempty-directory control payload is not physically encoded")
 
 
 def add_sdist_member_with_payload(
@@ -756,9 +804,23 @@ def add_sdist_member_with_payload(
         return
     if member.isdir():
         # tarfile does not consume data blocks for directory-typed members.
-        # Preserve a parser-valid member sequence while retaining the declared
-        # nonzero size that the sdist audit must reject.
-        archive.addfile(member)
+        # Write the declared bytes explicitly so the control exercises the
+        # physical tar payload rather than only the header size.
+        if archive.fileobj is None:
+            fail("sdist archive has no writable file object")
+        header = member.tobuf(
+            format=archive.format,
+            encoding=archive.encoding,
+            errors=archive.errors,
+        )
+        archive.fileobj.write(header)
+        archive.offset += len(header)
+        archive.fileobj.write(payload)
+        archive.offset += len(payload)
+        padding = (-len(payload)) % tarfile.BLOCKSIZE
+        if padding:
+            archive.fileobj.write(b"\0" * padding)
+            archive.offset += padding
         return
     if archive.fileobj is None:
         fail("sdist archive has no writable file object")
@@ -779,7 +841,7 @@ def add_sdist_member_with_payload(
 
 def extract_sdist(archive: Path, destination: Path) -> Path:
     with tarfile.open(archive, "r:gz") as handle:
-        members = handle.getmembers()
+        members = read_sdist_members(handle)
         if not members:
             fail("sdist is empty")
         top = PurePosixPath(members[0].name).parts[0]
@@ -1907,16 +1969,22 @@ def sdist_member_closure_negative_controls(
     print("sdist top-directory closure controls: PASS")
 
     nonempty_top = temporary / "sdist-nonempty-top-directory.tar.gz"
+    directory_payload = b"F100-R10-DIRECTORY-PAYLOAD-SENTINEL-9f3b2c1a\n"
+    if any(
+        directory_payload in record[4]
+        for record in ordered_sdist_member_records(archive)
+    ):
+        fail("sdist directory control sentinel already exists in the source archive")
     rewrite_sdist(
         archive,
         nonempty_top,
-        replace={expected_top: b"directory payload must be rejected"},
+        replace={expected_top: directory_payload},
     )
     assert_sdist_nonempty_directory_control(
         archive,
         nonempty_top,
         expected_top,
-        len(b"directory payload must be rejected"),
+        directory_payload,
     )
     expect_audit_failure(
         "sdist nonempty directory control",

@@ -177,6 +177,7 @@ R9 wheel/sdist member-rule parity:
 | --- | --- |
 | Complete member-set closure against a source-derived expectation | Enforced by `expected_sdist_members`, including the normalized project root, exactly one top-directory record, every source-managed file, and every canonical parent directory. |
 | Archive container integrity | Enforced structurally by `tarfile` while reading gzip and tar headers/checksums; tar has no per-file ZIP CRC field, so the ZIP-specific CRC check cannot transfer. |
+| Compression method and per-entry DOS timestamp | Not semantically audited; tar/gzip has different container and member metadata, and the family is bounded by whole-artifact reproducibility. |
 | Safe member names | Enforced by the same `safe_member_name` grammar for every sdist member. |
 | Normalized-duplicate rejection | Enforced by the normalized sdist-name set before closure comparison. |
 | Unambiguous creator/type metadata | Cannot transfer literally: ZIP's creator and upper mode word have no tar equivalent. Sdist instead rejects linked and special tar types and requires regular-file or directory type. |
@@ -190,7 +191,7 @@ R9 wheel/sdist member-rule parity:
 | Forbidden test/fixture authority paths | Deliberately not transferred: the sdist must contain tests, fixtures, wheelhouse inputs, and checker authority for reproducible source testing; the wheel alone refuses those paths. |
 | ZIP data-root and dist-info prefix grammar | Cannot transfer literally: tar has one project root rather than ZIP's `.data`/`.dist-info` presentation roots; the normalized root and exact source closure are the sdist authority. |
 | Package/external resource projections and semantic directories | Enforced after extraction by the shared production-resource audit and source/sdist equality checks; the sdist itself carries the complete source authority rather than two wheel presentations. |
-| ZIP comments and per-entry extra fields | Cannot transfer: these are ZIP container fields with no tar equivalent; tar header safety and reproducible artifact identity remain checked. |
+| ZIP comments and per-entry metadata | Literal ZIP comments and extra fields do not transfer; tar has per-member metadata equivalents such as uid/gid/uname/gname/mtime and PAX headers. These are not semantically audited; bounded by whole-artifact reproducibility. |
 
 Frozen schema SHA-256 values:
 
