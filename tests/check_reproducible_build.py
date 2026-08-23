@@ -574,6 +574,7 @@ def source_sdist_files(root: Path) -> set[str]:
 
 
 def expected_sdist_members(root: Path) -> set[str]:
+    top = sdist_distribution_root(root)
     files = source_sdist_files(root)
     directories: set[str] = set()
     for file_name in files:
@@ -582,7 +583,7 @@ def expected_sdist_members(root: Path) -> set[str]:
             PurePosixPath(*parts[:index]).as_posix() + "/"
             for index in range(1, len(parts))
         )
-    return files | directories
+    return {top} | {f"{top}/{member}" for member in files | directories}
 
 
 def compare_member_sets(
@@ -630,6 +631,72 @@ def sdist_payload_audit(
                 fail(f"sdist payload differs from source: {relative}")
 
 
+def sdist_relative_member_signature(
+    archive: Path,
+) -> tuple[str, set[tuple[str, bytes, int, int, bytes]]]:
+    with tarfile.open(archive, "r:gz") as handle:
+        members = handle.getmembers()
+        if not members:
+            fail("sdist is empty")
+        roots = {PurePosixPath(safe_member_name(member.name)).parts[0] for member in members}
+        if len(roots) != 1:
+            fail(f"sdist signature has multiple roots: {sorted(roots)!r}")
+        top = next(iter(roots))
+        signatures: set[tuple[str, bytes, int, int, bytes]] = set()
+        for member in members:
+            key = safe_member_name(member.name)
+            relative = "" if key == top else key.removeprefix(top + "/")
+            payload_file = handle.extractfile(member)
+            payload = b"" if payload_file is None else payload_file.read()
+            signatures.add(
+                (
+                    relative,
+                    member.type,
+                    stat.S_IMODE(member.mode),
+                    member.size,
+                    payload,
+                )
+            )
+        return top, signatures
+
+
+def sdist_generated_metadata_payloads(
+    archive: Path,
+) -> dict[str, tuple[str, bytes]]:
+    with tarfile.open(archive, "r:gz") as handle:
+        members = handle.getmembers()
+        if not members:
+            fail("sdist is empty")
+        top = PurePosixPath(safe_member_name(members[0].name)).parts[0]
+        payloads: dict[str, tuple[str, bytes]] = {}
+        for member in members:
+            key = safe_member_name(member.name)
+            relative = key.removeprefix(top + "/")
+            if relative not in GENERATED_SDIST_FILES:
+                continue
+            payload_file = handle.extractfile(member)
+            if payload_file is None:
+                fail(f"generated sdist metadata is not a regular file: {relative}")
+            payload = payload_file.read()
+            payloads[relative] = (hashlib.sha256(payload).hexdigest(), payload)
+        if set(payloads) != GENERATED_SDIST_FILES:
+            fail(
+                "generated sdist metadata closure differs: "
+                f"expected={sorted(GENERATED_SDIST_FILES)!r} "
+                f"observed={sorted(payloads)!r}"
+            )
+        return payloads
+
+
+def sdist_generated_metadata_audit(first: Path, second: Path) -> None:
+    first_payloads = sdist_generated_metadata_payloads(first)
+    second_payloads = sdist_generated_metadata_payloads(second)
+    for relative in sorted(GENERATED_SDIST_FILES):
+        if first_payloads[relative] != second_payloads[relative]:
+            fail(f"generated sdist metadata is not reproducible: {relative}")
+    print("generated sdist metadata reproducibility audit: PASS")
+
+
 def extract_sdist(archive: Path, destination: Path) -> Path:
     with tarfile.open(archive, "r:gz") as handle:
         members = handle.getmembers()
@@ -664,10 +731,9 @@ def extract_sdist(archive: Path, destination: Path) -> Path:
                     f"observed={oct(stat.S_IMODE(member.mode))}"
                 )
             if member.isdir():
-                if key != top:
-                    observed.add(key.removeprefix(top + "/") + "/")
-            elif key != top:
-                observed.add(key.removeprefix(top + "/"))
+                observed.add(key if key == top else key + "/")
+            else:
+                observed.add(key)
         compare_member_sets(
             "sdist",
             observed,
@@ -1354,11 +1420,14 @@ def rewrite_sdist(
     source: Path,
     destination: Path,
     *,
+    remove: set[str] | None = None,
+    duplicate: tuple[str, ...] = (),
     extra_files: dict[str, bytes] | None = None,
     extra_directories: tuple[str, ...] = (),
     replace: dict[str, bytes] | None = None,
     modes: dict[str, int] | None = None,
 ) -> None:
+    removals = remove or set()
     additions = extra_files or {}
     replacements = replace or {}
     mode_changes = modes or {}
@@ -1373,6 +1442,8 @@ def rewrite_sdist(
             copied = copy(member)
             key = safe_member_name(member.name)
             relative = key.removeprefix(top + "/")
+            if key in removals or relative in removals:
+                continue
             if relative in mode_changes:
                 copied.mode = mode_changes[relative]
             if copied.isfile():
@@ -1395,6 +1466,21 @@ def rewrite_sdist(
             info.type = tarfile.DIRTYPE
             info.mode = 0o755
             destination_archive.addfile(info)
+        for member_name in duplicate:
+            source_member = next(
+                (member for member in members if member.name == member_name),
+                None,
+            )
+            if source_member is None:
+                fail(f"cannot duplicate absent sdist member: {member_name}")
+            copied = copy(source_member)
+            if copied.isfile():
+                source_file = source_archive.extractfile(source_member)
+                if source_file is None:
+                    fail(f"cannot read duplicated sdist member: {member_name}")
+                destination_archive.addfile(copied, io.BytesIO(source_file.read()))
+            else:
+                destination_archive.addfile(copied)
 
 
 def rewrite_sdist_root(
@@ -1412,6 +1498,8 @@ def rewrite_sdist_root(
         for member in members:
             copied = copy(member)
             copied.name = new_root + member.name[len(old_root) :]
+            copied.pax_headers = dict(copied.pax_headers)
+            copied.pax_headers.pop("path", None)
             if copied.isfile():
                 source_file = source_archive.extractfile(member)
                 if source_file is None:
@@ -1690,11 +1778,47 @@ def sdist_member_closure_negative_controls(
     temporary.mkdir(parents=True, exist_ok=True)
     renamed_root = temporary / "sdist-wrong-root.tar.gz"
     rewrite_sdist_root(archive, renamed_root, "reviewer-r7-unbound-root")
+    renamed_name, renamed_signature = sdist_relative_member_signature(renamed_root)
+    _, source_signature = sdist_relative_member_signature(archive)
+    if renamed_name != "reviewer-r7-unbound-root":
+        fail(f"sdist root rename control has the wrong root: {renamed_name!r}")
+    if (
+        len(renamed_signature) != len(source_signature)
+        or renamed_signature != source_signature
+    ):
+        fail("sdist root rename control changed relative member content")
     expect_audit_failure(
         "sdist distribution-root identity control",
         lambda: extract_sdist(renamed_root, temporary / "extract-wrong-root"),
         "sdist root identity differs",
     )
+    print("sdist root rename precondition and diagnostic control: PASS")
+
+    with tarfile.open(archive, "r:gz") as handle:
+        expected_top = sdist_distribution_root(PROJECT)
+        top_members = [
+            member
+            for member in handle.getmembers()
+            if safe_member_name(member.name) == expected_top and member.isdir()
+        ]
+        if len(top_members) != 1:
+            fail(f"sdist does not have one explicit top-directory member: {top_members!r}")
+        top_member_name = top_members[0].name
+    missing_top = temporary / "sdist-missing-top-directory.tar.gz"
+    rewrite_sdist(archive, missing_top, remove={expected_top})
+    expect_audit_failure(
+        "sdist top-directory absence control",
+        lambda: extract_sdist(missing_top, temporary / "extract-missing-top"),
+        "sdist complete member set differs",
+    )
+    duplicate_top = temporary / "sdist-duplicate-top-directory.tar.gz"
+    rewrite_sdist(archive, duplicate_top, duplicate=(top_member_name,))
+    expect_audit_failure(
+        "sdist top-directory duplicate control",
+        lambda: extract_sdist(duplicate_top, temporary / "extract-duplicate-top"),
+        "sdist has duplicate or split-root members",
+    )
+    print("sdist top-directory closure controls: PASS")
 
     cases = (
         ("root", "r6-unmanifested.py"),
@@ -2477,6 +2601,7 @@ def main() -> int:
             "--sdist",
             "--wheel",
         )
+        sdist_generated_metadata_audit(direct_one["sdist"], direct_two["sdist"])
         sdist_member_closure_negative_controls(
             direct_one["sdist"], temporary / "sdist-controls"
         )
