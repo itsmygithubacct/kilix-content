@@ -171,6 +171,27 @@ R6 adjacent-property disposition:
 | Sdist compression metadata beyond member safety/closure | Out of scope; the candidate gate owns exact source membership, root identity, safe types/modes, source-managed bytes, and byte-reproducible derived wheels. |
 | Interpreter/toolchain identity | Enforced separately by `build-toolchain.json`, uv lock/export checks, and the pinned R02 build gate; this R6 audit does not alter that authority. |
 
+R9 wheel/sdist member-rule parity:
+
+| Wheel member property | Sdist disposition |
+| --- | --- |
+| Complete member-set closure against a source-derived expectation | Enforced by `expected_sdist_members`, including the normalized project root, exactly one top-directory record, every source-managed file, and every canonical parent directory. |
+| Archive container integrity | Enforced structurally by `tarfile` while reading gzip and tar headers/checksums; tar has no per-file ZIP CRC field, so the ZIP-specific CRC check cannot transfer. |
+| Safe member names | Enforced by the same `safe_member_name` grammar for every sdist member. |
+| Normalized-duplicate rejection | Enforced by the normalized sdist-name set before closure comparison. |
+| Unambiguous creator/type metadata | Cannot transfer literally: ZIP's creator and upper mode word have no tar equivalent. Sdist instead rejects linked and special tar types and requires regular-file or directory type. |
+| Regular-versus-directory type correctness | Enforced by `TarInfo.isfile()`/`TarInfo.isdir()` and the source-derived closure. |
+| Canonical name spelling | Deliberately not enforced as a ZIP-equivalent slash rule: tar permits a directory type with or without a trailing slash, and the sdist closure canonicalizes the relative directory member; type, root, safe name, and closure remain authoritative. |
+| Directory members empty | Enforced: every directory tar member must have size zero; the R9 control keeps directory type and changes only its size/payload. |
+| Permission validation | Enforced as exact regular-file `0644` and directory `0755` modes. |
+| Payload size, digest, and bytes | Enforced for every source-managed regular-file member by `sdist_payload_audit`; directory payloads are separately required to be empty. |
+| Root/prefix identity | Enforced by the normalized project-name/version root check; the one-root PAX-safe rename control retains identical relative members before the diagnostic. |
+| RECORD membership, digest, and size | Cannot transfer: sdist has no ZIP `RECORD`; generated sdist metadata is instead closed and reproducibility-bound by `sdist_generated_metadata_audit`. |
+| Forbidden test/fixture authority paths | Deliberately not transferred: the sdist must contain tests, fixtures, wheelhouse inputs, and checker authority for reproducible source testing; the wheel alone refuses those paths. |
+| ZIP data-root and dist-info prefix grammar | Cannot transfer literally: tar has one project root rather than ZIP's `.data`/`.dist-info` presentation roots; the normalized root and exact source closure are the sdist authority. |
+| Package/external resource projections and semantic directories | Enforced after extraction by the shared production-resource audit and source/sdist equality checks; the sdist itself carries the complete source authority rather than two wheel presentations. |
+| ZIP comments and per-entry extra fields | Cannot transfer: these are ZIP container fields with no tar equivalent; tar header safety and reproducible artifact identity remain checked. |
+
 Frozen schema SHA-256 values:
 
 - `kilix.content.asset/v1`: `89d4865d11d6a537328965a8a903ac07d7dcf0ea14e1b360888f22af7ba5a1a8`

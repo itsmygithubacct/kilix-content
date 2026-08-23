@@ -697,6 +697,86 @@ def sdist_generated_metadata_audit(first: Path, second: Path) -> None:
     print("generated sdist metadata reproducibility audit: PASS")
 
 
+def ordered_sdist_member_records(
+    archive: Path,
+) -> list[tuple[str, bytes, int, int, bytes]]:
+    with tarfile.open(archive, "r:gz") as handle:
+        records: list[tuple[str, bytes, int, int, bytes]] = []
+        for member in handle.getmembers():
+            payload_file = handle.extractfile(member)
+            payload = b"" if payload_file is None else payload_file.read()
+            records.append(
+                (
+                    safe_member_name(member.name),
+                    member.type,
+                    stat.S_IMODE(member.mode),
+                    member.size,
+                    payload,
+                )
+            )
+        return records
+
+
+def assert_sdist_nonempty_directory_control(
+    source: Path,
+    mutated: Path,
+    target: str,
+    declared_payload_size: int,
+) -> None:
+    source_records = ordered_sdist_member_records(source)
+    mutated_records = ordered_sdist_member_records(mutated)
+    if len(source_records) != len(mutated_records):
+        fail("sdist nonempty-directory control changed member count")
+    changed = 0
+    for source_record, mutated_record in zip(source_records, mutated_records):
+        if source_record[0] != mutated_record[0]:
+            fail("sdist nonempty-directory control changed member ordering")
+        if source_record[0] != target:
+            if source_record != mutated_record:
+                fail("sdist nonempty-directory control changed another member")
+            continue
+        if source_record[1] != tarfile.DIRTYPE or mutated_record[1] != tarfile.DIRTYPE:
+            fail("sdist nonempty-directory control lost directory type")
+        if source_record[2] != mutated_record[2] or source_record[3] != 0:
+            fail("sdist nonempty-directory control changed directory mode")
+        if mutated_record[3] != declared_payload_size:
+            fail("sdist nonempty-directory control is not nonempty")
+        changed += 1
+    if changed != 1:
+        fail("sdist nonempty-directory control did not change exactly one record")
+
+
+def add_sdist_member_with_payload(
+    archive: tarfile.TarFile,
+    member: tarfile.TarInfo,
+    payload: bytes,
+) -> None:
+    if member.isfile():
+        archive.addfile(member, io.BytesIO(payload))
+        return
+    if member.isdir():
+        # tarfile does not consume data blocks for directory-typed members.
+        # Preserve a parser-valid member sequence while retaining the declared
+        # nonzero size that the sdist audit must reject.
+        archive.addfile(member)
+        return
+    if archive.fileobj is None:
+        fail("sdist archive has no writable file object")
+    header = member.tobuf(
+        format=archive.format,
+        encoding=archive.encoding,
+        errors=archive.errors,
+    )
+    archive.fileobj.write(header)
+    archive.offset += len(header)
+    archive.fileobj.write(payload)
+    archive.offset += len(payload)
+    padding = (-len(payload)) % tarfile.BLOCKSIZE
+    if padding:
+        archive.fileobj.write(b"\0" * padding)
+        archive.offset += padding
+
+
 def extract_sdist(archive: Path, destination: Path) -> Path:
     with tarfile.open(archive, "r:gz") as handle:
         members = handle.getmembers()
@@ -730,6 +810,8 @@ def extract_sdist(archive: Path, destination: Path) -> Path:
                     f"expected={oct(expected_mode)} "
                     f"observed={oct(stat.S_IMODE(member.mode))}"
                 )
+            if member.isdir() and member.size != 0:
+                fail(f"sdist directory member is nonempty: {key}")
             if member.isdir():
                 observed.add(key if key == top else key + "/")
             else:
@@ -1446,11 +1528,15 @@ def rewrite_sdist(
                 continue
             if relative in mode_changes:
                 copied.mode = mode_changes[relative]
-            if copied.isfile():
+            if relative in replacements:
+                payload = replacements[relative]
+                copied.size = len(payload)
+                add_sdist_member_with_payload(destination_archive, copied, payload)
+            elif copied.isfile():
                 source_file = source_archive.extractfile(member)
                 if source_file is None:
                     fail(f"cannot read sdist member while rewriting: {relative}")
-                payload = replacements.get(relative, source_file.read())
+                payload = source_file.read()
                 copied.size = len(payload)
                 destination_archive.addfile(copied, io.BytesIO(payload))
             else:
@@ -1819,6 +1905,25 @@ def sdist_member_closure_negative_controls(
         "sdist has duplicate or split-root members",
     )
     print("sdist top-directory closure controls: PASS")
+
+    nonempty_top = temporary / "sdist-nonempty-top-directory.tar.gz"
+    rewrite_sdist(
+        archive,
+        nonempty_top,
+        replace={expected_top: b"directory payload must be rejected"},
+    )
+    assert_sdist_nonempty_directory_control(
+        archive,
+        nonempty_top,
+        expected_top,
+        len(b"directory payload must be rejected"),
+    )
+    expect_audit_failure(
+        "sdist nonempty directory control",
+        lambda: extract_sdist(nonempty_top, temporary / "extract-nonempty-top"),
+        f"sdist directory member is nonempty: {expected_top}",
+    )
+    print("sdist nonempty-directory diagnostic control: PASS")
 
     cases = (
         ("root", "r6-unmanifested.py"),
