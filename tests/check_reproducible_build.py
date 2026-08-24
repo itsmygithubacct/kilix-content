@@ -95,6 +95,20 @@ SDIST_DATA_BLOCK_TYPES = frozenset(
         tarfile.FIFOTYPE,
     }
 )
+_SDIST_AUDIT_CALLS: set[str] = set()
+_REQUIRED_SDIST_AUDIT_CALLS = frozenset(
+    {
+        "enumerator-container",
+        "relative-enumerator",
+        "generated-enumerator",
+        "extract-container",
+        "extract-enumerator",
+        "extract-payload",
+        "generated-metadata-audit",
+        "direct-enumerator",
+        "direct-payload",
+    }
+)
 
 
 def fail(message: str) -> None:
@@ -117,6 +131,20 @@ def canonical_json(value: Any, *, newline: bool = False) -> bytes:
         )
         + suffix
     ).encode("utf-8")
+
+
+def run_sdist_audit(label: str, action: Callable[[], None]) -> None:
+    action()
+    _SDIST_AUDIT_CALLS.add(label)
+
+
+def assert_sdist_audit_wiring() -> None:
+    missing = _REQUIRED_SDIST_AUDIT_CALLS - _SDIST_AUDIT_CALLS
+    if missing:
+        fail(
+            "required sdist audit call sites were not reached: "
+            f"{sorted(missing)!r}"
+        )
 
 
 def run(
@@ -643,7 +671,10 @@ def sdist_payload_audit(
 def sdist_relative_member_signature(
     archive: Path,
 ) -> tuple[str, set[tuple[str, bytes, int, int, bytes]]]:
-    assert_sdist_enumerator_agreement(archive)
+    run_sdist_audit(
+        "relative-enumerator",
+        lambda: assert_sdist_enumerator_agreement(archive),
+    )
     with tarfile.open(archive, "r:gz") as handle:
         members = read_sdist_members(handle)
         if not members:
@@ -672,7 +703,10 @@ def sdist_relative_member_signature(
 def sdist_generated_metadata_payloads(
     archive: Path,
 ) -> dict[str, tuple[str, bytes]]:
-    assert_sdist_enumerator_agreement(archive)
+    run_sdist_audit(
+        "generated-enumerator",
+        lambda: assert_sdist_enumerator_agreement(archive),
+    )
     with tarfile.open(archive, "r:gz") as handle:
         members = read_sdist_members(handle)
         if not members:
@@ -711,34 +745,71 @@ def read_sdist_members(handle: tarfile.TarFile) -> list[tarfile.TarInfo]:
         if member is None:
             return members
         members.append(member)
-        if member.type in SDIST_DATA_BLOCK_TYPES and member.size:
+        physical_size = physical_sdist_member_size(handle, member)
+        if physical_size != member.size:
+            fail(
+                "sdist member logical size differs from physical header size: "
+                f"{member.name!r} logical={member.size} physical={physical_size}"
+            )
+        if member.type in SDIST_DATA_BLOCK_TYPES and physical_size:
             if handle.fileobj is None or member.offset_data is None:
                 fail("sdist carrier payload has no readable data offset")
-            blocks = (member.size + tarfile.BLOCKSIZE - 1) // tarfile.BLOCKSIZE
+            blocks = (physical_size + tarfile.BLOCKSIZE - 1) // tarfile.BLOCKSIZE
             handle.offset = member.offset_data + blocks * tarfile.BLOCKSIZE
             if handle.offset > handle.fileobj.seek(0, os.SEEK_END):
                 fail("sdist carrier payload exceeds archive bounds")
             handle.fileobj.seek(handle.offset)
 
 
+def physical_sdist_member_size(
+    handle: tarfile.TarFile, member: tarfile.TarInfo
+) -> int:
+    if handle.fileobj is None or member.offset_data is None:
+        fail("sdist member has no physical data offset")
+    header_offset = member.offset_data - tarfile.BLOCKSIZE
+    if header_offset < 0:
+        fail("sdist member has an invalid physical header offset")
+    resume = handle.fileobj.tell()
+    try:
+        handle.fileobj.seek(header_offset)
+        raw_header = handle.fileobj.read(tarfile.BLOCKSIZE)
+    finally:
+        handle.fileobj.seek(resume)
+    if len(raw_header) != tarfile.BLOCKSIZE:
+        fail("sdist member physical header is truncated")
+    try:
+        physical = tarfile.TarInfo.frombuf(
+            raw_header, encoding="utf-8", errors="surrogateescape"
+        )
+    except (tarfile.TarError, ValueError) as exc:
+        fail(f"sdist member physical header is invalid: {exc}")
+    return physical.size
+
+
 def sdist_member_payload(handle: tarfile.TarFile, member: tarfile.TarInfo) -> bytes:
+    physical_size = physical_sdist_member_size(handle, member)
+    if physical_size != member.size:
+        fail(
+            "sdist member logical size differs from physical header size: "
+            f"{member.name!r} logical={member.size} physical={physical_size}"
+        )
     if member.type in SDIST_DATA_BLOCK_TYPES:
-        if not member.size:
+        if not physical_size:
             return b""
         if handle.fileobj is None or member.offset_data is None:
             fail("sdist carrier payload has no readable data offset")
         resume = handle.offset
         handle.fileobj.seek(member.offset_data)
-        payload = handle.fileobj.read(member.size)
+        payload = handle.fileobj.read(physical_size)
         handle.fileobj.seek(resume)
-        if len(payload) != member.size:
+        if len(payload) != physical_size:
             fail("sdist carrier payload is truncated")
         return payload
     payload_file = handle.extractfile(member)
     if payload_file is None:
         fail(f"sdist member payload cannot be read: {member.name}")
     payload = payload_file.read()
-    if len(payload) != member.size:
+    if len(payload) != physical_size:
         fail(f"sdist member payload is truncated: {member.name}")
     return payload
 
@@ -748,7 +819,10 @@ def assert_sdist_enumerator_agreement(
 ) -> None:
     """The stock parser is a negative control, never production authority."""
     if check_container:
-        sdist_container_audit(archive)
+        run_sdist_audit(
+            "enumerator-container",
+            lambda: sdist_container_audit(archive),
+        )
     with tarfile.open(archive, "r:gz") as handle:
         stock = handle.getmembers()
         if not stock:
@@ -913,7 +987,10 @@ def add_sdist_member_with_payload(
 
 
 def extract_sdist(archive: Path, destination: Path) -> Path:
-    sdist_container_audit(archive)
+    run_sdist_audit(
+        "extract-container",
+        lambda: sdist_container_audit(archive),
+    )
     with tarfile.open(archive, "r:gz") as handle:
         members = read_sdist_members(handle)
         if not members:
@@ -957,8 +1034,14 @@ def extract_sdist(archive: Path, destination: Path) -> Path:
             observed,
             expected_sdist_members(PROJECT),
         )
-        assert_sdist_enumerator_agreement(archive)
-        sdist_payload_audit(archive, PROJECT, top)
+        run_sdist_audit(
+            "extract-enumerator",
+            lambda: assert_sdist_enumerator_agreement(archive),
+        )
+        run_sdist_audit(
+            "extract-payload",
+            lambda: sdist_payload_audit(archive, PROJECT, top),
+        )
         handle.extractall(destination, members=members, filter="data")
     root = destination / top
     required = (
@@ -1852,6 +1935,38 @@ def rewrite_sdist_untruthful_directory_size(
                 destination_archive.addfile(copied)
 
 
+def rewrite_sdist_pax_zero_size(source: Path, destination: Path) -> None:
+    target = "README.md"
+    with tarfile.open(source, "r:gz") as source_archive, tarfile.open(
+        destination, "w:gz", format=tarfile.PAX_FORMAT
+    ) as destination_archive:
+        members = read_sdist_members(source_archive)
+        if not members:
+            fail("cannot corrupt an empty sdist")
+        changed = False
+        for member in members:
+            copied = copy(member)
+            if copied.name.removeprefix(
+                PurePosixPath(members[0].name).parts[0] + "/"
+            ) == target:
+                payload = sdist_member_payload(source_archive, member)
+                copied.size = len(payload)
+                copied.pax_headers = dict(copied.pax_headers)
+                copied.pax_headers["size"] = "0"
+                destination_archive.addfile(copied, io.BytesIO(payload))
+                changed = True
+            elif copied.isfile() or (copied.isdir() and copied.size):
+                payload = sdist_member_payload(source_archive, member)
+                copied.size = len(payload)
+                add_sdist_member_with_payload(
+                    destination_archive, copied, payload
+                )
+            else:
+                destination_archive.addfile(copied)
+        if not changed:
+            fail(f"sdist PAX size control target is absent: {target}")
+
+
 def rewrite_sdist_bad_gzip_footer(
     source: Path, destination: Path, footer_offset: int
 ) -> None:
@@ -1911,6 +2026,13 @@ def sdist_container_and_type_controls(
         ),
         "sdist archive enumerators disagree",
     )
+    pax_zero = temporary / "sdist-pax-zero-size.tar.gz"
+    rewrite_sdist_pax_zero_size(archive, pax_zero)
+    expect_audit_failure(
+        "sdist PAX logical-zero physical-payload control",
+        lambda: assert_sdist_enumerator_agreement(pax_zero),
+        "sdist member logical size differs from physical header size",
+    )
     bad_crc = temporary / "sdist-bad-gzip-crc.tar.gz"
     rewrite_sdist_bad_gzip_footer(archive, bad_crc, 0)
     expect_audit_failure(
@@ -1947,7 +2069,7 @@ def sdist_container_and_type_controls(
         lambda: assert_sdist_enumerator_agreement(empty),
         "sdist archive is empty",
     )
-    print("sdist container, carrier-type, and empty-archive controls: PASS")
+    print("sdist container, carrier-type, PAX-size, and empty-archive controls: PASS")
 
 
 def expect_repaired_wheel_failure(
@@ -2385,6 +2507,7 @@ def r12_reader_reversion_regression(
     temporary: Path,
 ) -> None:
     """Run the complete gate after reverting the load-bearing R12 reader line."""
+    temporary.mkdir(parents=True, exist_ok=True)
     candidate = temporary / "r12-reverted-reader"
     shutil.copytree(
         PROJECT,
@@ -2413,14 +2536,23 @@ def r12_reader_reversion_regression(
         + function.replace(old, "for member in handle.getmembers():")
         + source[end:]
     )
+    child_python, child_env = bootstrap_environment(
+        candidate,
+        temporary / "environment",
+        uv_path,
+        base_python,
+        base_env,
+        install_project=False,
+    )
     result = subprocess.run(
         [
-            sys.executable,
+            str(child_python),
+            "-I",
             str(checker),
-            "--r12-skip-regressions",
+            "--r13-skip-regressions",
         ],
         cwd=candidate,
-        env=base_env,
+        env=child_env,
         capture_output=True,
         text=True,
     )
@@ -2434,6 +2566,141 @@ def r12_reader_reversion_regression(
             + output[-8000:]
         )
     print("R12 reader-reversion complete-gate regression: FAIL-CLOSED/PASS")
+
+
+def r13_callsite_wiring_regression(
+    uv_path: Path,
+    base_python: Path,
+    base_env: dict[str, str],
+    temporary: Path,
+) -> None:
+    """Run one complete gate with every production sdist audit call removed."""
+    temporary.mkdir(parents=True, exist_ok=True)
+    candidate = temporary / "all-sdist-audit-calls-removed"
+    shutil.copytree(
+        PROJECT,
+        candidate,
+        ignore=shutil.ignore_patterns(
+            ".git",
+            ".venv",
+            ".ruff_cache",
+            "__pycache__",
+            "*.pyc",
+            "*.egg-info",
+            "build",
+            "dist",
+        ),
+    )
+    checker = candidate / "tests" / "check_reproducible_build.py"
+    source = checker.read_text()
+    callsite_blocks = {
+        "enumerator-container": (
+            '        run_sdist_audit(\n'
+            '            "enumerator-container",\n'
+            '            lambda: sdist_container_audit(archive),\n'
+            '        )'
+        ),
+        "relative-enumerator": (
+            '    run_sdist_audit(\n'
+            '        "relative-enumerator",\n'
+            '        lambda: assert_sdist_enumerator_agreement(archive),\n'
+            '    )'
+        ),
+        "generated-enumerator": (
+            '    run_sdist_audit(\n'
+            '        "generated-enumerator",\n'
+            '        lambda: assert_sdist_enumerator_agreement(archive),\n'
+            '    )'
+        ),
+        "extract-container": (
+            '    run_sdist_audit(\n'
+            '        "extract-container",\n'
+            '        lambda: sdist_container_audit(archive),\n'
+            '    )'
+        ),
+        "extract-enumerator": (
+            '        run_sdist_audit(\n'
+            '            "extract-enumerator",\n'
+            '            lambda: assert_sdist_enumerator_agreement(archive),\n'
+            '        )'
+        ),
+        "extract-payload": (
+            '        run_sdist_audit(\n'
+            '            "extract-payload",\n'
+            '            lambda: sdist_payload_audit(archive, PROJECT, top),\n'
+            '        )'
+        ),
+        "generated-metadata-audit": (
+            '        run_sdist_audit(\n'
+            '            "generated-metadata-audit",\n'
+            '            lambda: sdist_generated_metadata_audit(\n'
+            '                direct_one["sdist"], direct_two["sdist"]\n'
+            '            ),\n'
+            '        )'
+        ),
+        "direct-enumerator": (
+            '            run_sdist_audit(\n'
+            '                "direct-enumerator",\n'
+            '                lambda archive=archive: assert_sdist_enumerator_agreement(archive),\n'
+            '            )'
+        ),
+        "direct-payload": (
+            '            run_sdist_audit(\n'
+            '                "direct-payload",\n'
+            '                lambda archive=archive: sdist_payload_audit(\n'
+            '                    archive,\n'
+            '                    PROJECT,\n'
+            '                    sdist_distribution_root(PROJECT),\n'
+            '                ),\n'
+            '            )'
+        ),
+    }
+    for label, block in callsite_blocks.items():
+        if source.count(block) != 1:
+            fail(f"R13 call-site control found {source.count(block)} {label} blocks")
+        indent = len(block) - len(block.lstrip())
+        source = source.replace(block, " " * indent + "pass", 1)
+    checker.write_text(source)
+    child_python, child_env = bootstrap_environment(
+        candidate,
+        temporary / "environment",
+        uv_path,
+        base_python,
+        base_env,
+        install_project=False,
+    )
+    result = subprocess.run(
+        [
+            str(child_python),
+            "-I",
+            str(checker),
+            "--r13-skip-regressions",
+        ],
+        cwd=candidate,
+        env=child_env,
+        capture_output=True,
+        text=True,
+    )
+    output = (result.stdout or "") + (result.stderr or "")
+    if result.returncode == 0:
+        fail("R13 sdist call-site removal complete gate unexpectedly passed")
+    if "required sdist audit call sites were not reached" in output:
+        print(
+            "R13 sdist call-site wiring complete-gate regression: "
+            "FAIL-CLOSED/PASS (wiring guard)"
+        )
+        return
+    causal = "sdist payload source control unexpectedly passed"
+    if causal not in output:
+        fail(
+            "R13 call-site removal gate failed without a wiring or causal guard: "
+            + output[-8000:]
+        )
+    print(
+        "R13 sdist call-site wiring complete-gate regression: "
+        "FAIL-CLOSED/PASS (first causal failure: "
+        f"{causal}; removed={sorted(callsite_blocks)!r})"
+    )
 
 
 def honest_entrypoint_control(
@@ -3095,11 +3362,30 @@ def resource_negative_controls(
     print("dual-root resource negative controls: PASS")
 
 
+def configure_temporary_root() -> Path:
+    configured = os.environ.get("TMPDIR")
+    if not configured:
+        fail("TMPDIR must be explicitly set for the reproducible-build gate")
+    root = Path(configured)
+    if not root.is_absolute():
+        fail("TMPDIR must be an absolute path")
+    root = root.resolve()
+    if root == Path("/tmp"):
+        fail("TMPDIR must not be /tmp for the reproducible-build gate")
+    root.mkdir(parents=True, exist_ok=True)
+    usage = shutil.disk_usage("/tmp")
+    tempfile.tempdir = str(root)
+    print(f"TMPDIR={root} /tmp-free-bytes={usage.free}")
+    return root
+
+
 def main() -> int:
     modes = set(sys.argv[1:])
-    if not modes <= {"--r12-regression", "--r12-skip-regressions"}:
+    if not modes <= {"--r13-skip-regressions"}:
         fail(f"unknown checker mode: {sorted(modes)!r}")
     environment, uv_path, base_python = checked_toolchain()
+    temporary_root = configure_temporary_root()
+    environment["TMPDIR"] = str(temporary_root)
     verify_wheelhouse(PROJECT)
     run(
         [str(uv_path), "lock", "--check", "--offline", "--python", str(base_python)],
@@ -3107,15 +3393,21 @@ def main() -> int:
         env=environment,
         label="uv lock check",
     )
-    if "--r12-regression" in modes and "--r12-skip-regressions" in modes:
-        fail("R12 regression and skip modes are mutually exclusive")
-    if "--r12-regression" in modes:
-        with tempfile.TemporaryDirectory(prefix="kilix-u1-r12-regression-") as name:
+    skip_regressions = "--r13-skip-regressions" in modes
+    if not skip_regressions:
+        with tempfile.TemporaryDirectory(prefix="kilix-u1-r13-regressions-") as name:
+            regression_root = Path(name)
             r12_reader_reversion_regression(
                 uv_path,
                 base_python,
                 environment,
-                Path(name),
+                regression_root / "r12-reader",
+            )
+            r13_callsite_wiring_regression(
+                uv_path,
+                base_python,
+                environment,
+                regression_root / "r13-wiring",
             )
     with tempfile.TemporaryDirectory(prefix="kilix-u1-r7-") as temporary_name:
         temporary = Path(temporary_name)
@@ -3158,14 +3450,25 @@ def main() -> int:
             ("direct sdist 1", direct_one["sdist"]),
             ("direct sdist 2", direct_two["sdist"]),
         ):
-            assert_sdist_enumerator_agreement(archive)
-            sdist_payload_audit(
-                archive,
-                PROJECT,
-                sdist_distribution_root(PROJECT),
+            run_sdist_audit(
+                "direct-enumerator",
+                lambda archive=archive: assert_sdist_enumerator_agreement(archive),
+            )
+            run_sdist_audit(
+                "direct-payload",
+                lambda archive=archive: sdist_payload_audit(
+                    archive,
+                    PROJECT,
+                    sdist_distribution_root(PROJECT),
+                ),
             )
             print(f"{label} enumeration and payload audit: PASS")
-        sdist_generated_metadata_audit(direct_one["sdist"], direct_two["sdist"])
+        run_sdist_audit(
+            "generated-metadata-audit",
+            lambda: sdist_generated_metadata_audit(
+                direct_one["sdist"], direct_two["sdist"]
+            ),
+        )
         sdist_member_closure_negative_controls(
             direct_one["sdist"], temporary / "sdist-controls"
         )
@@ -3279,6 +3582,7 @@ def main() -> int:
         }
         if not all(checks.values()):
             fail(f"reproducibility failure: {checks!r}")
+        assert_sdist_audit_wiring()
         print(f"SOURCE_DATE_EPOCH={SOURCE_DATE_EPOCH}")
         for label, artifact in (
             ("direct-sdist", direct_one["sdist"]),

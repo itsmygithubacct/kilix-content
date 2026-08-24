@@ -187,8 +187,8 @@ R9 wheel/sdist member-rule parity:
 | Wheel member property | Sdist disposition |
 | --- | --- |
 | Complete member-set closure against a source-derived expectation | Enforced by `expected_sdist_members`, including the normalized project root, exactly one top-directory record, every source-managed file, and every canonical parent directory. |
-| Archive container integrity | `tarfile` enforces gzip and tar header/checksum parsing while reading; that enforcement stops at physical container parsing and does not establish logical-member agreement or source-byte authority. `read_sdist_members`, `sdist_member_payload`, `extract_sdist`, and `sdist_payload_audit` enforce those adjacent properties. |
-| Archive member enumeration agreement | Enforced: every production and control consumer uses the single bounded `read_sdist_members` enumerator and `sdist_member_payload` accessor. The R11 differential control is the only deliberate `getmembers()` call; it feeds a physical directory-payload archive to the stock parser and refuses on an exact count/name disagreement. |
+| Archive container integrity | Enforced by the independent `sdist_container_audit`: it verifies gzip CRC32/ISIZE, rejects gzip trailing bytes, requires block alignment and an end-of-archive marker, and rejects bytes after that marker. `tarfile` supplies none of these guarantees under the gate's read pattern. |
+| Archive member enumeration agreement | Enforced by `assert_sdist_enumerator_agreement`, which runs 21 times over 17 archive paths including both shipped sdists. Its deliberate `getmembers()` call is only a negative control; the bounded `read_sdist_members` reader uses physical header sizes and is independently reached by the production call-site wiring guard. |
 | Compression method and per-entry DOS timestamp | Not semantically audited; tar/gzip has different container and member metadata, and the family is bounded by whole-artifact reproducibility. |
 | Safe member names | Enforced by the same `safe_member_name` grammar for every sdist member. |
 | Normalized-duplicate rejection | Enforced by the normalized sdist-name set before closure comparison. |
@@ -204,7 +204,21 @@ R9 wheel/sdist member-rule parity:
 | Forbidden test/fixture authority paths | Deliberately not transferred: the sdist must contain tests, fixtures, wheelhouse inputs, and checker authority for reproducible source testing; the wheel alone refuses those paths. |
 | ZIP data-root and dist-info prefix grammar | Cannot transfer literally: tar has one project root rather than ZIP's `.data`/`.dist-info` presentation roots; the normalized root and exact source closure are the sdist authority. |
 | Package/external resource projections and semantic directories | Enforced after extraction by the shared production-resource audit and source/sdist equality checks; the sdist itself carries the complete source authority rather than two wheel presentations. |
-| ZIP comments and per-entry metadata | Literal ZIP comments and extra fields do not transfer; tar has per-member metadata equivalents such as uid/gid/uname/gname/mtime and PAX headers. These are not semantically audited; bounded by whole-artifact reproducibility. |
+| ZIP comments and per-entry metadata | Literal ZIP comments and extra fields do not transfer; tar has per-member metadata equivalents such as uid/gid/uname/gname/mtime and PAX headers. PAX logical size is cross-checked against the physical member header; other metadata remains bounded by whole-artifact reproducibility. |
+
+The reproducible-build gate requires an execution `TMPDIR` outside `/tmp`,
+prints `/tmp` free space at startup, and injects that same directory into the
+environment passed to every uv, build, test, lint, and nested regression
+process. `TMPDIR` is intentionally not a frozen build-toolchain authority
+assignment: it is run-specific scratch placement, while the toolchain's
+allowlisted assignments remain reproducible inputs. A qualification record
+must retain the printed `/tmp` baseline free-space value and the exact TMPDIR.
+
+The `check_container=False` argument is a test-only differential seam. It is
+used solely to isolate the stock-versus-bounded enumeration control after the
+independent container audit has already been exercised; no production archive
+path invokes the bypass, and the call-site wiring registry requires all
+production container, enumeration, payload, extraction, and metadata audits.
 
 Frozen schema SHA-256 values:
 
