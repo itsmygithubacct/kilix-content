@@ -607,7 +607,7 @@ def sdist_payload_audit(
     top: str,
 ) -> None:
     with tarfile.open(archive, "r:gz") as handle:
-        for member in handle.getmembers():
+        for member in read_sdist_members(handle):
             key = safe_member_name(member.name)
             if member.isdir() or key == top:
                 continue
@@ -617,10 +617,7 @@ def sdist_payload_audit(
             source = source_root / relative
             if source.is_symlink() or not source.is_file():
                 fail(f"sdist payload source member is absent: {relative}")
-            payload_file = handle.extractfile(member)
-            if payload_file is None:
-                fail(f"sdist payload cannot be read: {relative}")
-            payload = payload_file.read()
+            payload = sdist_member_payload(handle, member)
             expected = source.read_bytes()
             if (
                 len(payload) != len(expected)
@@ -635,7 +632,7 @@ def sdist_relative_member_signature(
     archive: Path,
 ) -> tuple[str, set[tuple[str, bytes, int, int, bytes]]]:
     with tarfile.open(archive, "r:gz") as handle:
-        members = handle.getmembers()
+        members = read_sdist_members(handle)
         if not members:
             fail("sdist is empty")
         roots = {PurePosixPath(safe_member_name(member.name)).parts[0] for member in members}
@@ -646,8 +643,7 @@ def sdist_relative_member_signature(
         for member in members:
             key = safe_member_name(member.name)
             relative = "" if key == top else key.removeprefix(top + "/")
-            payload_file = handle.extractfile(member)
-            payload = b"" if payload_file is None else payload_file.read()
+            payload = sdist_member_payload(handle, member)
             signatures.add(
                 (
                     relative,
@@ -664,7 +660,7 @@ def sdist_generated_metadata_payloads(
     archive: Path,
 ) -> dict[str, tuple[str, bytes]]:
     with tarfile.open(archive, "r:gz") as handle:
-        members = handle.getmembers()
+        members = read_sdist_members(handle)
         if not members:
             fail("sdist is empty")
         top = PurePosixPath(safe_member_name(members[0].name)).parts[0]
@@ -674,10 +670,7 @@ def sdist_generated_metadata_payloads(
             relative = key.removeprefix(top + "/")
             if relative not in GENERATED_SDIST_FILES:
                 continue
-            payload_file = handle.extractfile(member)
-            if payload_file is None:
-                fail(f"generated sdist metadata is not a regular file: {relative}")
-            payload = payload_file.read()
+            payload = sdist_member_payload(handle, member)
             payloads[relative] = (hashlib.sha256(payload).hexdigest(), payload)
         if set(payloads) != GENERATED_SDIST_FILES:
             fail(
@@ -712,23 +705,51 @@ def read_sdist_members(handle: tarfile.TarFile) -> list[tarfile.TarInfo]:
             handle.fileobj.seek(handle.offset)
 
 
+def sdist_member_payload(handle: tarfile.TarFile, member: tarfile.TarInfo) -> bytes:
+    if member.isdir():
+        if not member.size:
+            return b""
+        if handle.fileobj is None or member.offset_data is None:
+            fail("sdist directory payload has no readable data offset")
+        resume = handle.offset
+        handle.fileobj.seek(member.offset_data)
+        payload = handle.fileobj.read(member.size)
+        handle.fileobj.seek(resume)
+        if len(payload) != member.size:
+            fail("sdist directory payload is truncated")
+        return payload
+    payload_file = handle.extractfile(member)
+    if payload_file is None:
+        fail(f"sdist member payload cannot be read: {member.name}")
+    payload = payload_file.read()
+    if len(payload) != member.size:
+        fail(f"sdist member payload is truncated: {member.name}")
+    return payload
+
+
+def assert_sdist_enumerator_agreement(archive: Path) -> None:
+    """The stock parser is a negative control, never production authority."""
+    with tarfile.open(archive, "r:gz") as handle:
+        stock = handle.getmembers()
+    with tarfile.open(archive, "r:gz") as handle:
+        bounded = read_sdist_members(handle)
+    stock_names = [safe_member_name(member.name) for member in stock]
+    bounded_names = [safe_member_name(member.name) for member in bounded]
+    if stock_names != bounded_names:
+        fail(
+            "sdist archive enumerators disagree: "
+            f"getmembers_count={len(stock_names)} "
+            f"bounded_count={len(bounded_names)}"
+        )
+
+
 def ordered_sdist_member_records(
     archive: Path,
 ) -> list[tuple[str, bytes, int, int, bytes]]:
     with tarfile.open(archive, "r:gz") as handle:
         records: list[tuple[str, bytes, int, int, bytes]] = []
         for member in read_sdist_members(handle):
-            if member.isdir() and member.size:
-                if handle.fileobj is None or member.offset_data is None:
-                    fail("sdist directory payload has no readable data offset")
-                handle.fileobj.seek(member.offset_data)
-                payload = handle.fileobj.read(member.size)
-                if len(payload) != member.size:
-                    fail("sdist directory payload is truncated")
-                handle.fileobj.seek(handle.offset)
-            else:
-                payload_file = handle.extractfile(member)
-                payload = b"" if payload_file is None else payload_file.read()
+            payload = sdist_member_payload(handle, member)
             records.append(
                 (
                     safe_member_name(member.name),
@@ -754,13 +775,7 @@ def raw_sdist_member_payload(archive: Path, target: str) -> bytes:
                 f"{target!r}"
             )
         member = matches[0]
-        if handle.fileobj is None or member.offset_data is None:
-            fail("sdist raw-payload control cannot address target payload")
-        handle.fileobj.seek(member.offset_data)
-        payload = handle.fileobj.read(member.size)
-        if len(payload) != member.size:
-            fail("sdist raw-payload control truncated target payload")
-        return payload
+        return sdist_member_payload(handle, member)
 
 
 def assert_sdist_nonempty_directory_control(
@@ -996,6 +1011,50 @@ def record_audit(wheel: Path) -> None:
             ).rstrip(b"=").decode("ascii")
             if encoded != expected or size != str(len(data)):
                 fail("wheel RECORD digest or size is inconsistent")
+
+
+def record_self_row_empty_control(
+    wheel: Path,
+    expected_members: set[str],
+    temporary: Path,
+) -> None:
+    temporary.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(wheel) as archive:
+        record_names = [
+            name
+            for name in archive.namelist()
+            if name.endswith(".dist-info/RECORD")
+        ]
+        if len(record_names) != 1:
+            fail("RECORD self-row control requires exactly one RECORD")
+        record_name = record_names[0]
+        rows = list(csv.reader(archive.read(record_name).decode("utf-8").splitlines()))
+    bad_rows: list[tuple[str, str, str]] = []
+    changed = 0
+    for row in rows:
+        if len(row) != 3:
+            fail("RECORD self-row control found a malformed source row")
+        if row[0] == record_name:
+            encoded = "sha256=" + base64.urlsafe_b64encode(
+                hashlib.sha256(b"nonempty-record-self-row").digest()
+            ).rstrip(b"=").decode("ascii")
+            bad_rows.append((row[0], encoded, "24"))
+            changed += 1
+        else:
+            bad_rows.append((row[0], row[1], row[2]))
+    if changed != 1:
+        fail("RECORD self-row control did not mutate exactly one self-row")
+    output = io.StringIO(newline="")
+    csv.writer(output, lineterminator="\n").writerows(bad_rows)
+    mutated = temporary / "record-self-row-nonempty.whl"
+    rewrite_wheel(wheel, mutated, replace={record_name: output.getvalue().encode("utf-8")})
+    wheel_archive_audit(mutated, expected_members)
+    expect_audit_failure(
+        "wheel RECORD self-row empty control",
+        lambda: record_audit(mutated),
+        "wheel RECORD self-row is not empty",
+    )
+    print("wheel RECORD self-row empty parity control: PASS")
 
 
 def production_resources(root: Path) -> tuple[bytes, dict[str, tuple[str, bytes]]]:
@@ -1578,7 +1637,7 @@ def rewrite_sdist(
     with tarfile.open(source, "r:gz") as source_archive, tarfile.open(
         destination, "w:gz"
     ) as destination_archive:
-        members = source_archive.getmembers()
+        members = read_sdist_members(source_archive)
         if not members:
             fail("cannot rewrite an empty sdist")
         top = PurePosixPath(members[0].name).parts[0]
@@ -1594,13 +1653,10 @@ def rewrite_sdist(
                 payload = replacements[relative]
                 copied.size = len(payload)
                 add_sdist_member_with_payload(destination_archive, copied, payload)
-            elif copied.isfile():
-                source_file = source_archive.extractfile(member)
-                if source_file is None:
-                    fail(f"cannot read sdist member while rewriting: {relative}")
-                payload = source_file.read()
+            elif copied.isfile() or (copied.isdir() and copied.size):
+                payload = sdist_member_payload(source_archive, member)
                 copied.size = len(payload)
-                destination_archive.addfile(copied, io.BytesIO(payload))
+                add_sdist_member_with_payload(destination_archive, copied, payload)
             else:
                 destination_archive.addfile(copied)
         for relative, payload in additions.items():
@@ -1622,11 +1678,10 @@ def rewrite_sdist(
             if source_member is None:
                 fail(f"cannot duplicate absent sdist member: {member_name}")
             copied = copy(source_member)
-            if copied.isfile():
-                source_file = source_archive.extractfile(source_member)
-                if source_file is None:
-                    fail(f"cannot read duplicated sdist member: {member_name}")
-                destination_archive.addfile(copied, io.BytesIO(source_file.read()))
+            if copied.isfile() or (copied.isdir() and copied.size):
+                payload = sdist_member_payload(source_archive, source_member)
+                copied.size = len(payload)
+                add_sdist_member_with_payload(destination_archive, copied, payload)
             else:
                 destination_archive.addfile(copied)
 
@@ -1639,7 +1694,7 @@ def rewrite_sdist_root(
     with tarfile.open(source, "r:gz") as source_archive, tarfile.open(
         destination, "w:gz"
     ) as destination_archive:
-        members = source_archive.getmembers()
+        members = read_sdist_members(source_archive)
         if not members:
             fail("cannot rewrite an empty sdist")
         old_root = PurePosixPath(members[0].name).parts[0]
@@ -1648,11 +1703,10 @@ def rewrite_sdist_root(
             copied.name = new_root + member.name[len(old_root) :]
             copied.pax_headers = dict(copied.pax_headers)
             copied.pax_headers.pop("path", None)
-            if copied.isfile():
-                source_file = source_archive.extractfile(member)
-                if source_file is None:
-                    fail("cannot read sdist member while renaming its root")
-                destination_archive.addfile(copied, source_file)
+            if copied.isfile() or (copied.isdir() and copied.size):
+                payload = sdist_member_payload(source_archive, member)
+                copied.size = len(payload)
+                add_sdist_member_with_payload(destination_archive, copied, payload)
             else:
                 destination_archive.addfile(copied)
 
@@ -1946,7 +2000,7 @@ def sdist_member_closure_negative_controls(
         expected_top = sdist_distribution_root(PROJECT)
         top_members = [
             member
-            for member in handle.getmembers()
+            for member in read_sdist_members(handle)
             if safe_member_name(member.name) == expected_top and member.isdir()
         ]
         if len(top_members) != 1:
@@ -1992,6 +2046,12 @@ def sdist_member_closure_negative_controls(
         f"sdist directory member is nonempty: {expected_top}",
     )
     print("sdist nonempty-directory diagnostic control: PASS")
+    expect_audit_failure(
+        "sdist getmembers directory-payload differential control",
+        lambda: assert_sdist_enumerator_agreement(nonempty_top),
+        "sdist archive enumerators disagree",
+    )
+    print("sdist enumerator agreement control: PASS")
 
     cases = (
         ("root", "r6-unmanifested.py"),
@@ -2816,6 +2876,11 @@ def main() -> int:
         for wheel in (direct_one["wheel"], direct_two["wheel"], rebuilt["wheel"]):
             wheel_archive_audit(wheel, expected_members)
             record_audit(wheel)
+        record_self_row_empty_control(
+            direct_one["wheel"],
+            expected_members,
+            temporary / "record-self-row-control",
+        )
         wheels = {
             "direct wheel 1": direct_one["wheel"],
             "direct wheel 2": direct_two["wheel"],

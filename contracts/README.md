@@ -176,7 +176,8 @@ R9 wheel/sdist member-rule parity:
 | Wheel member property | Sdist disposition |
 | --- | --- |
 | Complete member-set closure against a source-derived expectation | Enforced by `expected_sdist_members`, including the normalized project root, exactly one top-directory record, every source-managed file, and every canonical parent directory. |
-| Archive container integrity | Enforced structurally by `tarfile` while reading gzip and tar headers/checksums; tar has no per-file ZIP CRC field, so the ZIP-specific CRC check cannot transfer. |
+| Archive container integrity | `tarfile` enforces gzip and tar header/checksum parsing while reading; that enforcement stops at physical container parsing and does not establish logical-member agreement or source-byte authority. `read_sdist_members`, `sdist_member_payload`, `extract_sdist`, and `sdist_payload_audit` enforce those adjacent properties. |
+| Archive member enumeration agreement | Enforced: every production and control consumer uses the single bounded `read_sdist_members` enumerator and `sdist_member_payload` accessor. The R11 differential control is the only deliberate `getmembers()` call; it feeds a physical directory-payload archive to the stock parser and refuses on an exact count/name disagreement. |
 | Compression method and per-entry DOS timestamp | Not semantically audited; tar/gzip has different container and member metadata, and the family is bounded by whole-artifact reproducibility. |
 | Safe member names | Enforced by the same `safe_member_name` grammar for every sdist member. |
 | Normalized-duplicate rejection | Enforced by the normalized sdist-name set before closure comparison. |
@@ -188,6 +189,7 @@ R9 wheel/sdist member-rule parity:
 | Payload size, digest, and bytes | Enforced for every source-managed regular-file member by `sdist_payload_audit`; directory payloads are separately required to be empty. |
 | Root/prefix identity | Enforced by the normalized project-name/version root check; the one-root PAX-safe rename control retains identical relative members before the diagnostic. |
 | RECORD membership, digest, and size | Cannot transfer: sdist has no ZIP `RECORD`; generated sdist metadata is instead closed and reproducibility-bound by `sdist_generated_metadata_audit`. |
+| RECORD self-row digest and size empty | Cannot transfer: sdist has no ZIP `RECORD`; the wheel-only branch is exercised independently by the valid-CRC self-row mutation control. |
 | Forbidden test/fixture authority paths | Deliberately not transferred: the sdist must contain tests, fixtures, wheelhouse inputs, and checker authority for reproducible source testing; the wheel alone refuses those paths. |
 | ZIP data-root and dist-info prefix grammar | Cannot transfer literally: tar has one project root rather than ZIP's `.data`/`.dist-info` presentation roots; the normalized root and exact source closure are the sdist authority. |
 | Package/external resource projections and semantic directories | Enforced after extraction by the shared production-resource audit and source/sdist equality checks; the sdist itself carries the complete source authority rather than two wheel presentations. |
