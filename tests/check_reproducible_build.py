@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import csv
+import gzip
 import io
 import hashlib
 import importlib.metadata
@@ -19,6 +20,7 @@ import tarfile
 import tempfile
 import tomllib
 import zipfile
+import zlib
 from copy import copy
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable
@@ -83,6 +85,16 @@ GENERATED_SDIST_FILES = {
     "src/kilix_content.egg-info/requires.txt",
     "src/kilix_content.egg-info/top_level.txt",
 }
+SDIST_DATA_BLOCK_TYPES = frozenset(
+    {
+        tarfile.DIRTYPE,
+        tarfile.SYMTYPE,
+        tarfile.LNKTYPE,
+        tarfile.CHRTYPE,
+        tarfile.BLKTYPE,
+        tarfile.FIFOTYPE,
+    }
+)
 
 
 def fail(message: str) -> None:
@@ -631,6 +643,7 @@ def sdist_payload_audit(
 def sdist_relative_member_signature(
     archive: Path,
 ) -> tuple[str, set[tuple[str, bytes, int, int, bytes]]]:
+    assert_sdist_enumerator_agreement(archive)
     with tarfile.open(archive, "r:gz") as handle:
         members = read_sdist_members(handle)
         if not members:
@@ -659,6 +672,7 @@ def sdist_relative_member_signature(
 def sdist_generated_metadata_payloads(
     archive: Path,
 ) -> dict[str, tuple[str, bytes]]:
+    assert_sdist_enumerator_agreement(archive)
     with tarfile.open(archive, "r:gz") as handle:
         members = read_sdist_members(handle)
         if not members:
@@ -697,26 +711,28 @@ def read_sdist_members(handle: tarfile.TarFile) -> list[tarfile.TarInfo]:
         if member is None:
             return members
         members.append(member)
-        if member.isdir() and member.size:
+        if member.type in SDIST_DATA_BLOCK_TYPES and member.size:
             if handle.fileobj is None or member.offset_data is None:
-                fail("sdist directory payload has no readable data offset")
+                fail("sdist carrier payload has no readable data offset")
             blocks = (member.size + tarfile.BLOCKSIZE - 1) // tarfile.BLOCKSIZE
             handle.offset = member.offset_data + blocks * tarfile.BLOCKSIZE
+            if handle.offset > handle.fileobj.seek(0, os.SEEK_END):
+                fail("sdist carrier payload exceeds archive bounds")
             handle.fileobj.seek(handle.offset)
 
 
 def sdist_member_payload(handle: tarfile.TarFile, member: tarfile.TarInfo) -> bytes:
-    if member.isdir():
+    if member.type in SDIST_DATA_BLOCK_TYPES:
         if not member.size:
             return b""
         if handle.fileobj is None or member.offset_data is None:
-            fail("sdist directory payload has no readable data offset")
+            fail("sdist carrier payload has no readable data offset")
         resume = handle.offset
         handle.fileobj.seek(member.offset_data)
         payload = handle.fileobj.read(member.size)
         handle.fileobj.seek(resume)
         if len(payload) != member.size:
-            fail("sdist directory payload is truncated")
+            fail("sdist carrier payload is truncated")
         return payload
     payload_file = handle.extractfile(member)
     if payload_file is None:
@@ -727,10 +743,16 @@ def sdist_member_payload(handle: tarfile.TarFile, member: tarfile.TarInfo) -> by
     return payload
 
 
-def assert_sdist_enumerator_agreement(archive: Path) -> None:
+def assert_sdist_enumerator_agreement(
+    archive: Path, *, check_container: bool = True
+) -> None:
     """The stock parser is a negative control, never production authority."""
+    if check_container:
+        sdist_container_audit(archive)
     with tarfile.open(archive, "r:gz") as handle:
         stock = handle.getmembers()
+        if not stock:
+            fail("sdist archive is empty")
     with tarfile.open(archive, "r:gz") as handle:
         bounded = read_sdist_members(handle)
     stock_names = [safe_member_name(member.name) for member in stock]
@@ -741,6 +763,42 @@ def assert_sdist_enumerator_agreement(archive: Path) -> None:
             f"getmembers_count={len(stock_names)} "
             f"bounded_count={len(bounded_names)}"
         )
+
+
+def sdist_container_audit(archive: Path) -> None:
+    """Verify gzip framing and that tar has no bytes after its end marker."""
+    try:
+        compressed = io.BytesIO(archive.read_bytes())
+        with gzip.GzipFile(fileobj=compressed, mode="rb") as stream:
+            tar_payload = stream.read()
+        if compressed.read():
+            fail("sdist gzip has trailing bytes")
+    except (gzip.BadGzipFile, EOFError, OSError, zlib.error) as exc:
+        fail(f"sdist gzip container integrity failed: {exc}")
+    if len(tar_payload) == 0 or len(tar_payload) % tarfile.BLOCKSIZE:
+        fail("sdist tar payload is not block-aligned")
+    zero_block = b"\0" * tarfile.BLOCKSIZE
+    offset = 0
+    end_offset: int | None = None
+    try:
+        while offset + 2 * tarfile.BLOCKSIZE <= len(tar_payload):
+            header = tar_payload[offset : offset + tarfile.BLOCKSIZE]
+            if header == zero_block and tar_payload[
+                offset + tarfile.BLOCKSIZE : offset + 2 * tarfile.BLOCKSIZE
+            ] == zero_block:
+                end_offset = offset + 2 * tarfile.BLOCKSIZE
+                break
+            member = tarfile.TarInfo.frombuf(
+                header, encoding="utf-8", errors="surrogateescape"
+            )
+            blocks = (member.size + tarfile.BLOCKSIZE - 1) // tarfile.BLOCKSIZE
+            offset += tarfile.BLOCKSIZE + blocks * tarfile.BLOCKSIZE
+    except (tarfile.TarError, EOFError, OSError, ValueError) as exc:
+        fail(f"sdist tar container integrity failed: {exc}")
+    if end_offset is None:
+        fail("sdist tar has no end-of-archive marker")
+    if end_offset > len(tar_payload) or any(tar_payload[end_offset:]):
+        fail("sdist tar has bytes after its end-of-archive marker")
 
 
 def ordered_sdist_member_records(
@@ -855,6 +913,7 @@ def add_sdist_member_with_payload(
 
 
 def extract_sdist(archive: Path, destination: Path) -> Path:
+    sdist_container_audit(archive)
     with tarfile.open(archive, "r:gz") as handle:
         members = read_sdist_members(handle)
         if not members:
@@ -898,8 +957,9 @@ def extract_sdist(archive: Path, destination: Path) -> Path:
             observed,
             expected_sdist_members(PROJECT),
         )
+        assert_sdist_enumerator_agreement(archive)
         sdist_payload_audit(archive, PROJECT, top)
-        handle.extractall(destination, filter="data")
+        handle.extractall(destination, members=members, filter="data")
     root = destination / top
     required = (
         ".python-version",
@@ -1722,6 +1782,174 @@ def expect_audit_failure(label: str, action: Any, fragment: str) -> None:
     fail(f"{label} unexpectedly passed")
 
 
+def rewrite_sdist_type_carrier(
+    source: Path,
+    destination: Path,
+    typeflag: bytes,
+    label: str,
+) -> None:
+    payload = (f"R12-{label}-carrier\n".encode() * 64)[:512]
+    with tarfile.open(source, "r:gz") as source_archive, tarfile.open(
+        destination, "w:gz"
+    ) as destination_archive:
+        members = read_sdist_members(source_archive)
+        if not members:
+            fail("cannot create a carrier from an empty sdist")
+        top = PurePosixPath(members[0].name).parts[0]
+        carrier = tarfile.TarInfo(f"{top}/r12-{label}-carrier")
+        carrier.type = typeflag
+        carrier.mode = 0o644
+        carrier.size = len(payload)
+        if typeflag in {tarfile.SYMTYPE, tarfile.LNKTYPE}:
+            carrier.linkname = "r12-carrier-target"
+        if typeflag in {tarfile.CHRTYPE, tarfile.BLKTYPE}:
+            carrier.devmajor = 1
+            carrier.devminor = 3
+        inserted = False
+        for member in members:
+            if not inserted and member.name.endswith(
+                "src/kilix_content.egg-info/PKG-INFO"
+            ):
+                add_sdist_member_with_payload(
+                    destination_archive, carrier, payload
+                )
+                inserted = True
+            copied = copy(member)
+            if copied.isfile() or (copied.isdir() and copied.size):
+                member_payload = sdist_member_payload(source_archive, member)
+                copied.size = len(member_payload)
+                add_sdist_member_with_payload(
+                    destination_archive, copied, member_payload
+                )
+            else:
+                destination_archive.addfile(copied)
+        if not inserted:
+            fail("carrier insertion anchor is absent from the sdist")
+
+
+def rewrite_sdist_untruthful_directory_size(
+    source: Path, destination: Path, declared_size: int
+) -> None:
+    with tarfile.open(source, "r:gz") as source_archive, tarfile.open(
+        destination, "w:gz"
+    ) as destination_archive:
+        members = read_sdist_members(source_archive)
+        if not members:
+            fail("cannot corrupt an empty sdist")
+        top = PurePosixPath(members[0].name).parts[0]
+        for member in members:
+            copied = copy(member)
+            if copied.name == top:
+                copied.size = declared_size
+                add_sdist_member_with_payload(destination_archive, copied, b"")
+            elif copied.isfile() or (copied.isdir() and copied.size):
+                member_payload = sdist_member_payload(source_archive, member)
+                copied.size = len(member_payload)
+                add_sdist_member_with_payload(
+                    destination_archive, copied, member_payload
+                )
+            else:
+                destination_archive.addfile(copied)
+
+
+def rewrite_sdist_bad_gzip_footer(
+    source: Path, destination: Path, footer_offset: int
+) -> None:
+    raw = bytearray(source.read_bytes())
+    if len(raw) < 8:
+        fail("cannot corrupt a short gzip archive")
+    if footer_offset not in {0, 4}:
+        fail(f"unsupported gzip footer offset: {footer_offset}")
+    raw[-8 + footer_offset] ^= 1
+    destination.write_bytes(raw)
+
+
+def rewrite_sdist_with_trailing_member(source: Path, destination: Path) -> None:
+    tar_payload = gzip.decompress(source.read_bytes())
+    extra = io.BytesIO()
+    with tarfile.open(fileobj=extra, mode="w:") as archive:
+        member = tarfile.TarInfo("r12-smuggled-member")
+        payload = b"R12 smuggled member\n"
+        member.mode = 0o644
+        member.size = len(payload)
+        archive.addfile(member, io.BytesIO(payload))
+    destination.write_bytes(gzip.compress(tar_payload + extra.getvalue()))
+
+
+def rewrite_sdist_with_gzip_trailing_bytes(
+    source: Path, destination: Path
+) -> None:
+    destination.write_bytes(source.read_bytes() + b"R12-gzip-trailing-bytes")
+
+
+def sdist_container_and_type_controls(
+    archive: Path, temporary: Path
+) -> None:
+    temporary.mkdir(parents=True, exist_ok=True)
+    type_cases = (
+        ("dir", tarfile.DIRTYPE),
+        ("symlink", tarfile.SYMTYPE),
+        ("hardlink", tarfile.LNKTYPE),
+        ("char", tarfile.CHRTYPE),
+        ("block", tarfile.BLKTYPE),
+        ("fifo", tarfile.FIFOTYPE),
+    )
+    for label, typeflag in type_cases:
+        mutated = temporary / f"sdist-type-{label}.tar.gz"
+        rewrite_sdist_type_carrier(archive, mutated, typeflag, label)
+        expect_audit_failure(
+            f"sdist {label} carrier agreement control",
+            lambda mutated=mutated: assert_sdist_enumerator_agreement(mutated),
+            "sdist archive enumerators disagree",
+        )
+    untruthful = temporary / "sdist-untruthful-directory-size.tar.gz"
+    rewrite_sdist_untruthful_directory_size(archive, untruthful, tarfile.BLOCKSIZE)
+    expect_audit_failure(
+        "sdist untruthful directory-size control",
+        lambda: assert_sdist_enumerator_agreement(
+            untruthful, check_container=False
+        ),
+        "sdist archive enumerators disagree",
+    )
+    bad_crc = temporary / "sdist-bad-gzip-crc.tar.gz"
+    rewrite_sdist_bad_gzip_footer(archive, bad_crc, 0)
+    expect_audit_failure(
+        "sdist gzip CRC control",
+        lambda: sdist_container_audit(bad_crc),
+        "sdist gzip container integrity failed",
+    )
+    bad_isize = temporary / "sdist-bad-gzip-isize.tar.gz"
+    rewrite_sdist_bad_gzip_footer(archive, bad_isize, 4)
+    expect_audit_failure(
+        "sdist gzip ISIZE control",
+        lambda: sdist_container_audit(bad_isize),
+        "sdist gzip container integrity failed",
+    )
+    gzip_trailing = temporary / "sdist-gzip-trailing-bytes.tar.gz"
+    rewrite_sdist_with_gzip_trailing_bytes(archive, gzip_trailing)
+    expect_audit_failure(
+        "sdist gzip trailing-bytes control",
+        lambda: sdist_container_audit(gzip_trailing),
+        "sdist gzip container integrity failed",
+    )
+    trailing = temporary / "sdist-trailing-member.tar.gz"
+    rewrite_sdist_with_trailing_member(archive, trailing)
+    expect_audit_failure(
+        "sdist trailing-member control",
+        lambda: sdist_container_audit(trailing),
+        "sdist tar has bytes after its end-of-archive marker",
+    )
+    empty = temporary / "sdist-empty.tar.gz"
+    with tarfile.open(empty, "w:gz"):
+        pass
+    expect_audit_failure(
+        "sdist empty agreement control",
+        lambda: assert_sdist_enumerator_agreement(empty),
+        "sdist archive is empty",
+    )
+    print("sdist container, carrier-type, and empty-archive controls: PASS")
+
+
 def expect_repaired_wheel_failure(
     label: str,
     wheel: Path,
@@ -2051,6 +2279,27 @@ def sdist_member_closure_negative_controls(
         lambda: assert_sdist_enumerator_agreement(nonempty_top),
         "sdist archive enumerators disagree",
     )
+    readme = "README.md"
+    source_readme = (PROJECT / readme).read_bytes()
+    altered_readme = bytes([source_readme[0] ^ 1]) + source_readme[1:]
+    payload_reversion = temporary / "sdist-payload-reader-reversion.tar.gz"
+    rewrite_sdist(
+        archive,
+        payload_reversion,
+        replace={
+            expected_top: directory_payload,
+            readme: altered_readme,
+        },
+    )
+    expect_audit_failure(
+        "sdist payload reader differential control",
+        lambda: sdist_payload_audit(
+            payload_reversion,
+            PROJECT,
+            expected_top,
+        ),
+        "sdist payload differs from source: README.md",
+    )
     print("sdist enumerator agreement control: PASS")
 
     cases = (
@@ -2127,6 +2376,64 @@ def sdist_member_closure_negative_controls(
             f"sdist member permissions differ: {mode_target}",
         )
     print("sdist member mode controls: PASS")
+
+
+def r12_reader_reversion_regression(
+    uv_path: Path,
+    base_python: Path,
+    base_env: dict[str, str],
+    temporary: Path,
+) -> None:
+    """Run the complete gate after reverting the load-bearing R12 reader line."""
+    candidate = temporary / "r12-reverted-reader"
+    shutil.copytree(
+        PROJECT,
+        candidate,
+        ignore=shutil.ignore_patterns(
+            ".git",
+            ".venv",
+            ".ruff_cache",
+            "__pycache__",
+            "*.pyc",
+            "*.egg-info",
+            "build",
+            "dist",
+        ),
+    )
+    checker = candidate / "tests" / "check_reproducible_build.py"
+    source = checker.read_text()
+    start = source.index("def sdist_payload_audit(")
+    end = source.index("\ndef sdist_relative_member_signature", start)
+    function = source[start:end]
+    old = "for member in read_sdist_members(handle):"
+    if function.count(old) != 1:
+        fail("R12 reader-reversion control could not find exactly one load-bearing line")
+    checker.write_text(
+        source[:start]
+        + function.replace(old, "for member in handle.getmembers():")
+        + source[end:]
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(checker),
+            "--r12-skip-regressions",
+        ],
+        cwd=candidate,
+        env=base_env,
+        capture_output=True,
+        text=True,
+    )
+    output = (result.stdout or "") + (result.stderr or "")
+    if result.returncode == 0:
+        fail("R12 reader-reversion complete gate unexpectedly passed")
+    expected = "sdist payload reader differential control unexpectedly passed"
+    if expected not in output:
+        fail(
+            "R12 reader-reversion gate failed without the intended causal control: "
+            + output[-8000:]
+        )
+    print("R12 reader-reversion complete-gate regression: FAIL-CLOSED/PASS")
 
 
 def honest_entrypoint_control(
@@ -2789,6 +3096,9 @@ def resource_negative_controls(
 
 
 def main() -> int:
+    modes = set(sys.argv[1:])
+    if not modes <= {"--r12-regression", "--r12-skip-regressions"}:
+        fail(f"unknown checker mode: {sorted(modes)!r}")
     environment, uv_path, base_python = checked_toolchain()
     verify_wheelhouse(PROJECT)
     run(
@@ -2797,6 +3107,16 @@ def main() -> int:
         env=environment,
         label="uv lock check",
     )
+    if "--r12-regression" in modes and "--r12-skip-regressions" in modes:
+        fail("R12 regression and skip modes are mutually exclusive")
+    if "--r12-regression" in modes:
+        with tempfile.TemporaryDirectory(prefix="kilix-u1-r12-regression-") as name:
+            r12_reader_reversion_regression(
+                uv_path,
+                base_python,
+                environment,
+                Path(name),
+            )
     with tempfile.TemporaryDirectory(prefix="kilix-u1-r7-") as temporary_name:
         temporary = Path(temporary_name)
         verify_export(
@@ -2834,9 +3154,23 @@ def main() -> int:
             "--sdist",
             "--wheel",
         )
+        for label, archive in (
+            ("direct sdist 1", direct_one["sdist"]),
+            ("direct sdist 2", direct_two["sdist"]),
+        ):
+            assert_sdist_enumerator_agreement(archive)
+            sdist_payload_audit(
+                archive,
+                PROJECT,
+                sdist_distribution_root(PROJECT),
+            )
+            print(f"{label} enumeration and payload audit: PASS")
         sdist_generated_metadata_audit(direct_one["sdist"], direct_two["sdist"])
         sdist_member_closure_negative_controls(
             direct_one["sdist"], temporary / "sdist-controls"
+        )
+        sdist_container_and_type_controls(
+            direct_one["sdist"], temporary / "sdist-container-controls"
         )
         source_root = extract_sdist(direct_one["sdist"], temporary / "extracted-sdist")
         verify_wheelhouse(source_root)

@@ -75,6 +75,17 @@ the external root contains exactly 31. The checker applies the 28-member U1
 manifest projection separately, so these historical files are preserved while
 any unlisted file—including one directly below the external root—is refused.
 
+The reproducible-build gate treats an sdist as a bounded container, not merely
+as a list returned by one tar parser. It verifies gzip integrity, the tar
+end-of-archive boundary, a nonempty archive, and agreement between the stock
+enumerator and the bounded reader. The bounded reader advances over physical
+data blocks for directory, symbolic-link, hard-link, character-device,
+block-device, and FIFO type flags, and extraction passes that bounded member
+list explicitly. Archive and installed resource audits retain separate file
+and semantic-directory sets; all direct and sdist-derived artifacts, including
+the isolated installed presentation, use the same production-resource
+allowlists and the 28-member authority projection.
+
 The U1 implementation is pure parsing/canonicalization/validation: it does not
 open a store, acquire locks, recover a transaction, or sequence authorization.
 `validate_u1_bytes` proves only that supplied bytes satisfy one rooted schema
