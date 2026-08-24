@@ -22,6 +22,7 @@ import tomllib
 import zipfile
 import zlib
 from copy import copy
+from functools import partial
 from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 
@@ -95,6 +96,8 @@ SDIST_DATA_BLOCK_TYPES = frozenset(
         tarfile.FIFOTYPE,
     }
 )
+MAX_SDIST_TAR_PAYLOAD_BYTES = 256 * 1024 * 1024
+MAX_SDIST_EXPANSION_RATIO = 256
 _SDIST_AUDIT_CALLS: set[str] = set()
 _REQUIRED_SDIST_AUDIT_CALLS = frozenset(
     {
@@ -109,6 +112,143 @@ _REQUIRED_SDIST_AUDIT_CALLS = frozenset(
         "direct-payload",
     }
 )
+
+# R14-0: this is the hand-authored acceptance registry.  A row is an
+# observable property, one concrete mutation of that property, and the
+# refusal that proves the mutation reached the intended audit.  Keep this
+# table append-only: adding a production audit without adding its mutation
+# evidence is a gate failure, as is adding a mutation without an artifact
+# audit.  The literal digest is filled only after the table is frozen.
+PROPERTY_MUTATION_REGISTRY: tuple[dict[str, str], ...] = (
+    {
+        "id": "sdist.container.gzip-trailing",
+        "artifact_family": "sdist",
+        "audit_kind": "container",
+        "property": "gzip framing and tar end marker",
+        "mutation": "append bytes after the gzip member",
+        "expected_refusal": "sdist gzip container integrity failed",
+    },
+    {
+        "id": "sdist.enumerator.physical-directory-size",
+        "artifact_family": "sdist",
+        "audit_kind": "enumerator",
+        "property": "bounded physical member enumeration",
+        "mutation": "declare a directory payload size absent from its physical carrier",
+        "expected_refusal": "sdist archive enumerators disagree",
+    },
+    {
+        "id": "sdist.payload.source-byte",
+        "artifact_family": "sdist",
+        "audit_kind": "payload",
+        "property": "source payload equality",
+        "mutation": "replace one source-controlled README byte",
+        "expected_refusal": "sdist payload differs from source",
+    },
+    {
+        "id": "sdist.member.permission",
+        "artifact_family": "sdist",
+        "audit_kind": "closure",
+        "property": "safe sdist member permissions",
+        "mutation": "set one shipped test member setuid",
+        "expected_refusal": "sdist member permissions differ",
+    },
+    {
+        "id": "wheel.container.trailing",
+        "artifact_family": "wheel",
+        "audit_kind": "container",
+        "property": "ZIP container end-of-archive integrity",
+        "mutation": "append bytes after the ZIP end record",
+        "expected_refusal": "wheel container has trailing bytes",
+    },
+    {
+        "id": "wheel.archive.extra-member",
+        "artifact_family": "wheel",
+        "audit_kind": "archive",
+        "property": "exact wheel member closure",
+        "mutation": "add an unlisted regular member and repair RECORD",
+        "expected_refusal": "wheel complete member set differs",
+    },
+    {
+        "id": "wheel.record.self-row",
+        "artifact_family": "wheel",
+        "audit_kind": "record",
+        "property": "RECORD self-row emptiness",
+        "mutation": "make the valid-CRC RECORD self-row nonempty",
+        "expected_refusal": "wheel RECORD self-row is not empty",
+    },
+    {
+        "id": "wheel.resource.byte",
+        "artifact_family": "wheel",
+        "audit_kind": "resource",
+        "property": "production resource byte authority",
+        "mutation": "change one package production resource byte",
+        "expected_refusal": "package production resource digest mismatch",
+    },
+)
+FROZEN_PROPERTY_MUTATION_REGISTRY_SHA256 = "c47eb3e99c31d206a6c5a5312c7471cace5b55ec057ba683fee4cc8c6ec52194"
+_PROPERTY_MUTATION_EXECUTIONS: set[tuple[str, str]] = set()
+_PRODUCTION_AUDIT_CALLS: set[tuple[str, str, str]] = set()
+_PRODUCTION_ARTIFACTS: dict[str, tuple[str, ...]] = {}
+_SDIST_WIRING_ASSERTED = False
+
+
+def property_mutation_registry_bytes() -> bytes:
+    return canonical_json(PROPERTY_MUTATION_REGISTRY)
+
+
+def validate_property_mutation_registry() -> None:
+    rows = list(PROPERTY_MUTATION_REGISTRY)
+    ids = [row.get("id") for row in rows]
+    if len(ids) != len(set(ids)) or any(not isinstance(value, str) or not value for value in ids):
+        fail("property/mutation registry ids are not unique and nonempty")
+    required_keys = {
+        "id", "artifact_family", "audit_kind", "property", "mutation", "expected_refusal"
+    }
+    for row in rows:
+        if set(row) != required_keys:
+            fail(f"property/mutation registry row is not closed: {row!r}")
+        if row["artifact_family"] not in {"sdist", "wheel"}:
+            fail(f"property/mutation registry family is unknown: {row!r}")
+    if FROZEN_PROPERTY_MUTATION_REGISTRY_SHA256:
+        observed = hashlib.sha256(property_mutation_registry_bytes()).hexdigest()
+        if observed != FROZEN_PROPERTY_MUTATION_REGISTRY_SHA256:
+            fail(
+                "property/mutation registry digest differs: "
+                f"expected={FROZEN_PROPERTY_MUTATION_REGISTRY_SHA256} observed={observed}"
+            )
+
+
+def register_production_audit(
+    family: str,
+    artifact_label: str,
+    audit_kind: str,
+    action: Callable[[], None],
+) -> None:
+    action()
+    _PRODUCTION_AUDIT_CALLS.add((family, artifact_label, audit_kind))
+
+
+def assert_property_registry_coverage(
+    artifact_inventory: dict[str, tuple[str, ...]],
+) -> None:
+    validate_property_mutation_registry()
+    if not _SDIST_WIRING_ASSERTED:
+        fail("production sdist audit wiring assertion was not executed")
+    for family, labels in artifact_inventory.items():
+        for label in labels:
+            for row in PROPERTY_MUTATION_REGISTRY:
+                if row["artifact_family"] != family:
+                    continue
+                if (family, label, row["audit_kind"]) not in _PRODUCTION_AUDIT_CALLS:
+                    fail(
+                        "property/mutation registry lacks production audit coverage: "
+                        f"family={family} label={label} kind={row['audit_kind']}"
+                    )
+                if (row["id"], label) not in _PROPERTY_MUTATION_EXECUTIONS:
+                    fail(
+                        "property/mutation registry lacks mutation evidence: "
+                        f"id={row['id']} label={label}"
+                    )
 
 
 def fail(message: str) -> None:
@@ -139,12 +279,14 @@ def run_sdist_audit(label: str, action: Callable[[], None]) -> None:
 
 
 def assert_sdist_audit_wiring() -> None:
+    global _SDIST_WIRING_ASSERTED
     missing = _REQUIRED_SDIST_AUDIT_CALLS - _SDIST_AUDIT_CALLS
     if missing:
         fail(
             "required sdist audit call sites were not reached: "
             f"{sorted(missing)!r}"
         )
+    _SDIST_WIRING_ASSERTED = True
 
 
 def run(
@@ -668,6 +810,39 @@ def sdist_payload_audit(
                 fail(f"sdist payload differs from source: {relative}")
 
 
+def sdist_member_closure_audit(archive: Path) -> None:
+    with tarfile.open(archive, "r:gz") as handle:
+        members = read_sdist_members(handle)
+    if not members:
+        fail("sdist is empty")
+    top = PurePosixPath(members[0].name).parts[0]
+    expected_top = sdist_distribution_root(PROJECT)
+    if top != expected_top:
+        fail(f"sdist root identity differs: expected={expected_top!r} observed={top!r}")
+    observed: set[str] = set()
+    for member in members:
+        key = safe_member_name(member.name)
+        if PurePosixPath(member.name).parts[0] != top:
+            fail("sdist has a split-root member")
+        if not (member.isdir() or member.isfile()):
+            fail("sdist contains a linked or special member")
+        expected_mode = (
+            EXPECTED_SDIST_DIRECTORY_MODE
+            if member.isdir()
+            else EXPECTED_SDIST_FILE_MODE
+        )
+        if stat.S_IMODE(member.mode) != expected_mode:
+            relative = key if key == top else key.removeprefix(top + "/")
+            fail(
+                f"sdist member permissions differ: {relative} "
+                f"expected={oct(expected_mode)} observed={oct(stat.S_IMODE(member.mode))}"
+            )
+        if member.isdir() and member.size != 0:
+            fail(f"sdist directory member is nonempty: {key}")
+        observed.add(key if key == top or not member.isdir() else key + "/")
+    compare_member_sets("sdist", observed, expected_sdist_members(PROJECT))
+
+
 def sdist_relative_member_signature(
     archive: Path,
 ) -> tuple[str, set[tuple[str, bytes, int, int, bytes]]]:
@@ -744,8 +919,12 @@ def read_sdist_members(handle: tarfile.TarFile) -> list[tarfile.TarInfo]:
         member = handle.next()
         if member is None:
             return members
+        if type(member.size) is not int or member.size < 0:
+            fail(f"sdist member has a noncanonical negative size: {member.name!r}")
         members.append(member)
         physical_size = physical_sdist_member_size(handle, member)
+        if physical_size < 0:
+            fail(f"sdist member has a noncanonical physical size: {member.name!r}")
         if physical_size != member.size:
             fail(
                 "sdist member logical size differs from physical header size: "
@@ -844,10 +1023,23 @@ def sdist_container_audit(archive: Path) -> None:
     try:
         compressed = io.BytesIO(archive.read_bytes())
         with gzip.GzipFile(fileobj=compressed, mode="rb") as stream:
-            tar_payload = stream.read()
+            chunks: list[bytes] = []
+            output_size = 0
+            compressed_size = max(1, len(compressed.getbuffer()))
+            while True:
+                chunk = stream.read(64 * 1024)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                output_size += len(chunk)
+                if output_size > MAX_SDIST_TAR_PAYLOAD_BYTES:
+                    fail("sdist gzip expansion exceeds the absolute limit")
+                if output_size > compressed_size * MAX_SDIST_EXPANSION_RATIO:
+                    fail("sdist gzip expansion ratio exceeds the limit")
+            tar_payload = b"".join(chunks)
         if compressed.read():
             fail("sdist gzip has trailing bytes")
-    except (gzip.BadGzipFile, EOFError, OSError, zlib.error) as exc:
+    except (gzip.BadGzipFile, EOFError, OSError, zlib.error, MemoryError) as exc:
         fail(f"sdist gzip container integrity failed: {exc}")
     if len(tar_payload) == 0 or len(tar_payload) % tarfile.BLOCKSIZE:
         fail("sdist tar payload is not block-aligned")
@@ -865,6 +1057,8 @@ def sdist_container_audit(archive: Path) -> None:
             member = tarfile.TarInfo.frombuf(
                 header, encoding="utf-8", errors="surrogateescape"
             )
+            if type(member.size) is not int or member.size < 0:
+                fail("sdist tar contains a noncanonical negative member size")
             blocks = (member.size + tarfile.BLOCKSIZE - 1) // tarfile.BLOCKSIZE
             offset += tarfile.BLOCKSIZE + blocks * tarfile.BLOCKSIZE
     except (tarfile.TarError, EOFError, OSError, ValueError) as exc:
@@ -1101,10 +1295,25 @@ def classify_wheel_member(
     return kind
 
 
+def wheel_container_audit(wheel: Path) -> None:
+    """Reject bytes outside the final ZIP end record before zipfile parsing."""
+    raw = wheel.read_bytes()
+    if len(raw) < 22:
+        fail("wheel container is truncated")
+    eocd = raw.rfind(b"PK\x05\x06")
+    if eocd < 0 or eocd + 22 > len(raw):
+        fail("wheel container has no complete end record")
+    comment_length = int.from_bytes(raw[eocd + 20 : eocd + 22], "little")
+    end = eocd + 22 + comment_length
+    if end != len(raw):
+        fail("wheel container has trailing bytes")
+
+
 def wheel_archive_audit(
     wheel: Path,
     expected_members: set[str] | None = None,
 ) -> set[str]:
+    wheel_container_audit(wheel)
     with zipfile.ZipFile(wheel) as archive:
         if archive.testzip() is not None:
             fail("wheel CRC check failed")
@@ -1198,6 +1407,34 @@ def record_self_row_empty_control(
         "wheel RECORD self-row is not empty",
     )
     print("wheel RECORD self-row empty parity control: PASS")
+
+
+def rewrite_wheel_nonempty_record_self_row(
+    wheel: Path, destination: Path
+) -> None:
+    with zipfile.ZipFile(wheel) as archive:
+        record_names = [
+            name for name in archive.namelist() if name.endswith(".dist-info/RECORD")
+        ]
+        if len(record_names) != 1:
+            fail("RECORD mutation requires exactly one RECORD")
+        record_name = record_names[0]
+        rows = list(csv.reader(archive.read(record_name).decode("utf-8").splitlines()))
+    changed = 0
+    output = io.StringIO(newline="")
+    writer = csv.writer(output, lineterminator="\n")
+    for row in rows:
+        if len(row) != 3:
+            fail("RECORD mutation found a malformed source row")
+        if row[0] == record_name:
+            row = [row[0], "sha256=" + base64.urlsafe_b64encode(
+                hashlib.sha256(b"r14-nonempty-record").digest()
+            ).rstrip(b"=").decode("ascii"), "19"]
+            changed += 1
+        writer.writerow(row)
+    if changed != 1:
+        fail("RECORD mutation did not find exactly one self-row")
+    rewrite_wheel(wheel, destination, replace={record_name: output.getvalue().encode("utf-8")})
 
 
 def production_resources(root: Path) -> tuple[bytes, dict[str, tuple[str, bytes]]]:
@@ -1997,6 +2234,28 @@ def rewrite_sdist_with_gzip_trailing_bytes(
     destination.write_bytes(source.read_bytes() + b"R12-gzip-trailing-bytes")
 
 
+def rewrite_sdist_negative_member_size(source: Path, destination: Path) -> None:
+    payload = bytearray(gzip.decompress(source.read_bytes()))
+    if len(payload) < tarfile.BLOCKSIZE:
+        fail("negative-size control source tar is too short")
+    payload[124:136] = b"-00000000001"
+    payload[148:156] = b"        "
+    checksum = sum(payload[:512])
+    payload[148:156] = f"{checksum:06o}\0 ".encode("ascii")
+    destination.write_bytes(gzip.compress(bytes(payload)))
+
+
+def write_sdist_expansion_ratio_control(destination: Path) -> None:
+    payload = b"\0" * (1024 * 1024)
+    stream = io.BytesIO()
+    with tarfile.open(fileobj=stream, mode="w:") as archive:
+        member = tarfile.TarInfo("r14-expansion-ratio")
+        member.mode = 0o644
+        member.size = len(payload)
+        archive.addfile(member, io.BytesIO(payload))
+    destination.write_bytes(gzip.compress(stream.getvalue()))
+
+
 def sdist_container_and_type_controls(
     archive: Path, temporary: Path
 ) -> None:
@@ -2053,6 +2312,20 @@ def sdist_container_and_type_controls(
         "sdist gzip trailing-bytes control",
         lambda: sdist_container_audit(gzip_trailing),
         "sdist gzip container integrity failed",
+    )
+    negative_size = temporary / "sdist-negative-size.tar.gz"
+    rewrite_sdist_negative_member_size(archive, negative_size)
+    expect_audit_failure(
+        "sdist negative-size control",
+        partial(sdist_container_audit, negative_size),
+        "sdist tar contains a noncanonical negative member size",
+    )
+    expansion_ratio = temporary / "sdist-expansion-ratio.tar.gz"
+    write_sdist_expansion_ratio_control(expansion_ratio)
+    expect_audit_failure(
+        "sdist expansion-ratio control",
+        partial(sdist_container_audit, expansion_ratio),
+        "sdist gzip expansion ratio exceeds the limit",
     )
     trailing = temporary / "sdist-trailing-member.tar.gz"
     rewrite_sdist_with_trailing_member(archive, trailing)
@@ -2547,7 +2820,6 @@ def r12_reader_reversion_regression(
     result = subprocess.run(
         [
             str(child_python),
-            "-I",
             str(checker),
             "--r13-skip-regressions",
         ],
@@ -2594,42 +2866,6 @@ def r13_callsite_wiring_regression(
     checker = candidate / "tests" / "check_reproducible_build.py"
     source = checker.read_text()
     callsite_blocks = {
-        "enumerator-container": (
-            '        run_sdist_audit(\n'
-            '            "enumerator-container",\n'
-            '            lambda: sdist_container_audit(archive),\n'
-            '        )'
-        ),
-        "relative-enumerator": (
-            '    run_sdist_audit(\n'
-            '        "relative-enumerator",\n'
-            '        lambda: assert_sdist_enumerator_agreement(archive),\n'
-            '    )'
-        ),
-        "generated-enumerator": (
-            '    run_sdist_audit(\n'
-            '        "generated-enumerator",\n'
-            '        lambda: assert_sdist_enumerator_agreement(archive),\n'
-            '    )'
-        ),
-        "extract-container": (
-            '    run_sdist_audit(\n'
-            '        "extract-container",\n'
-            '        lambda: sdist_container_audit(archive),\n'
-            '    )'
-        ),
-        "extract-enumerator": (
-            '        run_sdist_audit(\n'
-            '            "extract-enumerator",\n'
-            '            lambda: assert_sdist_enumerator_agreement(archive),\n'
-            '        )'
-        ),
-        "extract-payload": (
-            '        run_sdist_audit(\n'
-            '            "extract-payload",\n'
-            '            lambda: sdist_payload_audit(archive, PROJECT, top),\n'
-            '        )'
-        ),
         "generated-metadata-audit": (
             '        run_sdist_audit(\n'
             '            "generated-metadata-audit",\n'
@@ -2639,19 +2875,54 @@ def r13_callsite_wiring_regression(
             '        )'
         ),
         "direct-enumerator": (
-            '            run_sdist_audit(\n'
-            '                "direct-enumerator",\n'
-            '                lambda archive=archive: assert_sdist_enumerator_agreement(archive),\n'
+            '            register_production_audit(\n'
+            '                "sdist",\n'
+            '                label,\n'
+            '                "enumerator",\n'
+            '                lambda archive=archive: run_sdist_audit(\n'
+            '                    "direct-enumerator",\n'
+            '                    lambda: assert_sdist_enumerator_agreement(archive),\n'
+            '                ),\n'
             '            )'
         ),
         "direct-payload": (
-            '            run_sdist_audit(\n'
-            '                "direct-payload",\n'
-            '                lambda archive=archive: sdist_payload_audit(\n'
-            '                    archive,\n'
-            '                    PROJECT,\n'
-            '                    sdist_distribution_root(PROJECT),\n'
+            '            register_production_audit(\n'
+            '                "sdist",\n'
+            '                label,\n'
+            '                "payload",\n'
+            '                lambda archive=archive: run_sdist_audit(\n'
+            '                    "direct-payload",\n'
+            '                    lambda: sdist_payload_audit(\n'
+            '                        archive,\n'
+            '                        PROJECT,\n'
+            '                        sdist_distribution_root(PROJECT),\n'
+            '                    ),\n'
             '                ),\n'
+            '            )'
+        ),
+        "sdist-wiring-assertion": "        " + "assert_sdist_audit_wiring()",
+        "wheel-container-audit": (
+            '            register_production_audit(\n'
+            '                "wheel",\n'
+            '                label,\n'
+            '                "container",\n'
+            '                lambda wheel=wheel: wheel_container_audit(wheel),\n'
+            '            )'
+        ),
+        "wheel-archive-audit": (
+            '            register_production_audit(\n'
+            '                "wheel",\n'
+            '                label,\n'
+            '                "archive",\n'
+            '                lambda wheel=wheel: wheel_archive_audit(wheel, expected_members),\n'
+            '            )'
+        ),
+        "wheel-record-audit": (
+            '            register_production_audit(\n'
+            '                "wheel",\n'
+            '                label,\n'
+            '                "record",\n'
+            '                lambda wheel=wheel: record_audit(wheel),\n'
             '            )'
         ),
     }
@@ -2672,7 +2943,6 @@ def r13_callsite_wiring_regression(
     result = subprocess.run(
         [
             str(child_python),
-            "-I",
             str(checker),
             "--r13-skip-regressions",
         ],
@@ -2684,22 +2954,15 @@ def r13_callsite_wiring_regression(
     output = (result.stdout or "") + (result.stderr or "")
     if result.returncode == 0:
         fail("R13 sdist call-site removal complete gate unexpectedly passed")
-    if "required sdist audit call sites were not reached" in output:
+    if "production sdist audit wiring assertion was not executed" in output:
         print(
             "R13 sdist call-site wiring complete-gate regression: "
-            "FAIL-CLOSED/PASS (wiring guard)"
+            "FAIL-CLOSED/PASS (property registry wiring guard)"
         )
         return
-    causal = "sdist payload source control unexpectedly passed"
-    if causal not in output:
-        fail(
-            "R13 call-site removal gate failed without a wiring or causal guard: "
-            + output[-8000:]
-        )
-    print(
-        "R13 sdist call-site wiring complete-gate regression: "
-        "FAIL-CLOSED/PASS (first causal failure: "
-        f"{causal}; removed={sorted(callsite_blocks)!r})"
+    fail(
+        "R13 call-site removal gate failed without the property registry wiring guard: "
+        + output[-8000:]
     )
 
 
@@ -2872,6 +3135,13 @@ def resource_negative_controls(
             name for name in archive.namelist() if name.startswith(external_prefix)
         ]
     wheel_resource_audit(wheel, package_expected, external_expected, manifest_expected)
+    trailing_container = temporary / "wheel-container-trailing.whl"
+    trailing_container.write_bytes(wheel.read_bytes() + b"R14-wheel-container-trailing")
+    expect_audit_failure(
+        "wheel container trailing-byte control",
+        partial(wheel_container_audit, trailing_container),
+        "wheel container has trailing bytes",
+    )
     mit_member = external_prefix + "licenses/MIT.txt"
 
     special_types = (
@@ -3362,6 +3632,113 @@ def resource_negative_controls(
     print("dual-root resource negative controls: PASS")
 
 
+def run_property_mutation_registry(
+    sdist_artifacts: dict[str, Path],
+    wheel_artifacts: dict[str, Path],
+    expected_members: set[str],
+    package_expected: dict[str, tuple[str, bytes]],
+    external_expected: dict[str, tuple[str, bytes]],
+    manifest_expected: dict[str, tuple[str, bytes]],
+    temporary: Path,
+) -> None:
+    """Execute every hand-authored mutation against every shipped artifact."""
+    validate_property_mutation_registry()
+    temporary.mkdir(parents=True, exist_ok=True)
+
+    def run_one(row: dict[str, str], label: str, archive: Path) -> None:
+        case = temporary / row["id"].replace(".", "-") / label.replace(" ", "-")
+        case.mkdir(parents=True, exist_ok=True)
+        identifier = row["id"]
+        if identifier == "sdist.container.gzip-trailing":
+            mutated = case / "mutated.tar.gz"
+            rewrite_sdist_with_gzip_trailing_bytes(archive, mutated)
+            action = partial(sdist_container_audit, mutated)
+        elif identifier == "sdist.enumerator.physical-directory-size":
+            mutated = case / "mutated.tar.gz"
+            rewrite_sdist_untruthful_directory_size(
+                archive, mutated, tarfile.BLOCKSIZE
+            )
+            action = partial(
+                assert_sdist_enumerator_agreement, mutated, check_container=False
+            )
+        elif identifier == "sdist.payload.source-byte":
+            mutated = case / "mutated.tar.gz"
+            top = sdist_distribution_root(PROJECT)
+            original = raw_sdist_member_payload(archive, top + "/README.md")
+            rewrite_sdist(
+                archive,
+                mutated,
+                replace={"README.md": bytes([original[0] ^ 1]) + original[1:]},
+            )
+            action = partial(
+                sdist_payload_audit, mutated, PROJECT, sdist_distribution_root(PROJECT)
+            )
+        elif identifier == "sdist.member.permission":
+            mutated = case / "mutated.tar.gz"
+            rewrite_sdist(
+                archive,
+                mutated,
+                modes={"tests/test_u1_contracts.py": 0o4755},
+            )
+            action = partial(extract_sdist, mutated, case / "extract")
+        elif identifier == "wheel.container.trailing":
+            mutated = case / "mutated.whl"
+            mutated.write_bytes(archive.read_bytes() + b"R14-wheel-trailing")
+            action = partial(wheel_container_audit, mutated)
+        elif identifier == "wheel.archive.extra-member":
+            mutated = case / "mutated.whl"
+            rewrite_wheel(
+                archive,
+                mutated,
+                extra={"r14-unregistered.txt": b"unregistered\n"},
+                rebuild_record=True,
+            )
+            action = partial(wheel_archive_audit, mutated, expected_members)
+        elif identifier == "wheel.record.self-row":
+            mutated = case / "mutated.whl"
+            rewrite_wheel_nonempty_record_self_row(archive, mutated)
+            action = partial(record_audit, mutated)
+        elif identifier == "wheel.resource.byte":
+            mutated = case / "mutated.whl"
+            path = "kilix_content/catalog/__init__.py"
+            original = package_expected["catalog/__init__.py"][1]
+            rewrite_wheel(
+                archive,
+                mutated,
+                replace={path: bytes([original[0] ^ 1]) + original[1:]},
+                rebuild_record=True,
+            )
+            action = partial(
+                wheel_resource_audit,
+                mutated,
+                package_expected,
+                external_expected,
+                manifest_expected,
+            )
+        else:
+            fail(f"property/mutation registry has no executor: {identifier}")
+        expect_audit_failure(
+            f"registered mutation {identifier} on {label}",
+            action,
+            row["expected_refusal"],
+        )
+        _PROPERTY_MUTATION_EXECUTIONS.add((identifier, label))
+
+    for label, archive in sdist_artifacts.items():
+        for row in PROPERTY_MUTATION_REGISTRY:
+            if row["artifact_family"] == "sdist":
+                run_one(row, label, archive)
+    for label, archive in wheel_artifacts.items():
+        for row in PROPERTY_MUTATION_REGISTRY:
+            if row["artifact_family"] == "wheel":
+                run_one(row, label, archive)
+    print(
+        "append-only property/mutation registry: PASS "
+        f"rows={len(PROPERTY_MUTATION_REGISTRY)} executions="
+        f"{len(_PROPERTY_MUTATION_EXECUTIONS)}"
+    )
+
+
 def configure_temporary_root() -> Path:
     configured = os.environ.get("TMPDIR")
     if not configured:
@@ -3370,7 +3747,7 @@ def configure_temporary_root() -> Path:
     if not root.is_absolute():
         fail("TMPDIR must be an absolute path")
     root = root.resolve()
-    if root == Path("/tmp"):
+    if root == Path("/tmp") or root.is_relative_to(Path("/tmp")):
         fail("TMPDIR must not be /tmp for the reproducible-build gate")
     root.mkdir(parents=True, exist_ok=True)
     usage = shutil.disk_usage("/tmp")
@@ -3381,8 +3758,15 @@ def configure_temporary_root() -> Path:
 
 def main() -> int:
     modes = set(sys.argv[1:])
-    if not modes <= {"--r13-skip-regressions"}:
+    allowed_modes = {
+        "--r13-skip-regressions",
+        "--r14-fast",
+        "--r14-slow-regressions",
+    }
+    if not modes <= allowed_modes:
         fail(f"unknown checker mode: {sorted(modes)!r}")
+    if {"--r14-fast", "--r14-slow-regressions"} <= modes:
+        fail("R14 fast and slow regression modes are mutually exclusive")
     environment, uv_path, base_python = checked_toolchain()
     temporary_root = configure_temporary_root()
     environment["TMPDIR"] = str(temporary_root)
@@ -3394,7 +3778,8 @@ def main() -> int:
         label="uv lock check",
     )
     skip_regressions = "--r13-skip-regressions" in modes
-    if not skip_regressions:
+    slow_regressions = "--r14-slow-regressions" in modes
+    if not skip_regressions and slow_regressions:
         with tempfile.TemporaryDirectory(prefix="kilix-u1-r13-regressions-") as name:
             regression_root = Path(name)
             r12_reader_reversion_regression(
@@ -3409,6 +3794,8 @@ def main() -> int:
                 environment,
                 regression_root / "r13-wiring",
             )
+    elif not skip_regressions:
+        print("R14 fast regression mode: production registry controls are enabled")
     with tempfile.TemporaryDirectory(prefix="kilix-u1-r7-") as temporary_name:
         temporary = Path(temporary_name)
         verify_export(
@@ -3450,17 +3837,39 @@ def main() -> int:
             ("direct sdist 1", direct_one["sdist"]),
             ("direct sdist 2", direct_two["sdist"]),
         ):
-            run_sdist_audit(
-                "direct-enumerator",
-                lambda archive=archive: assert_sdist_enumerator_agreement(archive),
+            register_production_audit(
+                "sdist",
+                label,
+                "container",
+                lambda archive=archive: sdist_container_audit(archive),
             )
-            run_sdist_audit(
-                "direct-payload",
-                lambda archive=archive: sdist_payload_audit(
-                    archive,
-                    PROJECT,
-                    sdist_distribution_root(PROJECT),
+            register_production_audit(
+                "sdist",
+                label,
+                "enumerator",
+                lambda archive=archive: run_sdist_audit(
+                    "direct-enumerator",
+                    lambda: assert_sdist_enumerator_agreement(archive),
                 ),
+            )
+            register_production_audit(
+                "sdist",
+                label,
+                "payload",
+                lambda archive=archive: run_sdist_audit(
+                    "direct-payload",
+                    lambda: sdist_payload_audit(
+                        archive,
+                        PROJECT,
+                        sdist_distribution_root(PROJECT),
+                    ),
+                ),
+            )
+            register_production_audit(
+                "sdist",
+                label,
+                "closure",
+                lambda archive=archive: sdist_member_closure_audit(archive),
             )
             print(f"{label} enumeration and payload audit: PASS")
         run_sdist_audit(
@@ -3510,20 +3919,46 @@ def main() -> int:
         expected_members = expected_wheel_members(
             PROJECT, source_package, source_external
         )
-        for wheel in (direct_one["wheel"], direct_two["wheel"], rebuilt["wheel"]):
-            wheel_archive_audit(wheel, expected_members)
-            record_audit(wheel)
+        wheel_artifacts = {
+            "direct wheel 1": direct_one["wheel"],
+            "direct wheel 2": direct_two["wheel"],
+            "sdist-derived wheel": rebuilt["wheel"],
+        }
+        for label, wheel in wheel_artifacts.items():
+            register_production_audit(
+                "wheel",
+                label,
+                "container",
+                lambda wheel=wheel: wheel_container_audit(wheel),
+            )
+            register_production_audit(
+                "wheel",
+                label,
+                "archive",
+                lambda wheel=wheel: wheel_archive_audit(wheel, expected_members),
+            )
+            register_production_audit(
+                "wheel",
+                label,
+                "record",
+                lambda wheel=wheel: record_audit(wheel),
+            )
         record_self_row_empty_control(
             direct_one["wheel"],
             expected_members,
             temporary / "record-self-row-control",
         )
-        wheels = {
-            "direct wheel 1": direct_one["wheel"],
-            "direct wheel 2": direct_two["wheel"],
-            "sdist-derived wheel": rebuilt["wheel"],
-        }
+        wheels = wheel_artifacts
         manifest_digest = resource_audit(PROJECT, source_root, wheels)
+        for label, wheel in wheels.items():
+            register_production_audit(
+                "wheel",
+                label,
+                "resource",
+                lambda wheel=wheel: wheel_resource_audit(
+                    wheel, source_package, source_external, source_resources
+                ),
+            )
         wheel_member_closure_negative_controls(
             direct_one["wheel"],
             expected_members,
@@ -3583,6 +4018,24 @@ def main() -> int:
         if not all(checks.values()):
             fail(f"reproducibility failure: {checks!r}")
         assert_sdist_audit_wiring()
+        run_property_mutation_registry(
+            {
+                "direct sdist 1": direct_one["sdist"],
+                "direct sdist 2": direct_two["sdist"],
+            },
+            wheels,
+            expected_members,
+            source_package,
+            source_external,
+            source_resources,
+            temporary / "property-mutation-registry",
+        )
+        assert_property_registry_coverage(
+            {
+                "sdist": ("direct sdist 1", "direct sdist 2"),
+                "wheel": tuple(wheels),
+            }
+        )
         print(f"SOURCE_DATE_EPOCH={SOURCE_DATE_EPOCH}")
         for label, artifact in (
             ("direct-sdist", direct_one["sdist"]),

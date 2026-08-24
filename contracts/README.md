@@ -106,6 +106,14 @@ renderer may prove that every ledger requirement names present fixture IDs; it
 cannot generate or weaken the ledger. Large boundary records remain in source
 and sdist and are never packaged in a wheel.
 
+R14 adds a separate append-only property/mutation registry in
+`tests/check_reproducible_build.py`. Each row names the artifact family,
+property, exact mutation, and expected refusal. The gate executes every row
+against every direct sdist and direct/sdist-derived wheel, records the
+production audit call for that artifact, and refuses if a registered call or
+mutation is absent. Its literal registry digest is
+`c47eb3e99c31d206a6c5a5312c7471cace5b55ec057ba683fee4cc8c6ec52194`.
+
 ## Reproducible U1 build toolchain
 
 The component version `kilix-content 0.4.0` is independent of the Plebian OS
@@ -128,12 +136,20 @@ never from the candidate worktree:
 
 ```sh
 candidate_commit="$(git rev-parse HEAD)"
-review_export="$(mktemp -d /tmp/kilix-content-u1-r7-review.XXXXXX)"
+review_export="$(mktemp -d /var/tmp/kilix-content-u1-r14-review.XXXXXX)"
 git archive "$candidate_commit" | tar -x -C "$review_export"
 cd "$review_export"
-/usr/local/bin/uv run --python 3.12.8 --locked --offline --all-groups \
+TMPDIR=/var/tmp/kilix-content-u1-r14-tmp \
+  /usr/local/bin/uv run --python 3.12.8 --locked --offline --all-groups \
   python tests/check_reproducible_build.py
 ```
+
+The default invocation is the documented R14 fast mode: the production
+property/mutation registry and all archive/resource controls run once. The
+full historical child-gate regressions remain available, without weakening
+them, with `--r14-slow-regressions`; `--r13-skip-regressions` remains an
+explicit diagnostic skip only. Slow children inherit the frozen environment,
+including `TMPDIR`.
 
 `tests/check_reproducible_build.py` owns the release epoch
 `SOURCE_DATE_EPOCH=1776729600`, runs two direct source builds, extracts the
@@ -177,7 +193,6 @@ R6 adjacent-property disposition:
 | Recorded expected artifact digest | Not enforced as a pinned value; the gate compares two direct builds and the exact-sdist-derived wheel. A release evidence bundle must record the resulting hashes. |
 | ZIP archive comment and per-entry extra fields | Out of scope; not used by installation or U1 resource authority, and bounded only by reproducible direct/sdist-derived artifact identity. |
 | Sdist source-managed payload bytes | Enforced by `sdist_payload_audit`, which checks size, SHA-256 and bytes against the exact source tree for every non-generated member; causal source, test, tooling and documentation mutations refuse. |
-| Sdist backend-generated metadata payload bytes | `sdist_generated_metadata_audit` enumerates all seven generated members and compares their exact bytes and SHA-256 values across two independent direct sdists; exact closure/root/mode checks and the exact-sdist test/lint gate then revalidate the same generated-member set. These files have no source-tree payload counterpart, so this is a reproducibility bound rather than source-byte authority. |
 | Installed production-resource file and directory modes | Enforced by the shared `filesystem_resource_mapping`: regular files must be `0644` and directories `0755`; setuid, setgid, sticky, world-writable and unreadable controls refuse. |
 | Sdist compression metadata beyond member safety/closure | Out of scope; the candidate gate owns exact source membership, root identity, safe types/modes, source-managed bytes, and byte-reproducible derived wheels. |
 | Interpreter/toolchain identity | Enforced separately by `build-toolchain.json`, uv lock/export checks, and the pinned R02 build gate; this R6 audit does not alter that authority. |
@@ -187,8 +202,8 @@ R9 wheel/sdist member-rule parity:
 | Wheel member property | Sdist disposition |
 | --- | --- |
 | Complete member-set closure against a source-derived expectation | Enforced by `expected_sdist_members`, including the normalized project root, exactly one top-directory record, every source-managed file, and every canonical parent directory. |
-| Archive container integrity | Enforced by the independent `sdist_container_audit`: it verifies gzip CRC32/ISIZE, rejects gzip trailing bytes, requires block alignment and an end-of-archive marker, and rejects bytes after that marker. `tarfile` supplies none of these guarantees under the gate's read pattern. |
-| Archive member enumeration agreement | Enforced by `assert_sdist_enumerator_agreement`, which runs 21 times over 17 archive paths including both shipped sdists. Its deliberate `getmembers()` call is only a negative control; the bounded `read_sdist_members` reader uses physical header sizes and is independently reached by the production call-site wiring guard. |
+| Archive container integrity | Enforced independently for both families: `sdist_container_audit` verifies gzip CRC32/ISIZE, bounded expansion, rejects gzip trailing bytes, requires block alignment and an end-of-archive marker, and rejects bytes after that marker; `wheel_container_audit` rejects bytes after the ZIP end record before `zipfile` parses members. |
+| Archive member enumeration agreement | Enforced by `assert_sdist_enumerator_agreement`; its deliberate `getmembers()` call is only a negative control, while the bounded `read_sdist_members` reader uses physical header sizes. The append-only property/mutation registry records the corresponding sdist and wheel property, mutation, expected refusal, and per-artifact execution. |
 | Compression method and per-entry DOS timestamp | Not semantically audited; tar/gzip has different container and member metadata, and the family is bounded by whole-artifact reproducibility. |
 | Safe member names | Enforced by the same `safe_member_name` grammar for every sdist member. |
 | Normalized-duplicate rejection | Enforced by the normalized sdist-name set before closure comparison. |
