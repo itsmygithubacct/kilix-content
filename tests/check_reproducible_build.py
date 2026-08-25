@@ -1918,7 +1918,7 @@ def installed_wheel_audit(
     manifest_expected: dict[str, tuple[str, bytes]],
 ) -> None:
     destination = temporary / "installed-wheel"
-    destination.mkdir()
+    destination.mkdir(parents=True, exist_ok=True)
     python, environment = bootstrap_environment(
         PROJECT,
         destination,
@@ -1950,7 +1950,7 @@ def installed_wheel_audit(
     finally:
         os.umask(previous_umask)
     external = temporary / "external-cwd"
-    external.mkdir()
+    external.mkdir(parents=True, exist_ok=True)
     probe = r"""
 import hashlib, importlib.resources as resources, json, pathlib, sys, sysconfig
 from kilix_content import U1ContractError, packaged_release_capability, validate_u1_bytes, verify_packaged_u1_manifest
