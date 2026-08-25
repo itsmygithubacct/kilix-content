@@ -198,6 +198,8 @@ _PROPERTY_MUTATION_EXECUTIONS: set[tuple[str, str]] = set()
 _PRODUCTION_AUDIT_CALLS: set[tuple[str, str, str]] = set()
 _PRODUCTION_ARTIFACTS: dict[str, tuple[str, ...]] = {}
 _SDIST_WIRING_ASSERTED = False
+_WHEEL_MEMBER_CLOSURE: set[tuple[str, str]] = set()
+_WHEEL_CLOSURE_ASSERTED = False
 
 
 def property_mutation_registry_bytes() -> bytes:
@@ -242,6 +244,8 @@ def assert_property_registry_coverage(
     validate_property_mutation_registry()
     if not _SDIST_WIRING_ASSERTED:
         fail("production sdist audit wiring assertion was not executed")
+    if not _WHEEL_CLOSURE_ASSERTED:
+        fail("production wheel member-set closure assertion was not executed")
     for family, labels in artifact_inventory.items():
         for label in labels:
             for row in PROPERTY_MUTATION_REGISTRY:
@@ -295,6 +299,17 @@ def assert_sdist_audit_wiring() -> None:
             f"{sorted(missing)!r}"
         )
     _SDIST_WIRING_ASSERTED = True
+
+
+def assert_wheel_member_closure(wheel_artifacts: dict[str, Path]) -> None:
+    global _WHEEL_CLOSURE_ASSERTED
+    for label, wheel in wheel_artifacts.items():
+        if (str(wheel.resolve()), digest(wheel)) not in _WHEEL_MEMBER_CLOSURE:
+            fail(
+                "production wheel member-set closure was not performed: "
+                f"label={label}"
+            )
+    _WHEEL_CLOSURE_ASSERTED = True
 
 
 def run(
@@ -1334,6 +1349,7 @@ def wheel_archive_audit(
             classify_wheel_member(archive, info, check_permissions=False)
         if expected_members is not None:
             compare_member_sets("wheel", set(names), expected_members)
+            _WHEEL_MEMBER_CLOSURE.add((str(wheel.resolve()), digest(wheel)))
         for info in infos:
             classify_wheel_member(archive, info)
         forbidden = (
@@ -4084,6 +4100,7 @@ def main() -> int:
         if not all(checks.values()):
             fail(f"reproducibility failure: {checks!r}")
         assert_sdist_audit_wiring()
+        assert_wheel_member_closure(wheels)
         run_property_mutation_registry(
             {
                 "direct sdist 1": direct_one["sdist"],
