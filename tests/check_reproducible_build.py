@@ -3927,7 +3927,7 @@ def run_property_mutation_registry(
             )
             action = partial(wheel_module_source_audit, mutated, PROJECT)
         elif identifier == "wheel.installed.manifest":
-            mutated = case / "mutated.whl"
+            mutated = case / archive.name
             manifest_member = f"kilix_content/contracts/{U1_MANIFEST}"
             with zipfile.ZipFile(archive) as source_zip:
                 original = source_zip.read(manifest_member)
