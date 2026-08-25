@@ -113,6 +113,7 @@ _REQUIRED_SDIST_AUDIT_CALLS = frozenset(
         "direct-payload",
     }
 )
+FROZEN_REQUIRED_SDIST_AUDIT_CALL_COUNT = 9
 
 # R14-0: this is the hand-authored acceptance registry.  A row is an
 # observable property, one concrete mutation of that property, and the
@@ -240,9 +241,11 @@ FROZEN_REQUIRED_ROW_IDS = frozenset(
 )
 FROZEN_MINIMUM_ROW_COUNT = 12
 _PROPERTY_MUTATION_EXECUTIONS: set[tuple[str, str]] = set()
+_PROPERTY_MUTATION_UNIQUE_EFFECTS: set[tuple[str, str]] = set()
 _AUDIT_EFFECTS: set[tuple[str, str, str, str]] = set()
 _PRODUCTION_AUDIT_KINDS: set[tuple[str, str]] = set()
 _COMPLETE_GATE_REGRESSIONS_OBSERVED: set[str] = set()
+_RECORD_SELF_ROW_CONTROL_OBSERVED: set[str] = set()
 _REQUIRED_COMPLETE_GATE_REGRESSIONS = frozenset(
     {"r12-reader-reversion", "r13-callsite-wiring"}
 )
@@ -358,6 +361,8 @@ def assert_property_registry_coverage(
         fail("production sdist audit wiring assertion was not executed")
     if not _WHEEL_CLOSURE_ASSERTED:
         fail("production wheel member-set closure assertion was not executed")
+    if not _RECORD_SELF_ROW_CONTROL_OBSERVED:
+        fail("record self-row empty parity control was not observed")
     for family, labelled in artifact_inventory.items():
         for label, artifact in labelled.items():
             identity = (family, str(artifact.resolve()), digest(artifact))
@@ -405,11 +410,23 @@ def run_sdist_audit(label: str, action: Callable[[], None]) -> None:
 
 def assert_sdist_audit_wiring() -> None:
     global _SDIST_WIRING_ASSERTED
+    if len(_REQUIRED_SDIST_AUDIT_CALLS) < FROZEN_REQUIRED_SDIST_AUDIT_CALL_COUNT:
+        fail(
+            "required sdist audit call set shrank below its frozen count: "
+            f"{len(_REQUIRED_SDIST_AUDIT_CALLS)} < "
+            f"{FROZEN_REQUIRED_SDIST_AUDIT_CALL_COUNT}"
+        )
     missing = _REQUIRED_SDIST_AUDIT_CALLS - _SDIST_AUDIT_CALLS
     if missing:
         fail(
             "required sdist audit call sites were not reached: "
             f"{sorted(missing)!r}"
+        )
+    extra = _SDIST_AUDIT_CALLS - _REQUIRED_SDIST_AUDIT_CALLS
+    if extra:
+        fail(
+            "unregistered sdist audit call sites were reached: "
+            f"{sorted(extra)!r}"
         )
     _SDIST_WIRING_ASSERTED = True
 
@@ -1556,6 +1573,7 @@ def record_self_row_empty_control(
         lambda: record_audit(mutated),
         "wheel RECORD self-row is not empty",
     )
+    _RECORD_SELF_ROW_CONTROL_OBSERVED.add("record-self-row")
     print("wheel RECORD self-row empty parity control: PASS")
 
 
@@ -3968,6 +3986,7 @@ def run_property_mutation_registry(
             row["expected_refusal"],
         )
         _PROPERTY_MUTATION_EXECUTIONS.add((identifier, label))
+        _PROPERTY_MUTATION_UNIQUE_EFFECTS.add((identifier, digest(archive)))
 
     for label, archive in sdist_artifacts.items():
         for row in PROPERTY_MUTATION_REGISTRY:
@@ -3979,8 +3998,9 @@ def run_property_mutation_registry(
                 run_one(row, label, archive)
     print(
         "append-only property/mutation registry: PASS "
-        f"rows={len(PROPERTY_MUTATION_REGISTRY)} executions="
-        f"{len(_PROPERTY_MUTATION_EXECUTIONS)}"
+        f"rows={len(PROPERTY_MUTATION_REGISTRY)} "
+        f"executions={len(_PROPERTY_MUTATION_EXECUTIONS)} "
+        f"unique-artifact-executions={len(_PROPERTY_MUTATION_UNIQUE_EFFECTS)}"
     )
 
 
