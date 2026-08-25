@@ -184,8 +184,16 @@ PROPERTY_MUTATION_REGISTRY: tuple[dict[str, str], ...] = (
         "mutation": "change one package production resource byte",
         "expected_refusal": "package production resource digest mismatch",
     },
+    {
+        "id": "wheel.module.source-byte",
+        "artifact_family": "wheel",
+        "audit_kind": "module",
+        "property": "source module byte equality",
+        "mutation": "replace one importable module byte",
+        "expected_refusal": "wheel module differs from source",
+    },
 )
-FROZEN_PROPERTY_MUTATION_REGISTRY_SHA256 = "c47eb3e99c31d206a6c5a5312c7471cace5b55ec057ba683fee4cc8c6ec52194"
+FROZEN_PROPERTY_MUTATION_REGISTRY_SHA256 = "ee66f5c8cfb3971b19df85814fa1dbc9dd1d428fc9008f5781113fc38129462c"
 _PROPERTY_MUTATION_EXECUTIONS: set[tuple[str, str]] = set()
 _PRODUCTION_AUDIT_CALLS: set[tuple[str, str, str]] = set()
 _PRODUCTION_ARTIFACTS: dict[str, tuple[str, ...]] = {}
@@ -1715,6 +1723,39 @@ def wheel_resource_audit(
         )
 
 
+def wheel_module_source_audit(wheel: Path, source_root: Path) -> None:
+    """Byte-compare every importable module in the wheel to its source.
+
+    wheel_resource_audit freezes declared resources and coresident files and
+    record_audit proves RECORD is internally consistent, but no wheel audit
+    binds the shipped importable ``.py`` module bytes to their source. A wheel
+    whose ``install.py`` carries a backdoor with exports preserved and RECORD
+    repaired therefore clears the whole gate and is imported and executed by
+    installed_wheel_audit. This is the wheel sibling of sdist_payload_audit.
+    """
+    package_prefix = "kilix_content/"
+    source_package = source_root / "src" / "kilix_content"
+    with zipfile.ZipFile(wheel) as archive:
+        for name in archive.namelist():
+            if name.endswith("/") or not name.startswith(package_prefix):
+                continue
+            if not name.endswith(".py"):
+                continue
+            relative = name[len(package_prefix):]
+            source = source_package / relative
+            if source.is_symlink() or not source.is_file():
+                fail(f"wheel module source is absent: {relative}")
+            payload = archive.read(name)
+            expected = source.read_bytes()
+            if (
+                len(payload) != len(expected)
+                or hashlib.sha256(payload).hexdigest()
+                != hashlib.sha256(expected).hexdigest()
+                or payload != expected
+            ):
+                fail(f"wheel module differs from source: {relative}")
+
+
 def resource_audit(
     source_root: Path,
     sdist_root: Path,
@@ -2925,6 +2966,14 @@ def r13_callsite_wiring_regression(
             '                lambda wheel=wheel: record_audit(wheel),\n'
             '            )'
         ),
+        "wheel-module-audit": (
+            '            register_production_audit(\n'
+            '                "wheel",\n'
+            '                label,\n'
+            '                "module",\n'
+            '                lambda wheel=wheel: wheel_module_source_audit(wheel, PROJECT),\n'
+            '            )'
+        ),
     }
     for label, block in callsite_blocks.items():
         if source.count(block) != 1:
@@ -3715,6 +3764,17 @@ def run_property_mutation_registry(
                 external_expected,
                 manifest_expected,
             )
+        elif identifier == "wheel.module.source-byte":
+            mutated = case / "mutated.whl"
+            path = "kilix_content/install.py"
+            original = (PROJECT / "src" / "kilix_content" / "install.py").read_bytes()
+            rewrite_wheel(
+                archive,
+                mutated,
+                replace={path: bytes([original[0] ^ 1]) + original[1:]},
+                rebuild_record=True,
+            )
+            action = partial(wheel_module_source_audit, mutated, PROJECT)
         else:
             fail(f"property/mutation registry has no executor: {identifier}")
         expect_audit_failure(
@@ -3942,6 +4002,12 @@ def main() -> int:
                 label,
                 "record",
                 lambda wheel=wheel: record_audit(wheel),
+            )
+            register_production_audit(
+                "wheel",
+                label,
+                "module",
+                lambda wheel=wheel: wheel_module_source_audit(wheel, PROJECT),
             )
         record_self_row_empty_control(
             direct_one["wheel"],
