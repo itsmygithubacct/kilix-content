@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import csv
+import functools
 import gzip
 import io
 import hashlib
@@ -195,8 +196,7 @@ PROPERTY_MUTATION_REGISTRY: tuple[dict[str, str], ...] = (
 )
 FROZEN_PROPERTY_MUTATION_REGISTRY_SHA256 = "ee66f5c8cfb3971b19df85814fa1dbc9dd1d428fc9008f5781113fc38129462c"
 _PROPERTY_MUTATION_EXECUTIONS: set[tuple[str, str]] = set()
-_PRODUCTION_AUDIT_CALLS: set[tuple[str, str, str]] = set()
-_PRODUCTION_ARTIFACTS: dict[str, tuple[str, ...]] = {}
+_AUDIT_EFFECTS: set[tuple[str, str, str, str]] = set()
 _SDIST_WIRING_ASSERTED = False
 _WHEEL_MEMBER_CLOSURE: set[tuple[str, str]] = set()
 _WHEEL_CLOSURE_ASSERTED = False
@@ -235,25 +235,48 @@ def register_production_audit(
     action: Callable[[], None],
 ) -> None:
     action()
-    _PRODUCTION_AUDIT_CALLS.add((family, artifact_label, audit_kind))
+
+
+def records_audit_effect(family: str, kind: str) -> Callable[[Callable], Callable]:
+    """Record, from inside the audit, that it ran to completion on an artifact.
+
+    The effect is keyed on (family, resolved path, content digest, kind): the
+    path keeps identical-digest reproducible artifacts independent, and the
+    digest ties the record to the exact bytes audited. An audit whose call is
+    deleted or whose action is hollowed never reaches this wrapper, so its
+    effect is absent and coverage refuses by name.
+    """
+    def decorate(function: Callable) -> Callable:
+        @functools.wraps(function)
+        def wrapper(artifact: Path, *args: Any, **kwargs: Any) -> Any:
+            result = function(artifact, *args, **kwargs)
+            _AUDIT_EFFECTS.add(
+                (family, str(artifact.resolve()), digest(artifact), kind)
+            )
+            return result
+
+        return wrapper
+
+    return decorate
 
 
 def assert_property_registry_coverage(
-    artifact_inventory: dict[str, tuple[str, ...]],
+    artifact_inventory: dict[str, dict[str, Path]],
 ) -> None:
     validate_property_mutation_registry()
     if not _SDIST_WIRING_ASSERTED:
         fail("production sdist audit wiring assertion was not executed")
     if not _WHEEL_CLOSURE_ASSERTED:
         fail("production wheel member-set closure assertion was not executed")
-    for family, labels in artifact_inventory.items():
-        for label in labels:
+    for family, labelled in artifact_inventory.items():
+        for label, artifact in labelled.items():
+            identity = (family, str(artifact.resolve()), digest(artifact))
             for row in PROPERTY_MUTATION_REGISTRY:
                 if row["artifact_family"] != family:
                     continue
-                if (family, label, row["audit_kind"]) not in _PRODUCTION_AUDIT_CALLS:
+                if (*identity, row["audit_kind"]) not in _AUDIT_EFFECTS:
                     fail(
-                        "property/mutation registry lacks production audit coverage: "
+                        "production audit did not run on the shipped artifact: "
                         f"family={family} label={label} kind={row['audit_kind']}"
                     )
                 if (row["id"], label) not in _PROPERTY_MUTATION_EXECUTIONS:
@@ -806,6 +829,7 @@ def compare_member_sets(
     )
 
 
+@records_audit_effect("sdist", "payload")
 def sdist_payload_audit(
     archive: Path,
     source_root: Path,
@@ -833,6 +857,7 @@ def sdist_payload_audit(
                 fail(f"sdist payload differs from source: {relative}")
 
 
+@records_audit_effect("sdist", "closure")
 def sdist_member_closure_audit(archive: Path) -> None:
     with tarfile.open(archive, "r:gz") as handle:
         members = read_sdist_members(handle)
@@ -1016,6 +1041,7 @@ def sdist_member_payload(handle: tarfile.TarFile, member: tarfile.TarInfo) -> by
     return payload
 
 
+@records_audit_effect("sdist", "enumerator")
 def assert_sdist_enumerator_agreement(
     archive: Path, *, check_container: bool = True
 ) -> None:
@@ -1041,6 +1067,7 @@ def assert_sdist_enumerator_agreement(
         )
 
 
+@records_audit_effect("sdist", "container")
 def sdist_container_audit(archive: Path) -> None:
     """Verify gzip framing and that tar has no bytes after its end marker."""
     try:
@@ -1318,6 +1345,7 @@ def classify_wheel_member(
     return kind
 
 
+@records_audit_effect("wheel", "container")
 def wheel_container_audit(wheel: Path) -> None:
     """Reject bytes outside the final ZIP end record before zipfile parsing."""
     raw = wheel.read_bytes()
@@ -1332,6 +1360,7 @@ def wheel_container_audit(wheel: Path) -> None:
         fail("wheel container has trailing bytes")
 
 
+@records_audit_effect("wheel", "archive")
 def wheel_archive_audit(
     wheel: Path,
     expected_members: set[str] | None = None,
@@ -1365,6 +1394,7 @@ def wheel_archive_audit(
     return set(names)
 
 
+@records_audit_effect("wheel", "record")
 def record_audit(wheel: Path) -> None:
     with zipfile.ZipFile(wheel) as archive:
         if archive.testzip() is not None:
@@ -1711,6 +1741,7 @@ def compare_cross_presentation_bytes(
             fail(f"package/external production resource byte mismatch: {path}")
 
 
+@records_audit_effect("wheel", "resource")
 def wheel_resource_audit(
     wheel: Path,
     package_expected: dict[str, tuple[str, bytes]],
@@ -1739,6 +1770,7 @@ def wheel_resource_audit(
         )
 
 
+@records_audit_effect("wheel", "module")
 def wheel_module_source_audit(wheel: Path, source_root: Path) -> None:
     """Byte-compare every importable module in the wheel to its source.
 
@@ -4115,8 +4147,11 @@ def main() -> int:
         )
         assert_property_registry_coverage(
             {
-                "sdist": ("direct sdist 1", "direct sdist 2"),
-                "wheel": tuple(wheels),
+                "sdist": {
+                    "direct sdist 1": direct_one["sdist"],
+                    "direct sdist 2": direct_two["sdist"],
+                },
+                "wheel": wheels,
             }
         )
         print(f"SOURCE_DATE_EPOCH={SOURCE_DATE_EPOCH}")
