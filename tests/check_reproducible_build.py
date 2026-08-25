@@ -201,8 +201,24 @@ PROPERTY_MUTATION_REGISTRY: tuple[dict[str, str], ...] = (
         "mutation": "tamper the installed package manifest byte",
         "expected_refusal": "external installed-wheel corpus probe failed",
     },
+    {
+        "id": "wheel.container.prepend",
+        "artifact_family": "wheel",
+        "audit_kind": "container",
+        "property": "no bytes before the ZIP container",
+        "mutation": "prepend bytes before the wheel ZIP",
+        "expected_refusal": "wheel container has bytes outside the central directory record",
+    },
+    {
+        "id": "wheel.container.appended-zip",
+        "artifact_family": "wheel",
+        "audit_kind": "container",
+        "property": "no second ZIP appended after the container",
+        "mutation": "append a complete second ZIP after the wheel",
+        "expected_refusal": "wheel container has bytes outside the central directory record",
+    },
 )
-FROZEN_PROPERTY_MUTATION_REGISTRY_SHA256 = "e0f3cb5e5a9b18f42e734a3d319dc4127b3bd6354defb45d2bd17082f3936aef"
+FROZEN_PROPERTY_MUTATION_REGISTRY_SHA256 = "d0c05c659548a256072a4cc7cee8794555cccce03a9c3fc56c8b05bb454a019d"
 # Existence seal, distinct from the content digest above: a weakening round
 # that removes a row and recomputes the digest does not restate this literal
 # list, so the superset check below still refuses. Append-only: only add ids.
@@ -218,9 +234,11 @@ FROZEN_REQUIRED_ROW_IDS = frozenset(
         "wheel.resource.byte",
         "wheel.module.source-byte",
         "wheel.installed.manifest",
+        "wheel.container.prepend",
+        "wheel.container.appended-zip",
     }
 )
-FROZEN_MINIMUM_ROW_COUNT = 10
+FROZEN_MINIMUM_ROW_COUNT = 12
 _PROPERTY_MUTATION_EXECUTIONS: set[tuple[str, str]] = set()
 _AUDIT_EFFECTS: set[tuple[str, str, str, str]] = set()
 _PRODUCTION_AUDIT_KINDS: set[tuple[str, str]] = set()
@@ -1430,6 +1448,12 @@ def wheel_container_audit(wheel: Path) -> None:
     end = eocd + 22 + comment_length
     if end != len(raw):
         fail("wheel container has trailing bytes")
+    cd_size = int.from_bytes(raw[eocd + 12 : eocd + 16], "little")
+    cd_offset = int.from_bytes(raw[eocd + 16 : eocd + 20], "little")
+    if cd_offset + cd_size != eocd:
+        fail("wheel container has bytes outside the central directory record")
+    if raw[cd_offset : cd_offset + 4] != b"PK\x01\x02":
+        fail("wheel container central directory offset is displaced")
 
 
 @records_audit_effect("wheel", "archive")
@@ -3925,6 +3949,17 @@ def run_property_mutation_registry(
                 external_expected,
                 manifest_expected,
             )
+        elif identifier == "wheel.container.prepend":
+            mutated = case / "mutated.whl"
+            mutated.write_bytes(b"R15-container-prepend" + archive.read_bytes())
+            action = partial(wheel_container_audit, mutated)
+        elif identifier == "wheel.container.appended-zip":
+            mutated = case / "mutated.whl"
+            appended = io.BytesIO()
+            with zipfile.ZipFile(appended, "w") as appended_zip:
+                appended_zip.writestr("r15-appended.txt", b"appended complete zip")
+            mutated.write_bytes(archive.read_bytes() + appended.getvalue())
+            action = partial(wheel_container_audit, mutated)
         else:
             fail(f"property/mutation registry has no executor: {identifier}")
         expect_audit_failure(
