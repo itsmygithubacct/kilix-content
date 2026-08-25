@@ -109,10 +109,14 @@ and sdist and are never packaged in a wheel.
 R14 adds a separate append-only property/mutation registry in
 `tests/check_reproducible_build.py`. Each row names the artifact family,
 property, exact mutation, and expected refusal. The gate executes every row
-against every direct sdist and direct/sdist-derived wheel, records the
-production audit call for that artifact, and refuses if a registered call or
-mutation is absent. Its literal registry digest is
-`c47eb3e99c31d206a6c5a5312c7471cace5b55ec057ba683fee4cc8c6ec52194`.
+against every direct sdist and direct/sdist-derived wheel. Each production
+audit records, on completion, that it was reached on that artifact (keyed on the
+artifact's content digest, not on a wrapper label); `assert_property_registry_coverage`
+refuses if that reachability record is absent, if an enumerated production audit
+lacks a registered mutation, or if a mutation was not executed. The body-level
+property of each audit is exercised by its registered mutation. Its literal
+registry digest is
+`d0c05c659548a256072a4cc7cee8794555cccce03a9c3fc56c8b05bb454a019d`.
 
 ## Reproducible U1 build toolchain
 
@@ -224,6 +228,17 @@ R9 wheel/sdist member-rule parity:
 | Package/external resource projections and semantic directories | Enforced after extraction by the shared production-resource audit and source/sdist equality checks; the sdist itself carries the complete source authority rather than two wheel presentations. |
 | ZIP comments and per-entry metadata | Literal ZIP comments and extra fields do not transfer; tar has per-member metadata equivalents such as uid/gid/uname/gname/mtime and PAX headers. PAX logical size is cross-checked against the physical member header; other metadata remains bounded by whole-artifact reproducibility. |
 
+R14/R15 registry-mechanism disposition:
+
+| Property | Disposition and bounded authority |
+| --- | --- |
+| Which registry covers which family | The property/mutation registry (`PROPERTY_MUTATION_REGISTRY`, sealed by a content digest, the literal `FROZEN_REQUIRED_ROW_IDS` existence set, and the `FROZEN_MINIMUM_ROW_COUNT` floor) covers both sdist and wheel families by `(family, audit_kind)` row. The call-site wiring registry (`_REQUIRED_SDIST_AUDIT_CALLS`, sealed by `FROZEN_REQUIRED_SDIST_AUDIT_CALL_COUNT` and bidirectional membership) covers only the sdist enumeration/payload/extraction/generated-metadata call sites. `assert_production_audit_completeness` requires the enumerated production audits and the registry rows to be a bijection on `(family, kind)`, so a production audit with no registered mutation, or a mutation with no production audit, is a named gate failure. |
+| What the coverage assertion binds | Coverage binds each production audit's reachability, recorded from inside the audit on completion and keyed on the artifact's path and content digest, not on a wrapper label. The audit's body-level property is bound by its registered mutation; `assert_production_audit_completeness` reconciles the two so no reached audit body is left unexercised. |
+| Production audits and their registration | Every production audit is enumerated by its `records_audit_effect` decorator and carries a registry mutation: sdist container/enumerator/payload/closure and wheel container/archive/record/resource/module/installed. `installed_wheel_audit` and the `resource_audit`-driven `wheel_resource_audit` run on all three shipped wheels and are registered; none audits a shipped artifact outside the registry. |
+| Wheel decompression bound | Not separately enforced, recorded as a limitation. `MAX_SDIST_TAR_PAYLOAD_BYTES`/`MAX_SDIST_EXPANSION_RATIO` bound the sdist reader; the wheel reader (`archive.testzip()` and the `archive.read(...)` sites) has no equivalent decompression cap. The shipped wheel is bounded by reproducible direct/sdist-derived byte identity (`52d55153...`), the source-derived member closure, and the pinned clean build from pinned source rather than attacker-supplied bytes; a wheel decompression cap is a residual, not an enforced property. |
+| Complete-gate regressions on the release path | Enforced: the default no-flag invocation runs both nested complete-gate regressions and `assert_complete_gate_regressions` refuses if either is not observed. `--r13-skip-regressions` is the nested-gate recursion guard and a diagnostic skip, and the terminal line states its regression mode positively rather than by the absence of PASS lines. |
+| Append-only enforcement | Enforced by the declared existence set (`FROZEN_REQUIRED_ROW_IDS`) and count floor (`FROZEN_MINIMUM_ROW_COUNT`) alongside the content digest, so a row removal that recomputes the digest is refused by name; a same-commit edit of the declared anchors is a visible weakening, not a silent one. |
+
 The reproducible-build gate requires an execution `TMPDIR` outside `/tmp`,
 prints `/tmp` free space at startup, and injects that same directory into the
 environment passed to every uv, build, test, lint, and nested regression
@@ -235,8 +250,12 @@ must retain the printed `/tmp` baseline free-space value and the exact TMPDIR.
 The `check_container=False` argument is a test-only differential seam. It is
 used solely to isolate the stock-versus-bounded enumeration control after the
 independent container audit has already been exercised; no production archive
-path invokes the bypass, and the call-site wiring registry requires all
-production container, enumeration, payload, extraction, and metadata audits.
+path invokes the bypass. The call-site wiring registry (`_REQUIRED_SDIST_AUDIT_CALLS`)
+requires the production enumeration, payload, extraction, and generated-metadata
+audits; the container and member-closure audits are not members of it - they are
+covered by their `container` and `closure` property/mutation registry rows. The
+`relative-enumerator` label is a member of the call-site registry but is reached
+through a negative control, not a production path.
 
 Frozen schema SHA-256 values:
 
