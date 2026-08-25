@@ -193,10 +193,19 @@ PROPERTY_MUTATION_REGISTRY: tuple[dict[str, str], ...] = (
         "mutation": "replace one importable module byte",
         "expected_refusal": "wheel module differs from source",
     },
+    {
+        "id": "wheel.installed.manifest",
+        "artifact_family": "wheel",
+        "audit_kind": "installed",
+        "property": "installed package manifest integrity",
+        "mutation": "tamper the installed package manifest byte",
+        "expected_refusal": "external installed-wheel corpus probe failed",
+    },
 )
-FROZEN_PROPERTY_MUTATION_REGISTRY_SHA256 = "ee66f5c8cfb3971b19df85814fa1dbc9dd1d428fc9008f5781113fc38129462c"
+FROZEN_PROPERTY_MUTATION_REGISTRY_SHA256 = "e0f3cb5e5a9b18f42e734a3d319dc4127b3bd6354defb45d2bd17082f3936aef"
 _PROPERTY_MUTATION_EXECUTIONS: set[tuple[str, str]] = set()
 _AUDIT_EFFECTS: set[tuple[str, str, str, str]] = set()
+_PRODUCTION_AUDIT_KINDS: set[tuple[str, str]] = set()
 _SDIST_WIRING_ASSERTED = False
 _WHEEL_MEMBER_CLOSURE: set[tuple[str, str]] = set()
 _WHEEL_CLOSURE_ASSERTED = False
@@ -247,6 +256,7 @@ def records_audit_effect(family: str, kind: str) -> Callable[[Callable], Callabl
     effect is absent and coverage refuses by name.
     """
     def decorate(function: Callable) -> Callable:
+        _PRODUCTION_AUDIT_KINDS.add((family, kind))
         @functools.wraps(function)
         def wrapper(artifact: Path, *args: Any, **kwargs: Any) -> Any:
             result = function(artifact, *args, **kwargs)
@@ -260,10 +270,39 @@ def records_audit_effect(family: str, kind: str) -> Callable[[Callable], Callabl
     return decorate
 
 
+def assert_production_audit_completeness() -> None:
+    """Every enumerated production audit must have a registered mutation, and
+    every registered mutation must name a real production audit.
+
+    R14-0's third requirement: a production audit with no registered mutation
+    is a gate failure, not a silent gap. installed_wheel_audit was exactly such
+    a gap. Enumeration comes from the records_audit_effect decorators, so a new
+    production audit cannot be added without either a registry row or a named
+    failure here.
+    """
+    registered = {
+        (row["artifact_family"], row["audit_kind"])
+        for row in PROPERTY_MUTATION_REGISTRY
+    }
+    unregistered = _PRODUCTION_AUDIT_KINDS - registered
+    if unregistered:
+        fail(
+            "production audit has no registered mutation: "
+            f"{sorted(unregistered)!r}"
+        )
+    orphaned = registered - _PRODUCTION_AUDIT_KINDS
+    if orphaned:
+        fail(
+            "registered mutation has no production audit: "
+            f"{sorted(orphaned)!r}"
+        )
+
+
 def assert_property_registry_coverage(
     artifact_inventory: dict[str, dict[str, Path]],
 ) -> None:
     validate_property_mutation_registry()
+    assert_production_audit_completeness()
     if not _SDIST_WIRING_ASSERTED:
         fail("production sdist audit wiring assertion was not executed")
     if not _WHEEL_CLOSURE_ASSERTED:
@@ -1833,6 +1872,7 @@ def resource_audit(
     return manifest_digest
 
 
+@records_audit_effect("wheel", "installed")
 def installed_wheel_audit(
     wheel: Path,
     uv_path: Path,
@@ -3737,6 +3777,10 @@ def run_property_mutation_registry(
     external_expected: dict[str, tuple[str, bytes]],
     manifest_expected: dict[str, tuple[str, bytes]],
     temporary: Path,
+    uv_path: Path,
+    base_python: Path,
+    install_environment: dict[str, str],
+    manifest_digest: str,
 ) -> None:
     """Execute every hand-authored mutation against every shipped artifact."""
     validate_property_mutation_registry()
@@ -3823,6 +3867,29 @@ def run_property_mutation_registry(
                 rebuild_record=True,
             )
             action = partial(wheel_module_source_audit, mutated, PROJECT)
+        elif identifier == "wheel.installed.manifest":
+            mutated = case / "mutated.whl"
+            manifest_member = f"kilix_content/contracts/{U1_MANIFEST}"
+            with zipfile.ZipFile(archive) as source_zip:
+                original = source_zip.read(manifest_member)
+            rewrite_wheel(
+                archive,
+                mutated,
+                replace={manifest_member: bytes([original[0] ^ 1]) + original[1:]},
+                rebuild_record=True,
+            )
+            action = partial(
+                installed_wheel_audit,
+                mutated,
+                uv_path,
+                base_python,
+                install_environment,
+                case / "install",
+                manifest_digest,
+                package_expected,
+                external_expected,
+                manifest_expected,
+            )
         else:
             fail(f"property/mutation registry has no executor: {identifier}")
         expect_audit_failure(
@@ -4109,17 +4176,23 @@ def main() -> int:
         wheel_resource_audit(
             direct_one["wheel"], source_package, source_external, source_resources
         )
-        installed_wheel_audit(
-            direct_one["wheel"],
-            uv_path,
-            base_python,
-            environment,
-            temporary,
-            manifest_digest,
-            source_package,
-            source_external,
-            source_resources,
-        )
+        for label, wheel in wheels.items():
+            register_production_audit(
+                "wheel",
+                label,
+                "installed",
+                lambda wheel=wheel, label=label: installed_wheel_audit(
+                    wheel,
+                    uv_path,
+                    base_python,
+                    environment,
+                    temporary / f"installed-{label.replace(' ', '-')}",
+                    manifest_digest,
+                    source_package,
+                    source_external,
+                    source_resources,
+                ),
+            )
 
         checks = {
             "direct sdist 1 == direct sdist 2": digest(direct_one["sdist"])
@@ -4144,6 +4217,10 @@ def main() -> int:
             source_external,
             source_resources,
             temporary / "property-mutation-registry",
+            uv_path,
+            base_python,
+            environment,
+            manifest_digest,
         )
         assert_property_registry_coverage(
             {
