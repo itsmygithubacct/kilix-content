@@ -203,6 +203,24 @@ PROPERTY_MUTATION_REGISTRY: tuple[dict[str, str], ...] = (
     },
 )
 FROZEN_PROPERTY_MUTATION_REGISTRY_SHA256 = "e0f3cb5e5a9b18f42e734a3d319dc4127b3bd6354defb45d2bd17082f3936aef"
+# Existence seal, distinct from the content digest above: a weakening round
+# that removes a row and recomputes the digest does not restate this literal
+# list, so the superset check below still refuses. Append-only: only add ids.
+FROZEN_REQUIRED_ROW_IDS = frozenset(
+    {
+        "sdist.container.gzip-trailing",
+        "sdist.enumerator.physical-directory-size",
+        "sdist.payload.source-byte",
+        "sdist.member.permission",
+        "wheel.container.trailing",
+        "wheel.archive.extra-member",
+        "wheel.record.self-row",
+        "wheel.resource.byte",
+        "wheel.module.source-byte",
+        "wheel.installed.manifest",
+    }
+)
+FROZEN_MINIMUM_ROW_COUNT = 10
 _PROPERTY_MUTATION_EXECUTIONS: set[tuple[str, str]] = set()
 _AUDIT_EFFECTS: set[tuple[str, str, str, str]] = set()
 _PRODUCTION_AUDIT_KINDS: set[tuple[str, str]] = set()
@@ -220,6 +238,17 @@ def validate_property_mutation_registry() -> None:
     ids = [row.get("id") for row in rows]
     if len(ids) != len(set(ids)) or any(not isinstance(value, str) or not value for value in ids):
         fail("property/mutation registry ids are not unique and nonempty")
+    removed = FROZEN_REQUIRED_ROW_IDS - set(ids)
+    if removed:
+        fail(
+            "append-only property/mutation registry removed a frozen row: "
+            f"{sorted(removed)!r}"
+        )
+    if len(rows) < FROZEN_MINIMUM_ROW_COUNT:
+        fail(
+            "append-only property/mutation registry shrank below the frozen "
+            f"minimum: rows={len(rows)} minimum={FROZEN_MINIMUM_ROW_COUNT}"
+        )
     required_keys = {
         "id", "artifact_family", "audit_kind", "property", "mutation", "expected_refusal"
     }
