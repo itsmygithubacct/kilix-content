@@ -224,6 +224,10 @@ FROZEN_MINIMUM_ROW_COUNT = 10
 _PROPERTY_MUTATION_EXECUTIONS: set[tuple[str, str]] = set()
 _AUDIT_EFFECTS: set[tuple[str, str, str, str]] = set()
 _PRODUCTION_AUDIT_KINDS: set[tuple[str, str]] = set()
+_COMPLETE_GATE_REGRESSIONS_OBSERVED: set[str] = set()
+_REQUIRED_COMPLETE_GATE_REGRESSIONS = frozenset(
+    {"r12-reader-reversion", "r13-callsite-wiring"}
+)
 _SDIST_WIRING_ASSERTED = False
 _WHEEL_MEMBER_CLOSURE: set[tuple[str, str]] = set()
 _WHEEL_CLOSURE_ASSERTED = False
@@ -2996,6 +3000,7 @@ def r12_reader_reversion_regression(
             + output[-8000:]
         )
     print("R12 reader-reversion complete-gate regression: FAIL-CLOSED/PASS")
+    _COMPLETE_GATE_REGRESSIONS_OBSERVED.add("r12-reader-reversion")
 
 
 def r13_callsite_wiring_regression(
@@ -3125,6 +3130,7 @@ def r13_callsite_wiring_regression(
             "R13 sdist call-site wiring complete-gate regression: "
             "FAIL-CLOSED/PASS (property registry wiring guard)"
         )
+        _COMPLETE_GATE_REGRESSIONS_OBSERVED.add("r13-callsite-wiring")
         return
     fail(
         "R13 call-site removal gate failed without the property registry wiring guard: "
@@ -3960,17 +3966,30 @@ def configure_temporary_root() -> Path:
     return root
 
 
+def assert_complete_gate_regressions() -> None:
+    """The default gate must observe every complete-gate regression run.
+
+    R14 moved these behind --r14-slow-regressions, which nothing in the tree
+    invokes, so the controls never ran on the release path. The default path
+    now runs them and this asserts they were observed; a regression whose call
+    is deleted, or that returns without launching its nested complete gate, is
+    refused by name.
+    """
+    missing = _REQUIRED_COMPLETE_GATE_REGRESSIONS - _COMPLETE_GATE_REGRESSIONS_OBSERVED
+    if missing:
+        fail(
+            "required complete-gate regression was not observed: "
+            f"{sorted(missing)!r}"
+        )
+
+
 def main() -> int:
     modes = set(sys.argv[1:])
     allowed_modes = {
         "--r13-skip-regressions",
-        "--r14-fast",
-        "--r14-slow-regressions",
     }
     if not modes <= allowed_modes:
         fail(f"unknown checker mode: {sorted(modes)!r}")
-    if {"--r14-fast", "--r14-slow-regressions"} <= modes:
-        fail("R14 fast and slow regression modes are mutually exclusive")
     environment, uv_path, base_python = checked_toolchain()
     temporary_root = configure_temporary_root()
     environment["TMPDIR"] = str(temporary_root)
@@ -3982,9 +4001,8 @@ def main() -> int:
         label="uv lock check",
     )
     skip_regressions = "--r13-skip-regressions" in modes
-    slow_regressions = "--r14-slow-regressions" in modes
-    if not skip_regressions and slow_regressions:
-        with tempfile.TemporaryDirectory(prefix="kilix-u1-r13-regressions-") as name:
+    if not skip_regressions:
+        with tempfile.TemporaryDirectory(prefix="kilix-u1-regressions-") as name:
             regression_root = Path(name)
             r12_reader_reversion_regression(
                 uv_path,
@@ -3998,8 +4016,7 @@ def main() -> int:
                 environment,
                 regression_root / "r13-wiring",
             )
-    elif not skip_regressions:
-        print("R14 fast regression mode: production registry controls are enabled")
+        assert_complete_gate_regressions()
     with tempfile.TemporaryDirectory(prefix="kilix-u1-r7-") as temporary_name:
         temporary = Path(temporary_name)
         verify_export(
@@ -4267,7 +4284,16 @@ def main() -> int:
             ("sdist-derived-wheel", rebuilt["wheel"]),
         ):
             print(f"{label}={digest(artifact)}")
-        print("reproducible offline build and package audit: PASS")
+        regression_mode = (
+            "complete-gate regressions skipped by --r13-skip-regressions"
+            if skip_regressions
+            else "complete-gate regressions observed: "
+            + ", ".join(sorted(_COMPLETE_GATE_REGRESSIONS_OBSERVED))
+        )
+        print(
+            "reproducible offline build and package audit: PASS "
+            f"({regression_mode})"
+        )
     return 0
 
 

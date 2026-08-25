@@ -144,11 +144,14 @@ TMPDIR=/var/tmp/kilix-content-u1-r14-tmp \
   python tests/check_reproducible_build.py
 ```
 
-The default invocation is the documented R14 fast mode: the production
-property/mutation registry and all archive/resource controls run once. The
-full historical child-gate regressions remain available, without weakening
-them, with `--r14-slow-regressions`; `--r13-skip-regressions` remains an
-explicit diagnostic skip only. Slow children inherit the frozen environment,
+The default invocation above passes no flags and runs the complete-gate
+regressions on the release path: the production property/mutation registry,
+all archive/resource controls, and the two nested child-gate regressions that
+prove the wiring fails closed. `assert_complete_gate_regressions` refuses if
+either regression is not observed, so the controls cannot silently stop
+running. `--r13-skip-regressions` is the recursion guard the nested child
+gates use, and an explicit diagnostic skip only; it is never part of the
+documented release command. Child gates inherit the frozen environment,
 including `TMPDIR`.
 
 `tests/check_reproducible_build.py` owns the release epoch
