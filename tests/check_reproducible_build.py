@@ -3051,7 +3051,7 @@ def r13_callsite_wiring_regression(
     base_env: dict[str, str],
     temporary: Path,
 ) -> None:
-    """Run one complete gate with every production sdist audit call removed."""
+    """Run one complete gate with its anchored sdist audit wiring removed."""
     temporary.mkdir(parents=True, exist_ok=True)
     candidate = temporary / "all-sdist-audit-calls-removed"
     shutil.copytree(
@@ -3070,7 +3070,7 @@ def r13_callsite_wiring_regression(
     )
     checker = candidate / "tests" / "check_reproducible_build.py"
     source = checker.read_text()
-    callsite_blocks = {
+    removed_callsite_blocks = {
         "generated-metadata-audit": (
             '        run_sdist_audit(\n'
             '            "generated-metadata-audit",\n'
@@ -3106,6 +3106,8 @@ def r13_callsite_wiring_regression(
             '            )'
         ),
         "sdist-wiring-assertion": "        " + "assert_sdist_audit_wiring()",
+    }
+    preserved_callsite_blocks = {
         "wheel-container-audit": (
             '            register_production_audit(\n'
             '                "wheel",\n'
@@ -3139,9 +3141,15 @@ def r13_callsite_wiring_regression(
             '            )'
         ),
     }
+    callsite_blocks = {**removed_callsite_blocks, **preserved_callsite_blocks}
     for label, block in callsite_blocks.items():
         if source.count(block) != 1:
             fail(f"R13 call-site control found {source.count(block)} {label} blocks")
+    # R14 added the wheel blocks above to this source-integrity census. Keep
+    # checking that they exist exactly once, but do not remove them in the
+    # sdist wiring child: R15's earlier wheel-closure guard would correctly
+    # refuse first and mask the sdist property-registry guard tested here.
+    for block in removed_callsite_blocks.values():
         indent = len(block) - len(block.lstrip())
         source = source.replace(block, " " * indent + "pass", 1)
     checker.write_text(source)
