@@ -1,0 +1,42 @@
+Using CPython 3.12.8
+Creating virtual environment at: .venv
+   Building kilix-content @ file:///var/tmp/kilix-u1-r16-r15-3.6QN8Da/sufficient-v2-export
+      Built kilix-content @ file:///var/tmp/kilix-u1-r16-r15-3.6QN8Da/sufficient-v2-export
+Installed 25 packages in 34ms
+/home/pleb/.local/share/uv/python/cpython-3.12.8-linux-x86_64-gnu/lib/python3.12/zipfile/__init__.py:1607: UserWarning: Duplicate name: 'kilix_content-0.4.0.data/data/share/kilix-content/licenses/MIT.txt'
+  return self._open_to_write(zinfo, force_zip64=force_zip64)
+/home/pleb/.local/share/uv/python/cpython-3.12.8-linux-x86_64-gnu/lib/python3.12/zipfile/__init__.py:1607: UserWarning: Duplicate name: 'kilix_content/catalog/plebian.json'
+  return self._open_to_write(zinfo, force_zip64=force_zip64)
+TMPDIR=/var/tmp/kilix-u1-r16-r15-3.6QN8Da/tmp-sufficient-v2 /tmp-free-bytes=8985399296
+R12 reader-reversion complete-gate regression: FAIL-CLOSED/PASS
+R13 sdist call-site wiring complete-gate regression: FAIL-CLOSED/PASS (property registry wiring guard)
+empty-cache offline source reconstruction: PASS
+locked source tests and lint: PASS
+direct sdist 1 enumeration and payload audit: PASS
+direct sdist 2 enumeration and payload audit: PASS
+generated sdist metadata reproducibility audit: PASS
+sdist root rename precondition and diagnostic control: PASS
+sdist top-directory closure controls: PASS
+sdist nonempty-directory diagnostic control: PASS
+sdist enumerator agreement control: PASS
+exact sdist member closure controls: PASS
+sdist source-payload byte controls: PASS
+sdist member mode controls: PASS
+sdist container, carrier-type, PAX-size, and empty-archive controls: PASS
+empty-cache offline exact-sdist reconstruction: PASS
+exact-sdist tests and lint: PASS
+wheel RECORD self-row empty parity control: PASS
+pre-R6 executable PATH placement control: PASS
+honest entrypoint expectation and mode-0711 installation: PASS
+source-derived module add/remove controls: PASS
+installed-tree resource mode controls: PASS
+dual-root resource negative controls: PASS
+installed-wheel external corpus and resources: PASS
+installed-wheel external corpus and resources: PASS
+installed-wheel external corpus and resources: PASS
+append-only property/mutation registry: PASS rows=12 executions=32 unique-artifact-executions=12
+SOURCE_DATE_EPOCH=1776729600
+direct-sdist=8de1d7034750987398bdc2373b2e8f539fb46bf52f36c9cc544887e02aa3c561
+direct-wheel=52d551532f280bb5eb9e3da2c47d7078c2967e521bbe882b482fd67935527810
+sdist-derived-wheel=52d551532f280bb5eb9e3da2c47d7078c2967e521bbe882b482fd67935527810
+reproducible offline build and package audit: PASS (complete-gate regressions observed: r12-reader-reversion, r13-callsite-wiring)

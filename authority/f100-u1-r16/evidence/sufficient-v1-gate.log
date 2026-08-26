@@ -1,0 +1,8 @@
+Using CPython 3.12.8
+Creating virtual environment at: .venv
+   Building kilix-content @ file:///var/tmp/kilix-u1-r16-r15-3.6QN8Da/sufficient-export
+      Built kilix-content @ file:///var/tmp/kilix-u1-r16-r15-3.6QN8Da/sufficient-export
+Installed 25 packages in 38ms
+TMPDIR=/var/tmp/kilix-u1-r16-r15-3.6QN8Da/tmp-sufficient /tmp-free-bytes=8986046464
+R12 reader-reversion complete-gate regression: FAIL-CLOSED/PASS
+R13 call-site control found 2 wheel-record-audit blocks

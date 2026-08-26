@@ -1,0 +1,24 @@
+Using CPython 3.12.8
+Creating virtual environment at: .venv
+   Building kilix-content @ file:///var/tmp/kilix-u1-r16-r15-3.6QN8Da/hollow-export
+      Built kilix-content @ file:///var/tmp/kilix-u1-r16-r15-3.6QN8Da/hollow-export
+Installed 25 packages in 27ms
+TMPDIR=/var/tmp/kilix-u1-r16-r15-3.6QN8Da/tmp-hollow /tmp-free-bytes=8986046464
+R12 reader-reversion complete-gate regression: FAIL-CLOSED/PASS
+R13 sdist call-site wiring complete-gate regression: FAIL-CLOSED/PASS (property registry wiring guard)
+empty-cache offline source reconstruction: PASS
+locked source tests and lint: PASS
+direct sdist 1 enumeration and payload audit: PASS
+direct sdist 2 enumeration and payload audit: PASS
+generated sdist metadata reproducibility audit: PASS
+sdist root rename precondition and diagnostic control: PASS
+sdist top-directory closure controls: PASS
+sdist nonempty-directory diagnostic control: PASS
+sdist enumerator agreement control: PASS
+exact sdist member closure controls: PASS
+sdist source-payload byte controls: PASS
+sdist member mode controls: PASS
+sdist container, carrier-type, PAX-size, and empty-archive controls: PASS
+empty-cache offline exact-sdist reconstruction: PASS
+exact-sdist tests and lint: PASS
+wheel RECORD self-row empty control unexpectedly passed

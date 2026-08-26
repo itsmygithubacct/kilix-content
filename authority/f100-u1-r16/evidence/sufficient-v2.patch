@@ -1,0 +1,32 @@
+--- a/tests/check_reproducible_build.py
++++ b/tests/check_reproducible_build.py
+@@ -3124,14 +3124,7 @@
+             '                lambda wheel=wheel: wheel_archive_audit(wheel, expected_members),\n'
+             '            )'
+         ),
+-        "wheel-record-audit": (
+-            '            register_production_audit(\n'
+-            '                "wheel",\n'
+-            '                label,\n'
+-            '                "record",\n'
+-            '                lambda wheel=wheel: record_audit(wheel),\n'
+-            '            )'
+-        ),
++        "wheel-record-audit": "            record_audit" + "(wheel)",
+         "wheel-module-audit": (
+             '            register_production_audit(\n'
+             '                "wheel",\n'
+@@ -4221,12 +4214,7 @@
+                 "archive",
+                 lambda wheel=wheel: wheel_archive_audit(wheel, expected_members),
+             )
+-            register_production_audit(
+-                "wheel",
+-                label,
+-                "record",
+-                lambda wheel=wheel: record_audit(wheel),
+-            )
++            record_audit(wheel)
+             register_production_audit(
+                 "wheel",
+                 label,
