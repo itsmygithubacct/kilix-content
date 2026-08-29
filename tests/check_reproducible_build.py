@@ -4663,7 +4663,13 @@ def main() -> int:
                 "wheel": wheels,
             }
         )
-        write_r16_runtime_records()
+        if skip_regressions:
+            print(
+                "R16 external runtime records: NOT_EMITTED "
+                "nested-diagnostic outputs=0/2"
+            )
+        else:
+            write_r16_runtime_records()
         print(f"SOURCE_DATE_EPOCH={SOURCE_DATE_EPOCH}")
         for label, artifact in (
             ("direct-sdist", direct_one["sdist"]),
