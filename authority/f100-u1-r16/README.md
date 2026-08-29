@@ -39,10 +39,10 @@ operator path and cannot close any row by itself.
 ### R16-6 / R16-7 — external append-only history
 
 The historical population is the ordered 14-row registry at candidate gate SHA
-`3a1e97162c01b98d8dcc490f43fd80c13dbe22c658bebc6689d7dd3394c0a71c`.
-It was enumerated from seven Git snapshots spanning R14 through the corrected
-R16 candidate: row counts 8, 9, 10, 12, 12, 14 and 14. Order is semantic. The
-external
+`a3eddb7eeaad5f0f838f40f2a20e432ef4264b31936cbedff4c87b48306dd2f0`.
+It was enumerated from eight Git snapshots spanning R14 through the corrected
+R16 candidate: row counts 8, 9, 10, 12, 12, 14, 14 and 14. Order is semantic.
+The external
 manifest freezes every field of every row, every snapshot's commit/tree/gate
 and registry digest, and five history-critical definitions, including the
 row-to-mutation executor. Removal of an old R14 row, removal of the new R15

@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, NoReturn
 
 
-EXPECTED_GATE_SHA256 = "3a1e97162c01b98d8dcc490f43fd80c13dbe22c658bebc6689d7dd3394c0a71c"
+EXPECTED_GATE_SHA256 = "a3eddb7eeaad5f0f838f40f2a20e432ef4264b31936cbedff4c87b48306dd2f0"
 SCHEMA = "kilix.content.f100-u1-r16-authority-mutation/v1"
 HISTORY_CASES = (
     "history-old-r14-row-removed",
