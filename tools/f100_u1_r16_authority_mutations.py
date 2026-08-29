@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, NoReturn
 
 
-EXPECTED_GATE_SHA256 = "b6688d289db61d2c2dabe0e0a4a6a65a6ed5cb4c8d214600ca8a984fc8d20386"
+EXPECTED_GATE_SHA256 = "a4a21e0264c67a83e906fe3a263ea088c3bc78789a57c017387f8b6b7b1a8771"
 SCHEMA = "kilix.content.f100-u1-r16-authority-mutation/v1"
 HISTORY_CASES = (
     "history-old-r14-row-removed",
@@ -27,7 +27,9 @@ P3_AUDITS = {
     "assert_sdist_enumerator_agreement": ("sdist", "enumerator"),
     "installed_wheel_audit": ("wheel", "installed"),
     "record_audit": ("wheel", "record"),
+    "resource_audit": ("wheel", "resource-authority"),
     "sdist_container_audit": ("sdist", "container"),
+    "sdist_generated_metadata_audit": ("sdist", "generated-metadata"),
     "sdist_member_closure_audit": ("sdist", "closure"),
     "sdist_payload_audit": ("sdist", "payload"),
     "wheel_archive_audit": ("wheel", "archive"),
@@ -161,26 +163,17 @@ def remove_decorator_and_hollow(tree: ast.Module, function_name: str) -> None:
     function.body = [ast.Return(ast.Constant(None))]
 
 
-class MainCallNeutralizer(ast.NodeTransformer):
-    def __init__(self, target: str):
-        self.target = target
-        self.in_main = False
-        self.replacements = 0
-
-    def visit_FunctionDef(self, node: ast.FunctionDef):  # noqa: N802 - AST API name
-        previous = self.in_main
-        if not previous:
-            self.in_main = node.name == "main"
-        self.generic_visit(node)
-        self.in_main = previous
-        return node
-
-    def visit_Call(self, node: ast.Call):  # noqa: N802 - AST API name
-        self.generic_visit(node)
-        if self.in_main and isinstance(node.func, ast.Name) and node.func.id == self.target:
-            self.replacements += 1
-            return ast.copy_location(ast.Constant(None), node)
-        return node
+def remove_production_audit_definition(tree: ast.Module, target: str) -> int:
+    """Make the named audit absent while retaining its calls and assignment."""
+    matches = [
+        node
+        for node in tree.body
+        if isinstance(node, ast.FunctionDef) and node.name == target
+    ]
+    if len(matches) != 1:
+        fail(f"{target}: definition count={len(matches)}")
+    matches[0].name = target + "_removed_by_r16_control"
+    return 1
 
 
 class ExecutorNoop(ast.NodeTransformer):
@@ -257,11 +250,7 @@ def p3_mutation(tree: ast.Module, case: str, audit: str) -> dict[str, Any]:
     family, kind = P3_AUDITS[audit]
     before = len(registry(tree))
     if case == "p3-audit-unreachable-label-retained":
-        transformer = MainCallNeutralizer(audit)
-        transformer.visit(tree)
-        if transformer.replacements < 1:
-            fail(f"{audit}: no production calls were neutralized")
-        replacements = transformer.replacements
+        replacements = remove_production_audit_definition(tree, audit)
     elif case == "p3-assignment-absent-audit-retained":
         rows = [
             row

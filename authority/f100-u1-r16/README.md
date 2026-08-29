@@ -14,11 +14,15 @@ the candidate and the authority commit into disjoint exports, obtain the exact
 execute the verifier from the authority export:
 
 ```sh
-python3 -I -B /external-authority/tools/f100_u1_r16_external_authority.py verify \
+python3.12 -I -B /external-authority/tools/f100_u1_r16_external_authority.py verify \
   --candidate-root /disposable-candidate \
   --authority-root /external-authority/authority/f100-u1-r16 \
   --authority-sha256 "$OWNER_PINNED_AUTHORITY_SHA256"
 ```
+
+The credited interpreter envelope is CPython 3.12 and 3.13. Generic
+`python3` and the project's broader Python 3.10 support range are not claims
+for this verifier.
 
 The verifier refuses a Git worktree, a candidate-local authority path, a
 non-canonical manifest, or a missing/mismatched explicit digest pin. It parses
@@ -34,10 +38,10 @@ operator path and cannot close any row by itself.
 
 ### R16-6 / R16-7 — external append-only history
 
-The historical population is the ordered 12-row registry at candidate gate SHA
-`b6688d289db61d2c2dabe0e0a4a6a65a6ed5cb4c8d214600ca8a984fc8d20386`.
-It was enumerated from five Git snapshots spanning R14 through the final R15
-candidate: row counts 8, 9, 10, 12 and 12. Order is semantic. The external
+The historical population is the ordered 14-row registry at candidate gate SHA
+`a4a21e0264c67a83e906fe3a263ea088c3bc78789a57c017387f8b6b7b1a8771`.
+It was enumerated from six Git snapshots spanning R14 through the corrected R16
+candidate: row counts 8, 9, 10, 12, 12 and 14. Order is semantic. The external
 manifest freezes every field of every row, every snapshot's commit/tree/gate
 and registry digest, and five history-critical definitions, including the
 row-to-mutation executor. Removal of an old R14 row, removal of the new R15
@@ -55,27 +59,30 @@ comparison.
 
 ### R16-9 — independently frozen P3 input
 
-The proposed P3 population has 10 audit definitions: four sdist and six wheel.
+The proposed P3 population has 12 audit definitions: five sdist and seven wheel.
 It was not derived from decorators or registry rows. Starting at `main`, the
 enumerator forms a fixed point over direct calls and module-function references
 passed through arguments/callbacks, then inventories every syntactic call in
 the reached owners, including nested functions and lambdas. That produces
-1,603 structural call sites in 94 reached owners, digest
-`00960881be2a27fe548c6eacfc50aacb3cb847846551b6e62cb0f5866e25e6eb`.
-Only after freezing that population are the 10 audit bodies classified and
-joined to the registry's 10 `(family, kind)` pairs.
+1,625 structural call sites in 94 reached owners, digest
+`4bff699fff3a85336139a598e42277c4c3e1c92d8711a897c2eee7dae3b0ad7f`.
+Only after freezing that population are the 12 audit bodies classified and
+joined to the registry's 12 `(family, kind)` pairs. The correction includes
+`sdist_generated_metadata_audit` and `resource_audit`, each with a distinct
+append-only mutation assignment.
 
-The tests exercise both required directions for all 10 entries: 10 cases with
-the production audit call hollowed while its registration/label remains, and
-10 cases with the audit retained while every assignment for its pair is
-removed. They also add one reachable, undecorated audit to prove the population
-does not depend on decorator self-declaration. These are 20 structural
+The tests exercise both required directions for all 12 entries: 12 cases with
+the production audit definition made absent while its registration/label and
+all calls remain, and 12 cases with the audit retained while every assignment
+for its pair is removed. Definition absence is causal: no nested route can
+still resolve to the named audit. They also add one reachable, undecorated
+audit to prove the population does not depend on decorator self-declaration. These are 24 structural
 preflight cases plus the added-audit case; none is represented as a completed
 full-operator run. Independent ratification of the proposed P3 classification
 is mandatory because its builder cannot grade its own census.
 
 Together with the seven history shapes, the reusable mutation generator has a
-closed 27-case preflight population. All 27 were executed against the external
+closed 31-case preflight population. All 31 were executed against the external
 verifier in disposable exports and refused by their registered history/P3 code;
 that facility-level result still awaits launcher-path execution and independent
 grading.

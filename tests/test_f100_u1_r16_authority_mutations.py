@@ -72,7 +72,7 @@ class R16AuthorityMutationTests(unittest.TestCase):
             AUTHORITY.verify(arguments)
         return raised.exception.code
 
-    def test_all_twenty_seven_preflight_cases_refuse_by_registered_code(self) -> None:
+    def test_all_thirty_one_preflight_cases_refuse_by_registered_code(self) -> None:
         history_codes = {
             "history-old-r14-row-removed": "HISTORY_REQUIRED_ROW_REMOVED",
             "history-new-r15-row-removed": "HISTORY_REQUIRED_ROW_REMOVED",
@@ -91,7 +91,7 @@ class R16AuthorityMutationTests(unittest.TestCase):
                     (
                         "p3-audit-unreachable-label-retained",
                         audit,
-                        "P3_AUDIT_CALL_SITE_DRIFT",
+                        "P3_AUDIT_FUNCTION_ABSENT",
                     ),
                     (
                         "p3-assignment-absent-audit-retained",
@@ -100,7 +100,7 @@ class R16AuthorityMutationTests(unittest.TestCase):
                     ),
                 ]
             )
-        self.assertEqual(len(cases), 27)
+        self.assertEqual(len(cases), 31)
         for case, audit, expected in cases:
             with self.subTest(case=case, audit=audit):
                 self.mutate(case, audit)
@@ -117,7 +117,7 @@ class R16AuthorityMutationTests(unittest.TestCase):
                 MUTATIONS.history_mutation(tree, case)
                 rows = MUTATIONS.registry(tree)
                 identifiers = {row["id"] for row in rows}
-                self.assertEqual(len(rows), 11)
+                self.assertEqual(len(rows), 13)
                 self.assertNotIn(removed, identifiers)
                 required = MUTATIONS.frozen_set_items(
                     MUTATIONS.assignment_value(
@@ -130,7 +130,7 @@ class R16AuthorityMutationTests(unittest.TestCase):
                         MUTATIONS.assignment(tree, "FROZEN_MINIMUM_ROW_COUNT")
                     )
                 )
-                self.assertEqual(floor, 11)
+                self.assertEqual(floor, 13)
                 observed_digest = MUTATIONS.digest(
                     MUTATIONS.canonical_json(rows, newline=False)
                 )
