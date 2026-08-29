@@ -51,6 +51,16 @@ class R16PairMutationTests(unittest.TestCase):
         self.assertIn('lambda wheel=wheel: record_audit(wheel)', mutated)
         self.assertIn("if _COMPLETE_GATE_REGRESSIONS_OBSERVED:\n        return", mutated)
 
+    def test_structural_dump_includes_interpreter_specific_empty_fields(self) -> None:
+        node = ast.parse("def empty():\n    return target()\n").body[0]
+        self.assertEqual(
+            MUTATIONS.structural_ast_dump(node),
+            "FunctionDef(name='empty', args=arguments(posonlyargs=[], args=[], "
+            "kwonlyargs=[], kw_defaults=[], defaults=[]), "
+            "body=[Return(value=Call(func=Name(id='target', ctx=Load()), "
+            "args=[], keywords=[]))], decorator_list=[], type_params=[])",
+        )
+
     def test_sufficiency_keeps_exact_audit_and_removes_label_call(self) -> None:
         mutated = MUTATIONS.audit_present_label_absent_v1(self.source)
         self.assertEqual(

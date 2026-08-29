@@ -910,10 +910,84 @@ def read_pinned_evidence(
     return raw, expected_digest
 
 
+def apply_unified_patch(source: bytes, patch: bytes, *, label: str) -> bytes:
+    """Apply a text-only unified diff by exact hunk content, allowing line offsets."""
+
+    try:
+        source_lines = source.decode("utf-8").splitlines(keepends=True)
+        patch_lines = patch.decode("utf-8").splitlines(keepends=True)
+    except UnicodeDecodeError as exc:
+        refuse("EVIDENCE_PAIR_PATCH_ENCODING", f"{label}: {exc}")
+    if (
+        len(patch_lines) < 3
+        or not patch_lines[0].startswith("--- ")
+        or not patch_lines[1].startswith("+++ ")
+    ):
+        refuse("EVIDENCE_PAIR_PATCH_SHAPE", f"{label}: missing unified-diff header")
+
+    cursor = 0
+    patch_index = 2
+    output: list[str] = []
+    hunk_count = 0
+    while patch_index < len(patch_lines):
+        header = patch_lines[patch_index]
+        match = re.match(
+            r"@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@(?:.*)\n?\Z",
+            header,
+        )
+        if match is None:
+            refuse("EVIDENCE_PAIR_PATCH_SHAPE", f"{label}: {header!r}")
+        patch_index += 1
+        hunk: list[str] = []
+        while patch_index < len(patch_lines) and not patch_lines[patch_index].startswith("@@ "):
+            line = patch_lines[patch_index]
+            if not line or line[0] not in " +-":
+                refuse("EVIDENCE_PAIR_PATCH_SHAPE", f"{label}: invalid hunk line {line!r}")
+            hunk.append(line)
+            patch_index += 1
+        old_lines = [line[1:] for line in hunk if line[0] in " -"]
+        new_lines = [line[1:] for line in hunk if line[0] in " +"]
+        old_count = int(match.group(2) or "1")
+        new_count = int(match.group(4) or "1")
+        if len(old_lines) != old_count or len(new_lines) != new_count:
+            refuse(
+                "EVIDENCE_PAIR_PATCH_SHAPE",
+                f"{label}: old={len(old_lines)}/{old_count} new={len(new_lines)}/{new_count}",
+            )
+        matches = [
+            index
+            for index in range(cursor, len(source_lines) - len(old_lines) + 1)
+            if source_lines[index : index + len(old_lines)] == old_lines
+        ]
+        if len(matches) != 1:
+            refuse(
+                "EVIDENCE_PAIR_PATCH_APPLY",
+                f"{label}: hunk={hunk_count} matches={len(matches)}",
+            )
+        start = matches[0]
+        output.extend(source_lines[cursor:start])
+        output.extend(new_lines)
+        cursor = start + len(old_lines)
+        hunk_count += 1
+    if hunk_count == 0:
+        refuse("EVIDENCE_PAIR_PATCH_SHAPE", f"{label}: no hunks")
+    output.extend(source_lines[cursor:])
+    return "".join(output).encode("utf-8")
+
+
+def record_audit_sha256(gate_raw: bytes, *, label: str) -> str:
+    tree = parse_gate(gate_raw, Path(label))
+    functions = module_functions(tree)
+    if "record_audit" not in functions:
+        refuse("EVIDENCE_PAIR_RECORD_AUDIT_ABSENT", label)
+    return ast_sha256(functions["record_audit"])
+
+
 def verify_pair_results(
     authority_root: Path,
     value: dict[str, Any],
     *,
+    candidate_gate_raw: bytes,
     initial_plan: dict[str, Any],
     initial_plan_sha256: str,
     amendment: dict[str, Any],
@@ -964,6 +1038,7 @@ def verify_pair_results(
     cases: list[str] = []
     matched = 0
     discarded = 0
+    definition_checks = 0
     expected_dispositions = {
         "audit-present-label-absent": "INVALID_MUTATION_CONSTRUCTION",
         "audit-present-label-absent-v2": "EXPECTED_SUFFICIENCY_PASS_OBSERVED",
@@ -1066,7 +1141,20 @@ def verify_pair_results(
             mutation = json.loads(mutation_raw)
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             refuse("EVIDENCE_PAIR_RESULT_MUTATION", f"{case}: {exc}")
-        if type(mutation) is not dict or mutation_raw != canonical_json(mutation):
+        mutation = require_closed_object(
+            mutation,
+            {
+                "after_gate_sha256",
+                "before_gate_sha256",
+                "case",
+                "record_audit_after_sha256",
+                "record_audit_before_sha256",
+                "schema",
+            },
+            code="EVIDENCE_PAIR_RESULT_MUTATION",
+            label=f"R15-3 pair results.{case}.mutation_json",
+        )
+        if mutation_raw != canonical_json(mutation):
             refuse("EVIDENCE_PAIR_RESULT_MUTATION", f"{case}: not canonical")
         if (
             mutation.get("schema") != "kilix.content.f100-u1-r16-r15-3-mutation/v1"
@@ -1077,13 +1165,39 @@ def verify_pair_results(
             or mutation_digest != expected["mutation_json_sha256"]
         ):
             refuse("EVIDENCE_PAIR_RESULT_MUTATION", case)
-        _, patch_digest = read_pinned_evidence(
+        patch_raw, patch_digest = read_pinned_evidence(
             authority_root,
             item["patch"],
             label=f"R15-3 pair results.{case}.patch",
         )
         if patch_digest != expected["patch_sha256"]:
             refuse("EVIDENCE_PAIR_RESULT_PATCH", case)
+        before_definition = record_audit_sha256(
+            candidate_gate_raw,
+            label=f"{case}: candidate gate",
+        )
+        if mutation["record_audit_before_sha256"] != before_definition:
+            refuse(
+                "EVIDENCE_PAIR_MUTATION_DEFINITION_BEFORE_DRIFT",
+                f"case={case!r} expected={before_definition} "
+                f"observed={mutation['record_audit_before_sha256']}",
+            )
+        patched_gate = apply_unified_patch(
+            candidate_gate_raw,
+            patch_raw,
+            label=case,
+        )
+        after_definition = record_audit_sha256(
+            patched_gate,
+            label=f"{case}: patched gate",
+        )
+        if mutation["record_audit_after_sha256"] != after_definition:
+            refuse(
+                "EVIDENCE_PAIR_MUTATION_DEFINITION_AFTER_DRIFT",
+                f"case={case!r} expected={after_definition} "
+                f"observed={mutation['record_audit_after_sha256']}",
+            )
+        definition_checks += 2
 
     if len(cases) != len(set(cases)) or set(cases) != set(planned):
         refuse("EVIDENCE_PAIR_RESULTS_CASE_SET", repr(cases))
@@ -1106,10 +1220,16 @@ def verify_pair_results(
         "pair_execution_count": len(executions),
         "pair_expected_outcome_count": matched,
         "pair_log_semantic_check_count": len(executions),
+        "pair_mutation_definition_check_count": definition_checks,
     }
 
 
-def verify_evidence(authority_root: Path, evidence: Any) -> dict[str, Any]:
+def verify_evidence(
+    authority_root: Path,
+    evidence: Any,
+    *,
+    candidate_gate_raw: bytes,
+) -> dict[str, Any]:
     value = require_closed_object(
         evidence,
         {
@@ -1164,6 +1284,7 @@ def verify_evidence(authority_root: Path, evidence: Any) -> dict[str, Any]:
         verify_pair_results(
             authority_root,
             parsed_evidence["r15_3_pair_results"],
+            candidate_gate_raw=candidate_gate_raw,
             initial_plan=parsed_evidence["r15_3_pair_plan"],
             initial_plan_sha256=observed["r15_3_pair_plan_sha256"],
             amendment=parsed_evidence["r15_3_pair_plan_amendment_1"],
@@ -1207,7 +1328,11 @@ def verify(arguments: argparse.Namespace) -> dict[str, Any]:
         authority["candidate"],
         authority["production_population"],
     )
-    evidence = verify_evidence(authority_root, authority["evidence"])
+    evidence = verify_evidence(
+        authority_root,
+        authority["evidence"],
+        candidate_gate_raw=gate_raw,
+    )
     return {
         "authority_sha256": observed_authority,
         "candidate_gate_sha256": sha256_bytes(gate_raw),

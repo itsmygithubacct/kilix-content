@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import ast
 import hashlib
+import inspect
 import json
 from pathlib import Path
 from typing import Any, NoReturn
@@ -43,6 +44,15 @@ def replace_once(source: str, old: str, new: str, label: str) -> str:
     return source.replace(old, new, 1)
 
 
+def structural_ast_dump(node: ast.AST) -> str:
+    """Return the complete AST shape under the credited interpreters."""
+
+    keywords = {"annotate_fields": True, "include_attributes": False}
+    if "show_empty" in inspect.signature(ast.dump).parameters:
+        keywords["show_empty"] = True
+    return ast.dump(node, **keywords)
+
+
 def record_definition_sha256(source: str) -> str:
     tree = ast.parse(source)
     matches = [
@@ -52,7 +62,7 @@ def record_definition_sha256(source: str) -> str:
     ]
     if len(matches) != 1:
         fail(f"record_audit definition count={len(matches)}")
-    raw = ast.dump(matches[0], annotate_fields=True, include_attributes=False).encode()
+    raw = structural_ast_dump(matches[0]).encode()
     return digest(raw)
 
 

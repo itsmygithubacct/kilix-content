@@ -17,6 +17,10 @@ PROJECT = Path(__file__).resolve().parents[1]
 AUTHORITY_PATH = PROJECT / "authority" / "f100-u1-r16" / "authority.json"
 GATE_PATH = PROJECT / "tests" / "check_reproducible_build.py"
 VERIFIER_PATH = PROJECT / "tools" / "f100_u1_r16_external_authority.py"
+AUTHORITY_ROOT = AUTHORITY_PATH.parent
+PAIR_PLAN_PATH = AUTHORITY_ROOT / "r15-3-pair-plan.json"
+PAIR_AMENDMENT_PATH = AUTHORITY_ROOT / "r15-3-pair-plan-amendment-1.json"
+PAIR_RESULTS_PATH = AUTHORITY_ROOT / "r15-3-pair-results.json"
 AUDITS = (
     ("sdist_container_audit", "sdist", "container"),
     ("assert_sdist_enumerator_agreement", "sdist", "enumerator"),
@@ -52,6 +56,57 @@ def object_id(value: str, label: str) -> str:
     return value
 
 
+def pinned_evidence(path: Path) -> dict[str, Any]:
+    raw = path.read_bytes()
+    return {
+        "bytes": len(raw),
+        "path": path.relative_to(AUTHORITY_ROOT).as_posix(),
+        "sha256": hashlib.sha256(raw).hexdigest(),
+    }
+
+
+def repin_pair_evidence(authority: dict[str, Any], verifier: Any) -> None:
+    mutation_paths = {
+        "audit-present-label-absent": AUTHORITY_ROOT
+        / "evidence/sufficient-v1-mutation.json",
+        "audit-present-label-absent-v2": AUTHORITY_ROOT
+        / "evidence/sufficient-v2-mutation.json",
+        "hollow-label-present": AUTHORITY_ROOT / "evidence/hollow-mutation.json",
+    }
+    mutation_pins = {
+        case: pinned_evidence(path) for case, path in mutation_paths.items()
+    }
+
+    plan = json.loads(PAIR_PLAN_PATH.read_bytes())
+    for case in plan["cases"]:
+        case["mutation_json_sha256"] = mutation_pins[case["case"]]["sha256"]
+    PAIR_PLAN_PATH.write_bytes(verifier.canonical_json(plan))
+    plan_pin = pinned_evidence(PAIR_PLAN_PATH)
+
+    amendment = json.loads(PAIR_AMENDMENT_PATH.read_bytes())
+    amendment["amends_plan_sha256"] = plan_pin["sha256"]
+    replacement = amendment["replacement_case"]
+    replacement["mutation_json_sha256"] = mutation_pins[replacement["case"]][
+        "sha256"
+    ]
+    PAIR_AMENDMENT_PATH.write_bytes(verifier.canonical_json(amendment))
+    amendment_pin = pinned_evidence(PAIR_AMENDMENT_PATH)
+
+    results = json.loads(PAIR_RESULTS_PATH.read_bytes())
+    results["plan_pins"] = {
+        "amendment_1_sha256": amendment_pin["sha256"],
+        "initial_sha256": plan_pin["sha256"],
+    }
+    for execution in results["executions"]:
+        execution["mutation_json"] = mutation_pins[execution["case"]]
+    PAIR_RESULTS_PATH.write_bytes(verifier.canonical_json(results))
+    results_pin = pinned_evidence(PAIR_RESULTS_PATH)
+
+    authority["evidence"]["r15_3_pair_plan"] = plan_pin
+    authority["evidence"]["r15_3_pair_plan_amendment_1"] = amendment_pin
+    authority["evidence"]["r15_3_pair_results"] = results_pin
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--candidate-commit", required=True)
@@ -72,6 +127,7 @@ def main() -> int:
     gate_digest = verifier.sha256_bytes(gate_raw)
 
     authority: dict[str, Any] = json.loads(AUTHORITY_PATH.read_bytes())
+    repin_pair_evidence(authority, verifier)
     authority["candidate"] = {
         "commit": commit,
         "gate_path": "tests/check_reproducible_build.py",

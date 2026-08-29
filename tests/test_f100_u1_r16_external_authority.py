@@ -189,6 +189,53 @@ class R16ExternalAuthorityTests(unittest.TestCase):
         self.authority_value = manifest
         self.authority_sha256 = hashlib.sha256(manifest_raw).hexdigest()
 
+    def rewrite_pair_definition_claim(self, field: str) -> None:
+        results_path = self.authority / "r15-3-pair-results.json"
+        results = json.loads(results_path.read_bytes())
+        execution = next(
+            item
+            for item in results["executions"]
+            if item["case"] == "audit-present-label-absent-v2"
+        )
+        mutation_path = self.authority / execution["mutation_json"]["path"]
+        mutation = json.loads(mutation_path.read_bytes())
+        mutation[field] = "0" * 64
+        mutation_raw = AUTHORITY.canonical_json(mutation)
+        mutation_path.write_bytes(mutation_raw)
+        mutation_digest = hashlib.sha256(mutation_raw).hexdigest()
+        execution["mutation_json"] = {
+            "bytes": len(mutation_raw),
+            "path": execution["mutation_json"]["path"],
+            "sha256": mutation_digest,
+        }
+
+        amendment_path = self.authority / "r15-3-pair-plan-amendment-1.json"
+        amendment = json.loads(amendment_path.read_bytes())
+        amendment["replacement_case"]["mutation_json_sha256"] = mutation_digest
+        amendment_raw = AUTHORITY.canonical_json(amendment)
+        amendment_path.write_bytes(amendment_raw)
+        amendment_digest = hashlib.sha256(amendment_raw).hexdigest()
+        results["plan_pins"]["amendment_1_sha256"] = amendment_digest
+        results_raw = AUTHORITY.canonical_json(results)
+        results_path.write_bytes(results_raw)
+
+        manifest_path = self.authority / "authority.json"
+        manifest = json.loads(manifest_path.read_bytes())
+        manifest["evidence"]["r15_3_pair_plan_amendment_1"] = {
+            "bytes": len(amendment_raw),
+            "path": "r15-3-pair-plan-amendment-1.json",
+            "sha256": amendment_digest,
+        }
+        manifest["evidence"]["r15_3_pair_results"] = {
+            "bytes": len(results_raw),
+            "path": "r15-3-pair-results.json",
+            "sha256": hashlib.sha256(results_raw).hexdigest(),
+        }
+        manifest_raw = AUTHORITY.canonical_json(manifest)
+        manifest_path.write_bytes(manifest_raw)
+        self.authority_value = manifest
+        self.authority_sha256 = hashlib.sha256(manifest_raw).hexdigest()
+
     def test_exact_export_verifies_without_grade(self) -> None:
         result = AUTHORITY.verify(self.arguments())
         self.assertEqual(result["status"], "VERIFIED_NOT_GRADED")
@@ -206,6 +253,9 @@ class R16ExternalAuthorityTests(unittest.TestCase):
         self.assertEqual(result["evidence"]["pair_expected_outcome_count"], 2)
         self.assertEqual(result["evidence"]["pair_discarded_execution_count"], 1)
         self.assertEqual(result["evidence"]["pair_log_semantic_check_count"], 3)
+        self.assertEqual(
+            result["evidence"]["pair_mutation_definition_check_count"], 6
+        )
 
     def test_structural_ast_dump_normalizes_interpreter_specific_empty_fields(self) -> None:
         node = ast.parse("def empty():\n    return target()\n").body[0]
@@ -397,6 +447,20 @@ class R16ExternalAuthorityTests(unittest.TestCase):
         log = self.authority / "evidence" / "sufficient-v2-gate.log"
         log.write_bytes(log.read_bytes() + b"drift\n")
         self.assert_refusal("EVIDENCE_DIGEST_MISMATCH")
+
+    def test_pair_mutation_before_definition_claim_is_recomputed(self) -> None:
+        self.rewrite_pair_definition_claim("record_audit_before_sha256")
+        refusal = self.assert_refusal(
+            "EVIDENCE_PAIR_MUTATION_DEFINITION_BEFORE_DRIFT"
+        )
+        self.assertIn("audit-present-label-absent-v2", refusal.detail)
+
+    def test_pair_mutation_after_definition_claim_is_recomputed(self) -> None:
+        self.rewrite_pair_definition_claim("record_audit_after_sha256")
+        refusal = self.assert_refusal(
+            "EVIDENCE_PAIR_MUTATION_DEFINITION_AFTER_DRIFT"
+        )
+        self.assertIn("audit-present-label-absent-v2", refusal.detail)
 
     def test_lane_population_is_unique_and_closed(self) -> None:
         raw = (self.authority / "candidate-lane-census.json").read_bytes()
