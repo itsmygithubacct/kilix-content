@@ -3033,8 +3033,9 @@ def r12_reader_reversion_regression(
             "dist",
         ),
     )
-    checker = candidate / "tests" / "check_reproducible_build.py"
-    source = checker.read_text()
+    canonical_checker = candidate / "tests" / "check_reproducible_build.py"
+    checker = candidate / "tests" / "r12_reader_reversion_gate.py"
+    source = canonical_checker.read_text()
     start = source.index("def sdist_payload_audit(")
     end = source.index("\ndef sdist_relative_member_signature", start)
     function = source[start:end]
@@ -3101,8 +3102,9 @@ def r13_callsite_wiring_regression(
             "dist",
         ),
     )
-    checker = candidate / "tests" / "check_reproducible_build.py"
-    source = checker.read_text()
+    canonical_checker = candidate / "tests" / "check_reproducible_build.py"
+    checker = candidate / "tests" / "r13_callsite_wiring_gate.py"
+    source = canonical_checker.read_text()
     removed_callsite_blocks = {
         "generated-metadata-audit": (
             '        run_sdist_audit(\n'
