@@ -230,6 +230,19 @@ class R16SixteenAccountingTests(unittest.TestCase):
             ACCOUNTING.load_events(event_path, self.authority_sha256)
         self.assertEqual(raised.exception.code, "COUNT_EVENTS_AUTHORITY_MISMATCH")
 
+    def test_pipe_bytes_decode_without_a_preservation_file(self) -> None:
+        raw = ACCOUNTING.canonical_json(
+            {
+                "authority_sha256": self.authority_sha256,
+                "events": fixtures.events(),
+                "schema": ACCOUNTING.EVENTS_SCHEMA,
+            }
+        )
+        loaded = ACCOUNTING.decode_events(raw, self.authority_sha256)
+        self.assertEqual(len(loaded), 32)
+        result = ACCOUNTING.accumulate(self.authority, loaded)
+        self.assertEqual(result["populations"]["mutation_invocations"]["count"], 32)
+
     def test_cli_writes_canonical_result_once(self) -> None:
         event_path = self.root / "events.json"
         output = self.root / "result.json"

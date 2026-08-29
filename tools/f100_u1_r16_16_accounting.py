@@ -200,9 +200,8 @@ def load_authority(
     return AccountingAuthority(observed, tuple(families))
 
 
-def load_events(path: Path, authority_sha256: str) -> tuple[MutationEvent, ...]:
+def decode_events(raw: bytes, authority_sha256: str) -> tuple[MutationEvent, ...]:
     authority_digest = _digest(authority_sha256, "EVENT_AUTHORITY")
-    raw = path.read_bytes()
     value = _decode_json(raw, subject="EVENTS", maximum=MAX_EVENTS_BYTES)
     root = _closed_object(
         value, {"authority_sha256", "events", "schema"}, "EVENTS"
@@ -231,6 +230,10 @@ def load_events(path: Path, authority_sha256: str) -> tuple[MutationEvent, ...]:
             )
         )
     return tuple(events)
+
+
+def load_events(path: Path, authority_sha256: str) -> tuple[MutationEvent, ...]:
+    return decode_events(path.read_bytes(), authority_sha256)
 
 
 def _member(family: str, identifier: str) -> dict[str, str]:

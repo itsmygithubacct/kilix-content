@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import csv
+import fcntl
 import functools
 import gzip
 import io
@@ -4256,42 +4257,71 @@ def r16_16_accounting_populations() -> dict[str, int]:
     return observed
 
 
-def _runtime_record_path(configured: str, label: str) -> Path:
-    path = Path(configured)
-    if not path.is_absolute():
-        fail(f"{label} output path must be absolute")
+def _runtime_record_fd(configured: str, label: str) -> int:
+    if re.fullmatch(r"[0-9]+", configured) is None:
+        fail(f"{label} channel fd is not a canonical nonnegative integer")
+    fd = int(configured)
+    if fd <= 2:
+        fail(f"{label} channel fd must be greater than 2")
     try:
-        parent = path.parent.resolve(strict=True)
+        metadata = os.fstat(fd)
+        flags = fcntl.fcntl(fd, fcntl.F_GETFL)
     except OSError as exc:
-        fail(f"{label} output parent is unavailable: {exc}")
-    resolved = parent / path.name
-    if resolved.is_relative_to(PROJECT.resolve()):
-        fail(f"{label} output path must be outside the candidate")
-    if resolved.exists() or resolved.is_symlink():
-        fail(f"{label} output path already exists")
-    return resolved
+        fail(f"{label} channel fd is unavailable: {exc}")
+    if not (stat.S_ISFIFO(metadata.st_mode) or stat.S_ISSOCK(metadata.st_mode)):
+        fail(
+            f"{label} channel violates OD-20: expected pipe/socket, "
+            f"observed-mode={oct(stat.S_IFMT(metadata.st_mode))}"
+        )
+    if flags & os.O_ACCMODE == os.O_RDONLY:
+        fail(f"{label} channel fd is not writable")
+    return fd
+
+
+def _write_runtime_record(fd: int, payload: bytes, label: str) -> None:
+    remaining = memoryview(payload)
+    try:
+        while remaining:
+            written = os.write(fd, remaining)
+            if written <= 0:
+                fail(f"{label} channel made no write progress")
+            remaining = remaining[written:]
+        os.close(fd)
+    except OSError as exc:
+        fail(f"{label} channel write failed: {exc}")
 
 
 def write_r16_runtime_records() -> None:
-    r16_14_output = os.environ.get("KILIX_F100_R16_14_TRACE_OUTPUT")
-    r16_16_output = os.environ.get("KILIX_F100_R16_16_EVENTS_OUTPUT")
+    legacy_paths = (
+        os.environ.get("KILIX_F100_R16_14_TRACE_OUTPUT"),
+        os.environ.get("KILIX_F100_R16_16_EVENTS_OUTPUT"),
+    )
+    if any(legacy_paths):
+        fail(
+            "R16 pathname runtime-record channels violate OD-20: "
+            "legacy-paths-accepted=0/2"
+        )
+    r16_14_channel = os.environ.get("KILIX_F100_R16_14_TRACE_FD")
+    r16_16_channel = os.environ.get("KILIX_F100_R16_16_EVENTS_FD")
     accounting_sha256 = os.environ.get(
         "KILIX_F100_R16_16_ACCOUNTING_AUTHORITY_SHA256"
     )
-    configured = (r16_14_output, r16_16_output, accounting_sha256)
+    configured = (r16_14_channel, r16_16_channel, accounting_sha256)
     if not any(configured):
-        print("R16 external runtime records: NOT_EMITTED outputs=0/2")
+        print("R16 external runtime records: NOT_EMITTED channels=0/2")
         return
     if not all(configured):
         fail("R16 external runtime record configuration is incomplete: 0/3 accepted")
-    assert r16_14_output is not None
-    assert r16_16_output is not None
+    assert r16_14_channel is not None
+    assert r16_16_channel is not None
     assert accounting_sha256 is not None
     if re.fullmatch(r"[0-9a-f]{64}", accounting_sha256) is None:
         fail("R16-16 accounting authority SHA-256 is invalid")
 
-    r16_14_path = _runtime_record_path(r16_14_output, "R16-14 trace")
-    r16_16_path = _runtime_record_path(r16_16_output, "R16-16 events")
+    r16_14_fd = _runtime_record_fd(r16_14_channel, "R16-14 trace")
+    r16_16_fd = _runtime_record_fd(r16_16_channel, "R16-16 events")
+    if r16_14_fd == r16_16_fd:
+        fail("R16 runtime-record channels are not distinct: accepted=0/2")
     r16_14_record = {
         "events": sorted(
             _R16_14_SDIST_EFFECT_EVENTS,
@@ -4304,17 +4334,14 @@ def write_r16_runtime_records() -> None:
         "events": list(_R16_16_ACCOUNTING_EVENTS),
         "schema": "kilix.content.f100-u1-r16-16-accounting-events/v1",
     }
-    try:
-        with r16_14_path.open("xb") as output:
-            output.write(canonical_json(r16_14_record, newline=True))
-        with r16_16_path.open("xb") as output:
-            output.write(canonical_json(r16_16_record, newline=True))
-    except OSError as exc:
-        fail(f"R16 external runtime record write failed: {exc}")
+    r16_14_bytes = canonical_json(r16_14_record, newline=True)
+    r16_16_bytes = canonical_json(r16_16_record, newline=True)
+    _write_runtime_record(r16_14_fd, r16_14_bytes, "R16-14 trace")
+    _write_runtime_record(r16_16_fd, r16_16_bytes, "R16-16 events")
     print(
-        "R16 external runtime records: EMITTED outputs=2/2 "
-        f"r16-14-sha256={digest(r16_14_path)} "
-        f"r16-16-sha256={digest(r16_16_path)}"
+        "R16 external runtime records: EMITTED channels=2/2 "
+        f"r16-14-sha256={hashlib.sha256(r16_14_bytes).hexdigest()} "
+        f"r16-16-sha256={hashlib.sha256(r16_16_bytes).hexdigest()}"
     )
 
 
