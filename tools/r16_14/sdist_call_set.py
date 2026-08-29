@@ -353,7 +353,20 @@ def verify_call_set(ledger: Ledger, observed: Iterable[ObservedCall]) -> dict[st
         _refuse(f"SDIST_CALL_MISSING:{missing[0]}")
     extra = sorted(actual_ids - expected_ids)
     if extra:
-        _refuse(f"SDIST_CALL_EXTRA:{by_id[extra[0]][0].structural_locator}")
+        unexpected = by_id[extra[0]][0]
+        aliases = sorted(
+            expected.identity
+            for expected in ledger.calls
+            if (
+                unexpected.enclosing_function == expected.enclosing_function
+                and unexpected.target_function == expected.target_function
+                and unexpected.effect_family == expected.effect_family
+                and unexpected.effect_kind == expected.effect_kind
+            )
+        )
+        if aliases:
+            _refuse(f"SDIST_CALL_DUPLICATE:{aliases[0]}")
+        _refuse(f"SDIST_CALL_EXTRA:{unexpected.structural_locator}")
 
     for identity in sorted(expected_ids):
         expected = expected_by_id[identity]

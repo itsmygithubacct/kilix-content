@@ -71,8 +71,9 @@ class RetargetCall(ast.NodeTransformer):
 
 
 class DuplicateCall(ast.NodeTransformer):
-    def __init__(self, identity: str) -> None:
+    def __init__(self, identity: str, *, alias: str | None = None) -> None:
         self.identity = identity
+        self.alias = alias
         self.changed = 0
 
     def visit_Expr(self, node: ast.Expr) -> ast.AST | list[ast.AST]:  # noqa: N802
@@ -83,7 +84,13 @@ class DuplicateCall(ast.NodeTransformer):
             and call_identity(node.value) == self.identity
         ):
             self.changed += 1
-            return [node, copy.deepcopy(node)]
+            duplicate = copy.deepcopy(node)
+            if self.alias is not None:
+                assert isinstance(duplicate.value, ast.Call)
+                duplicate.value.args[0] = ast.copy_location(
+                    ast.Constant(value=self.alias), duplicate.value.args[0]
+                )
+            return [node, duplicate]
         return node
 
 
@@ -96,7 +103,7 @@ class AddExtraCall(ast.NodeTransformer):
         if isinstance(node, ast.FunctionDef) and node.name == "main":
             extra = ast.parse(
                 'run_sdist_audit("unreviewed-extra", '
-                "lambda: sdist_payload_audit(archive, PROJECT, top))"
+                "lambda: sdist_member_closure_audit(archive))"
             ).body[0]
             node.body.append(extra)
             self.changed += 1
@@ -213,7 +220,7 @@ def carrier(archive):
         self.assertEqual(mutation.changed, 1)
         refusal = self.refusal(mutated)
         self.assertTrue(refusal.startswith("SDIST_CALL_EXTRA:function=main;"))
-        self.assertIn("target=sdist_payload_audit", refusal)
+        self.assertIn("target=sdist_member_closure_audit", refusal)
 
     def test_retarget_refuses_by_exact_identity(self) -> None:
         mutation = RetargetCall("direct-payload", "sdist_container_audit")
@@ -226,6 +233,17 @@ def carrier(archive):
 
     def test_duplicate_refuses_by_exact_identity(self) -> None:
         mutation = DuplicateCall("relative-enumerator")
+        mutated = transformed_source(self.source, mutation)
+        self.assertEqual(mutation.changed, 1)
+        self.assertEqual(
+            self.refusal(mutated),
+            "SDIST_CALL_DUPLICATE:relative-enumerator",
+        )
+
+    def test_alias_duplicate_refuses_by_required_structural_identity(self) -> None:
+        mutation = DuplicateCall(
+            "relative-enumerator", alias="relative-enumerator-alias"
+        )
         mutated = transformed_source(self.source, mutation)
         self.assertEqual(mutation.changed, 1)
         self.assertEqual(
