@@ -39,9 +39,10 @@ operator path and cannot close any row by itself.
 ### R16-6 / R16-7 — external append-only history
 
 The historical population is the ordered 14-row registry at candidate gate SHA
-`a4a21e0264c67a83e906fe3a263ea088c3bc78789a57c017387f8b6b7b1a8771`.
-It was enumerated from six Git snapshots spanning R14 through the corrected R16
-candidate: row counts 8, 9, 10, 12, 12 and 14. Order is semantic. The external
+`3a1e97162c01b98d8dcc490f43fd80c13dbe22c658bebc6689d7dd3394c0a71c`.
+It was enumerated from seven Git snapshots spanning R14 through the corrected
+R16 candidate: row counts 8, 9, 10, 12, 12, 14 and 14. Order is semantic. The
+external
 manifest freezes every field of every row, every snapshot's commit/tree/gate
 and registry digest, and five history-critical definitions, including the
 row-to-mutation executor. Removal of an old R14 row, removal of the new R15
@@ -65,7 +66,7 @@ enumerator forms a fixed point over direct calls and module-function references
 passed through arguments/callbacks, then inventories every syntactic call in
 the reached owners, including nested functions and lambdas. That produces
 1,625 structural call sites in 94 reached owners, digest
-`4bff699fff3a85336139a598e42277c4c3e1c92d8711a897c2eee7dae3b0ad7f`.
+`6566ea1d0780192c464450bcaf84177bd6fec8ba71a522b8ab47b8602f1db81a`.
 Only after freezing that population are the 12 audit bodies classified and
 joined to the registry's 12 `(family, kind)` pairs. The correction includes
 `sdist_generated_metadata_audit` and `resource_audit`, each with a distinct
