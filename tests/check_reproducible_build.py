@@ -114,6 +114,103 @@ _REQUIRED_SDIST_AUDIT_CALLS = frozenset(
     }
 )
 FROZEN_REQUIRED_SDIST_AUDIT_CALL_COUNT = 9
+R16_14_SDIST_CALL_EVENTS = {
+    "direct-enumerator": {
+        "artifact_presentation": "direct-sdist",
+        "effect_family": "sdist",
+        "effect_kind": "enumerator",
+        "identity": "direct-enumerator",
+        "phase": "post-build-production-audit",
+        "target_function": "assert_sdist_enumerator_agreement",
+    },
+    "direct-payload": {
+        "artifact_presentation": "direct-sdist",
+        "effect_family": "sdist",
+        "effect_kind": "payload",
+        "identity": "direct-payload",
+        "phase": "post-build-production-audit",
+        "target_function": "sdist_payload_audit",
+    },
+    "enumerator-container": {
+        "artifact_presentation": "sdist-enumerator-input",
+        "effect_family": "sdist",
+        "effect_kind": "container",
+        "identity": "enumerator-container",
+        "phase": "enumerator-preflight",
+        "target_function": "sdist_container_audit",
+    },
+    "extract-container": {
+        "artifact_presentation": "sdist-under-extraction",
+        "effect_family": "sdist",
+        "effect_kind": "container",
+        "identity": "extract-container",
+        "phase": "pre-extraction-container",
+        "target_function": "sdist_container_audit",
+    },
+    "extract-enumerator": {
+        "artifact_presentation": "sdist-under-extraction",
+        "effect_family": "sdist",
+        "effect_kind": "enumerator",
+        "identity": "extract-enumerator",
+        "phase": "pre-extraction-enumeration",
+        "target_function": "assert_sdist_enumerator_agreement",
+    },
+    "extract-payload": {
+        "artifact_presentation": "sdist-under-extraction",
+        "effect_family": "sdist",
+        "effect_kind": "payload",
+        "identity": "extract-payload",
+        "phase": "pre-extraction-payload",
+        "target_function": "sdist_payload_audit",
+    },
+    "generated-enumerator": {
+        "artifact_presentation": "direct-sdist-pair",
+        "effect_family": "sdist",
+        "effect_kind": "enumerator",
+        "identity": "generated-enumerator",
+        "phase": "generated-metadata-read",
+        "target_function": "assert_sdist_enumerator_agreement",
+    },
+    "generated-metadata-audit": {
+        "artifact_presentation": "direct-sdist-pair",
+        "effect_family": "sdist",
+        "effect_kind": "generated-metadata",
+        "identity": "generated-metadata-audit",
+        "phase": "post-build-reproducibility",
+        "target_function": "sdist_generated_metadata_audit",
+    },
+    "relative-enumerator": {
+        "artifact_presentation": "bounded-relative-signature-control",
+        "effect_family": "sdist",
+        "effect_kind": "enumerator",
+        "identity": "relative-enumerator",
+        "phase": "negative-control-differential",
+        "target_function": "assert_sdist_enumerator_agreement",
+    },
+}
+R16_16_ACCOUNTING_EFFECT_IDS = frozenset(
+    {
+        "sdist.container.gzip-trailing",
+        "sdist.enumerator.physical-directory-size",
+        "sdist.member.permission",
+        "sdist.payload.source-byte",
+        "wheel.archive.extra-member",
+        "wheel.container.appended-zip",
+        "wheel.container.prepend",
+        "wheel.container.trailing",
+        "wheel.installed.manifest",
+        "wheel.module.source-byte",
+        "wheel.record.self-row",
+        "wheel.resource.byte",
+    }
+)
+R16_16_PRESENTATION_IDS = {
+    "direct sdist 1": "direct-sdist-1",
+    "direct sdist 2": "direct-sdist-2",
+    "direct wheel 1": "direct-wheel-1",
+    "direct wheel 2": "direct-wheel-2",
+    "sdist-derived wheel": "sdist-derived-wheel",
+}
 
 # R14-0: this is the hand-authored acceptance registry.  A row is an
 # observable property, one concrete mutation of that property, and the
@@ -259,7 +356,8 @@ FROZEN_REQUIRED_ROW_IDS = frozenset(
 )
 FROZEN_MINIMUM_ROW_COUNT = 14
 _PROPERTY_MUTATION_EXECUTIONS: set[tuple[str, str]] = set()
-_PROPERTY_MUTATION_UNIQUE_EFFECTS: set[tuple[str, str]] = set()
+_R16_14_SDIST_EFFECT_EVENTS: list[dict[str, str]] = []
+_R16_16_ACCOUNTING_EVENTS: list[dict[str, str]] = []
 _AUDIT_EFFECTS: set[tuple[str, str, str, str]] = set()
 _PRODUCTION_AUDIT_KINDS: set[tuple[str, str]] = set()
 _COMPLETE_GATE_REGRESSIONS_OBSERVED: set[str] = set()
@@ -434,8 +532,13 @@ def canonical_json(value: Any, *, newline: bool = False) -> bytes:
 
 
 def run_sdist_audit(label: str, action: Callable[[], None]) -> None:
+    if label not in R16_14_SDIST_CALL_EVENTS:
+        fail(f"unregistered R16-14 sdist audit event: {label}")
     action()
     _SDIST_AUDIT_CALLS.add(label)
+    event = R16_14_SDIST_CALL_EVENTS[label]
+    if event not in _R16_14_SDIST_EFFECT_EVENTS:
+        _R16_14_SDIST_EFFECT_EVENTS.append(dict(event))
 
 
 def assert_sdist_audit_wiring() -> None:
@@ -457,6 +560,21 @@ def assert_sdist_audit_wiring() -> None:
         fail(
             "unregistered sdist audit call sites were reached: "
             f"{sorted(extra)!r}"
+        )
+    expected_events = list(R16_14_SDIST_CALL_EVENTS.values())
+    missing_events = [
+        event for event in expected_events if event not in _R16_14_SDIST_EFFECT_EVENTS
+    ]
+    if missing_events:
+        fail(
+            "required R16-14 sdist audit effect was not observed: "
+            f"{missing_events[0]['identity']}"
+        )
+    if len(_R16_14_SDIST_EFFECT_EVENTS) != len(expected_events):
+        fail(
+            "R16-14 sdist audit effect population differs: "
+            f"observed={len(_R16_14_SDIST_EFFECT_EVENTS)} "
+            f"expected={len(expected_events)}"
         )
     _SDIST_WIRING_ASSERTED = True
 
@@ -4055,7 +4173,31 @@ def run_property_mutation_registry(
             row["expected_refusal"],
         )
         _PROPERTY_MUTATION_EXECUTIONS.add((identifier, label))
-        _PROPERTY_MUTATION_UNIQUE_EFFECTS.add((identifier, digest(archive)))
+        if identifier in R16_16_ACCOUNTING_EFFECT_IDS:
+            presentation_id = R16_16_PRESENTATION_IDS.get(label)
+            if presentation_id is None:
+                fail(f"R16-16 mutation presentation is unregistered: {label}")
+            event = {
+                "artifact_sha256": digest(archive),
+                "effect_id": identifier,
+                "family": row["artifact_family"],
+                "presentation_id": presentation_id,
+            }
+            invocation = (row["artifact_family"], identifier, presentation_id)
+            if any(
+                (
+                    observed["family"],
+                    observed["effect_id"],
+                    observed["presentation_id"],
+                )
+                == invocation
+                for observed in _R16_16_ACCOUNTING_EVENTS
+            ):
+                fail(
+                    "R16-16 duplicate mutation invocation: "
+                    f"{row['artifact_family']}:{identifier}:{presentation_id}"
+                )
+            _R16_16_ACCOUNTING_EVENTS.append(event)
 
     for label, archive in sdist_artifacts.items():
         for row in PROPERTY_MUTATION_REGISTRY:
@@ -4065,11 +4207,116 @@ def run_property_mutation_registry(
         for row in PROPERTY_MUTATION_REGISTRY:
             if row["artifact_family"] == "wheel":
                 run_one(row, label, archive)
+    expected_invocations = sum(
+        2 if row["artifact_family"] == "sdist" else 3
+        for row in PROPERTY_MUTATION_REGISTRY
+    )
+    accounting = r16_16_accounting_populations()
     print(
         "append-only property/mutation registry: PASS "
-        f"rows={len(PROPERTY_MUTATION_REGISTRY)} "
-        f"executions={len(_PROPERTY_MUTATION_EXECUTIONS)} "
-        f"unique-artifact-executions={len(_PROPERTY_MUTATION_UNIQUE_EFFECTS)}"
+        f"rows={len(PROPERTY_MUTATION_REGISTRY)}/{len(PROPERTY_MUTATION_REGISTRY)} "
+        f"mutation-invocations={len(_PROPERTY_MUTATION_EXECUTIONS)}/"
+        f"{expected_invocations} "
+        f"effect-classes={len(PROPERTY_MUTATION_REGISTRY)}/"
+        f"{len(PROPERTY_MUTATION_REGISTRY)}; "
+        "R16-16 frozen R15 topology: PASS "
+        f"mutation-invocations={accounting['mutation_invocations']}/32 "
+        f"effect-classes={accounting['effect_classes']}/12 "
+        f"presentations={accounting['presentations']}/5 "
+        f"shipped-byte-identities={accounting['byte_identities']}/2"
+    )
+
+
+def r16_16_accounting_populations() -> dict[str, int]:
+    events = _R16_16_ACCOUNTING_EVENTS
+    invocations = {
+        (event["family"], event["effect_id"], event["presentation_id"])
+        for event in events
+    }
+    effects = {event["effect_id"] for event in events}
+    presentations = {event["presentation_id"] for event in events}
+    byte_identities = {event["artifact_sha256"] for event in events}
+    observed = {
+        "byte_identities": len(byte_identities),
+        "effect_classes": len(effects),
+        "mutation_invocations": len(invocations),
+        "presentations": len(presentations),
+    }
+    expected = {
+        "byte_identities": 2,
+        "effect_classes": 12,
+        "mutation_invocations": 32,
+        "presentations": 5,
+    }
+    if len(events) != len(invocations):
+        fail(
+            "R16-16 accounting events contain a duplicate invocation: "
+            f"events={len(events)} invocations={len(invocations)}"
+        )
+    if observed != expected:
+        fail(f"R16-16 accounting population differs: {observed!r}")
+    return observed
+
+
+def _runtime_record_path(configured: str, label: str) -> Path:
+    path = Path(configured)
+    if not path.is_absolute():
+        fail(f"{label} output path must be absolute")
+    try:
+        parent = path.parent.resolve(strict=True)
+    except OSError as exc:
+        fail(f"{label} output parent is unavailable: {exc}")
+    resolved = parent / path.name
+    if resolved.is_relative_to(PROJECT.resolve()):
+        fail(f"{label} output path must be outside the candidate")
+    if resolved.exists() or resolved.is_symlink():
+        fail(f"{label} output path already exists")
+    return resolved
+
+
+def write_r16_runtime_records() -> None:
+    r16_14_output = os.environ.get("KILIX_F100_R16_14_TRACE_OUTPUT")
+    r16_16_output = os.environ.get("KILIX_F100_R16_16_EVENTS_OUTPUT")
+    accounting_sha256 = os.environ.get(
+        "KILIX_F100_R16_16_ACCOUNTING_AUTHORITY_SHA256"
+    )
+    configured = (r16_14_output, r16_16_output, accounting_sha256)
+    if not any(configured):
+        print("R16 external runtime records: NOT_EMITTED outputs=0/2")
+        return
+    if not all(configured):
+        fail("R16 external runtime record configuration is incomplete: 0/3 accepted")
+    assert r16_14_output is not None
+    assert r16_16_output is not None
+    assert accounting_sha256 is not None
+    if re.fullmatch(r"[0-9a-f]{64}", accounting_sha256) is None:
+        fail("R16-16 accounting authority SHA-256 is invalid")
+
+    r16_14_path = _runtime_record_path(r16_14_output, "R16-14 trace")
+    r16_16_path = _runtime_record_path(r16_16_output, "R16-16 events")
+    r16_14_record = {
+        "events": sorted(
+            _R16_14_SDIST_EFFECT_EVENTS,
+            key=lambda event: event["identity"],
+        ),
+        "schema_version": "r16-14-sdist-effect-trace-v1",
+    }
+    r16_16_record = {
+        "authority_sha256": accounting_sha256,
+        "events": list(_R16_16_ACCOUNTING_EVENTS),
+        "schema": "kilix.content.f100-u1-r16-16-accounting-events/v1",
+    }
+    try:
+        with r16_14_path.open("xb") as output:
+            output.write(canonical_json(r16_14_record, newline=True))
+        with r16_16_path.open("xb") as output:
+            output.write(canonical_json(r16_16_record, newline=True))
+    except OSError as exc:
+        fail(f"R16 external runtime record write failed: {exc}")
+    print(
+        "R16 external runtime records: EMITTED outputs=2/2 "
+        f"r16-14-sha256={digest(r16_14_path)} "
+        f"r16-16-sha256={digest(r16_16_path)}"
     )
 
 
@@ -4418,6 +4665,7 @@ def main() -> int:
                 "wheel": wheels,
             }
         )
+        write_r16_runtime_records()
         print(f"SOURCE_DATE_EPOCH={SOURCE_DATE_EPOCH}")
         for label, artifact in (
             ("direct-sdist", direct_one["sdist"]),
