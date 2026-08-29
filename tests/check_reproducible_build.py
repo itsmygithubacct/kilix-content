@@ -218,8 +218,24 @@ PROPERTY_MUTATION_REGISTRY: tuple[dict[str, str], ...] = (
         "mutation": "append a complete second ZIP after the wheel",
         "expected_refusal": "wheel container has bytes outside the central directory record",
     },
+    {
+        "id": "sdist.generated-metadata.byte",
+        "artifact_family": "sdist",
+        "audit_kind": "generated-metadata",
+        "property": "generated sdist metadata reproducibility",
+        "mutation": "change one generated metadata byte in one reproducible sdist",
+        "expected_refusal": "generated sdist metadata is not reproducible",
+    },
+    {
+        "id": "wheel.resource-authority.sdist-manifest",
+        "artifact_family": "wheel",
+        "audit_kind": "resource-authority",
+        "property": "source and sdist production resource authority equality",
+        "mutation": "add a canonical marker to the extracted-sdist resource manifest",
+        "expected_refusal": "sdist production authority differs from source",
+    },
 )
-FROZEN_PROPERTY_MUTATION_REGISTRY_SHA256 = "d0c05c659548a256072a4cc7cee8794555cccce03a9c3fc56c8b05bb454a019d"
+FROZEN_PROPERTY_MUTATION_REGISTRY_SHA256 = "73de594839c5e82b7071540bd14eb9fa9e3089fa3bbc505d9b4224c03cea4c36"
 # Existence seal, distinct from the content digest above: a weakening round
 # that removes a row and recomputes the digest does not restate this literal
 # list, so the superset check below still refuses. Append-only: only add ids.
@@ -237,9 +253,11 @@ FROZEN_REQUIRED_ROW_IDS = frozenset(
         "wheel.installed.manifest",
         "wheel.container.prepend",
         "wheel.container.appended-zip",
+        "sdist.generated-metadata.byte",
+        "wheel.resource-authority.sdist-manifest",
     }
 )
-FROZEN_MINIMUM_ROW_COUNT = 12
+FROZEN_MINIMUM_ROW_COUNT = 14
 _PROPERTY_MUTATION_EXECUTIONS: set[tuple[str, str]] = set()
 _PROPERTY_MUTATION_UNIQUE_EFFECTS: set[tuple[str, str]] = set()
 _AUDIT_EFFECTS: set[tuple[str, str, str, str]] = set()
@@ -295,12 +313,17 @@ def register_production_audit(
     family: str,
     artifact_label: str,
     audit_kind: str,
-    action: Callable[[], None],
-) -> None:
-    action()
+    action: Callable[[], Any],
+) -> Any:
+    return action()
 
 
-def records_audit_effect(family: str, kind: str) -> Callable[[Callable], Callable]:
+def records_audit_effect(
+    family: str,
+    kind: str,
+    *,
+    artifact_arguments: tuple[int, ...] = (0,),
+) -> Callable[[Callable], Callable]:
     """Record, from inside the audit, that it ran to completion on an artifact.
 
     The effect is keyed on (family, resolved path, content digest, kind): the
@@ -312,11 +335,18 @@ def records_audit_effect(family: str, kind: str) -> Callable[[Callable], Callabl
     def decorate(function: Callable) -> Callable:
         _PRODUCTION_AUDIT_KINDS.add((family, kind))
         @functools.wraps(function)
-        def wrapper(artifact: Path, *args: Any, **kwargs: Any) -> Any:
-            result = function(artifact, *args, **kwargs)
-            _AUDIT_EFFECTS.add(
-                (family, str(artifact.resolve()), digest(artifact), kind)
-            )
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            result = function(*args, **kwargs)
+            for index in artifact_arguments:
+                if index >= len(args) or not isinstance(args[index], Path):
+                    fail(
+                        "production audit artifact argument is absent: "
+                        f"family={family} kind={kind} index={index}"
+                    )
+                artifact = args[index]
+                _AUDIT_EFFECTS.add(
+                    (family, str(artifact.resolve()), digest(artifact), kind)
+                )
             return result
 
         return wrapper
@@ -1059,6 +1089,9 @@ def sdist_generated_metadata_payloads(
         return payloads
 
 
+@records_audit_effect(
+    "sdist", "generated-metadata", artifact_arguments=(0, 1)
+)
 def sdist_generated_metadata_audit(first: Path, second: Path) -> None:
     first_payloads = sdist_generated_metadata_payloads(first)
     second_payloads = sdist_generated_metadata_payloads(second)
@@ -1918,10 +1951,11 @@ def wheel_module_source_audit(wheel: Path, source_root: Path) -> None:
                 fail(f"wheel module differs from source: {relative}")
 
 
+@records_audit_effect("wheel", "resource-authority")
 def resource_audit(
+    wheel: Path,
     source_root: Path,
     sdist_root: Path,
-    wheels: dict[str, Path],
 ) -> str:
     source_manifest, source_resources = production_resources(source_root)
     sdist_manifest, sdist_resources = production_resources(sdist_root)
@@ -1936,14 +1970,13 @@ def resource_audit(
     if source_package != sdist_package or source_external != sdist_external:
         fail("sdist co-resident production files differ from source")
     manifest_digest = hashlib.sha256(source_manifest).hexdigest()
-    for label, wheel in wheels.items():
-        with zipfile.ZipFile(wheel) as archive:
-            wheel_manifest = archive.read(f"kilix_content/contracts/{U1_MANIFEST}")
-            if wheel_manifest != source_manifest:
-                fail(f"{label} wheel production manifest differs from source")
-        wheel_resource_audit(
-            wheel, source_package, source_external, source_resources
-        )
+    with zipfile.ZipFile(wheel) as archive:
+        wheel_manifest = archive.read(f"kilix_content/contracts/{U1_MANIFEST}")
+        if wheel_manifest != source_manifest:
+            fail(f"{wheel.name} production manifest differs from source")
+    wheel_resource_audit(
+        wheel, source_package, source_external, source_resources
+    )
     return manifest_digest
 
 
@@ -3856,6 +3889,7 @@ def resource_negative_controls(
 
 def run_property_mutation_registry(
     sdist_artifacts: dict[str, Path],
+    sdist_source_root: Path,
     wheel_artifacts: dict[str, Path],
     expected_members: set[str],
     package_expected: dict[str, tuple[str, bytes]],
@@ -3907,6 +3941,18 @@ def run_property_mutation_registry(
                 modes={"tests/test_u1_contracts.py": 0o4755},
             )
             action = partial(extract_sdist, mutated, case / "extract")
+        elif identifier == "sdist.generated-metadata.byte":
+            mutated = case / "mutated.tar.gz"
+            relative = "PKG-INFO"
+            original = raw_sdist_member_payload(
+                archive, sdist_distribution_root(PROJECT) + "/" + relative
+            )
+            rewrite_sdist(
+                archive,
+                mutated,
+                replace={relative: bytes([original[0] ^ 1]) + original[1:]},
+            )
+            action = partial(sdist_generated_metadata_audit, mutated, archive)
         elif identifier == "wheel.container.trailing":
             mutated = case / "mutated.whl"
             mutated.write_bytes(archive.read_bytes() + b"R14-wheel-trailing")
@@ -3986,6 +4032,14 @@ def run_property_mutation_registry(
                 appended_zip.writestr("r15-appended.txt", b"appended complete zip")
             mutated.write_bytes(archive.read_bytes() + appended.getvalue())
             action = partial(wheel_container_audit, mutated)
+        elif identifier == "wheel.resource-authority.sdist-manifest":
+            mutated_root = case / "sdist-root"
+            shutil.copytree(sdist_source_root, mutated_root)
+            manifest_path = mutated_root / "contracts" / U1_MANIFEST
+            manifest = json.loads(manifest_path.read_bytes())
+            manifest["r16-mutation"] = True
+            manifest_path.write_bytes(canonical_json(manifest))
+            action = partial(resource_audit, archive, PROJECT, mutated_root)
         else:
             fail(f"property/mutation registry has no executor: {identifier}")
         expect_audit_failure(
@@ -4156,10 +4210,15 @@ def main() -> int:
                 lambda archive=archive: sdist_member_closure_audit(archive),
             )
             print(f"{label} enumeration and payload audit: PASS")
-        run_sdist_audit(
-            "generated-metadata-audit",
-            lambda: sdist_generated_metadata_audit(
-                direct_one["sdist"], direct_two["sdist"]
+        register_production_audit(
+            "sdist",
+            "direct sdist pair",
+            "generated-metadata",
+            lambda: run_sdist_audit(
+                "generated-metadata-audit",
+                lambda: sdist_generated_metadata_audit(
+                    direct_one["sdist"], direct_two["sdist"]
+                ),
             ),
         )
         sdist_member_closure_negative_controls(
@@ -4239,7 +4298,18 @@ def main() -> int:
             temporary / "record-self-row-control",
         )
         wheels = wheel_artifacts
-        manifest_digest = resource_audit(PROJECT, source_root, wheels)
+        manifest_digests = {
+            register_production_audit(
+                "wheel",
+                label,
+                "resource-authority",
+                lambda wheel=wheel: resource_audit(wheel, PROJECT, source_root),
+            )
+            for label, wheel in wheels.items()
+        }
+        if len(manifest_digests) != 1:
+            fail(f"production resource manifest digests differ: {manifest_digests!r}")
+        manifest_digest = next(iter(manifest_digests))
         for label, wheel in wheels.items():
             register_production_audit(
                 "wheel",
@@ -4320,6 +4390,7 @@ def main() -> int:
                 "direct sdist 1": direct_one["sdist"],
                 "direct sdist 2": direct_two["sdist"],
             },
+            source_root,
             wheels,
             expected_members,
             source_package,
