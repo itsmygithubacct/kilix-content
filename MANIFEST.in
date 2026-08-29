@@ -4,6 +4,7 @@ include uv.lock
 include .python-version
 include build-toolchain.json
 recursive-include contracts *.json *.md
+recursive-include authority *.json *.md *.log *.patch
 recursive-include catalog *.json
 recursive-include licenses *.json *.txt
 recursive-include wheelhouse *.whl *.json *.txt
