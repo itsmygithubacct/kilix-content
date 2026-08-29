@@ -6,6 +6,7 @@ import importlib.util
 import json
 import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -116,6 +117,21 @@ class R16PipeObserverTests(unittest.TestCase):
         self.assertEqual(populations["unique_effect_classes"]["count"], 12)
         self.assertEqual(populations["presentations"]["count"], 5)
         self.assertEqual(populations["shipped_byte_identities"]["count"], 2)
+
+    def test_execution_gate_must_match_the_static_candidate_gate(self) -> None:
+        expected = OBSERVER.sha256(
+            (PROJECT / "tests" / "check_reproducible_build.py").read_bytes()
+        )
+        self.assertEqual(OBSERVER.verify_execution_gate(PROJECT, expected), expected)
+        with tempfile.TemporaryDirectory(prefix="kilix-r16-pipe-drift-") as name:
+            root = Path(name)
+            (root / "tests").mkdir()
+            (root / "tests" / "check_reproducible_build.py").write_bytes(b"drift\n")
+            with self.assertRaises(OBSERVER.ObserverRefusal) as raised:
+                OBSERVER.verify_execution_gate(root, expected)
+        self.assertTrue(
+            raised.exception.code.startswith("OBSERVER_EXECUTION_GATE_DRIFT:")
+        )
 
 
 if __name__ == "__main__":

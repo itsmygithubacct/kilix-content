@@ -176,11 +176,30 @@ def run_with_channels(
     )
 
 
+def verify_execution_gate(execution_root: Path, expected_sha256: str) -> str:
+    try:
+        raw = (execution_root / "tests" / "check_reproducible_build.py").read_bytes()
+    except OSError:
+        refuse("OBSERVER_EXECUTION_GATE_UNREADABLE")
+    observed = sha256(raw)
+    if observed != expected_sha256:
+        refuse(
+            "OBSERVER_EXECUTION_GATE_DRIFT:"
+            f"expected={expected_sha256}:observed={observed}"
+        )
+    return observed
+
+
 def observe(arguments: argparse.Namespace) -> dict[str, Any]:
     candidate_root = Path(arguments.candidate_root).resolve(strict=True)
+    execution_root = Path(arguments.execution_root).resolve(strict=True)
     authority_root = Path(arguments.authority_root).resolve(strict=True)
     temporary_root = Path(arguments.tmpdir).resolve(strict=True)
-    if not candidate_root.is_dir() or not authority_root.is_dir():
+    if (
+        not candidate_root.is_dir()
+        or not execution_root.is_dir()
+        or not authority_root.is_dir()
+    ):
         refuse("OBSERVER_ROOT_NOT_DIRECTORY")
     if authority_root.is_relative_to(candidate_root) or candidate_root.is_relative_to(
         authority_root
@@ -209,6 +228,9 @@ def observe(arguments: argparse.Namespace) -> dict[str, Any]:
             candidate_root=str(candidate_root),
         )
     )
+    execution_gate_sha256 = verify_execution_gate(
+        execution_root, static_result["candidate_gate_sha256"]
+    )
     accounting_sha256 = static_result["r16_16"]["accounting_authority_sha256"]
     ledger = r16_14_tool.load_ledger(
         authority_root / "r16-14-sdist-call-ledger.json"
@@ -228,11 +250,11 @@ def observe(arguments: argparse.Namespace) -> dict[str, Any]:
         "--offline",
         "--all-groups",
         "python",
-        str(candidate_root / "tests" / "check_reproducible_build.py"),
+        str(execution_root / "tests" / "check_reproducible_build.py"),
     ]
     returncode, gate_output, r16_14_raw, r16_16_raw = run_with_channels(
         command,
-        cwd=candidate_root,
+        cwd=execution_root,
         environment=environment,
         authority_sha256=accounting_sha256,
     )
@@ -251,6 +273,7 @@ def observe(arguments: argparse.Namespace) -> dict[str, Any]:
     return {
         "authority_sha256": static_result["authority_sha256"],
         "candidate_gate_sha256": static_result["candidate_gate_sha256"],
+        "execution_gate_sha256": execution_gate_sha256,
         "channels": {
             "accepted": 2,
             "expected": 2,
@@ -279,6 +302,7 @@ def observe(arguments: argparse.Namespace) -> dict[str, Any]:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--candidate-root", required=True)
+    parser.add_argument("--execution-root", required=True)
     parser.add_argument("--authority-root", required=True)
     parser.add_argument("--authority-sha256", required=True)
     parser.add_argument("--tmpdir", required=True)
