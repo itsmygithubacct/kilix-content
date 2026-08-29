@@ -3107,10 +3107,15 @@ def r13_callsite_wiring_regression(
     source = canonical_checker.read_text()
     removed_callsite_blocks = {
         "generated-metadata-audit": (
-            '        run_sdist_audit(\n'
-            '            "generated-metadata-audit",\n'
-            '            lambda: sdist_generated_metadata_audit(\n'
-            '                direct_one["sdist"], direct_two["sdist"]\n'
+            '        register_production_audit(\n'
+            '            "sdist",\n'
+            '            "direct sdist pair",\n'
+            '            "generated-metadata",\n'
+            '            lambda: run_sdist_audit(\n'
+            '                "generated-metadata-audit",\n'
+            '                lambda: sdist_generated_metadata_audit(\n'
+            '                    direct_one["sdist"], direct_two["sdist"]\n'
+            '                ),\n'
             '            ),\n'
             '        )'
         ),
