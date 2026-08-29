@@ -144,8 +144,13 @@ class R16AuthorityMutationTests(unittest.TestCase):
                 self.assertEqual(frozen_digest, observed_digest)
 
     def test_generator_requires_exact_disposable_input(self) -> None:
+        worktree = Path(self.temporary.name) / "worktree"
+        worktree_gate = worktree / GATE_RELATIVE
+        worktree_gate.parent.mkdir(parents=True)
+        (worktree / ".git").mkdir()
+        worktree_gate.write_bytes(self.original)
         with self.assertRaises(SystemExit) as raised:
-            MUTATIONS.verify_disposable_gate(PROJECT / GATE_RELATIVE)
+            MUTATIONS.verify_disposable_gate(worktree_gate)
         self.assertIn("Git worktree", str(raised.exception))
         target = self.candidate / GATE_RELATIVE
         target.write_bytes(self.original)

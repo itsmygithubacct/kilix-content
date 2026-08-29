@@ -82,13 +82,18 @@ class R16PairMutationTests(unittest.TestCase):
         self.assertEqual(mutated.count(census_expression), 1)
 
     def test_input_identity_is_exact_and_worktree_is_refused(self) -> None:
-        with self.assertRaises(SystemExit) as raised:
-            MUTATIONS.verify_disposable_gate(GATE)
-        self.assertIn("Git worktree", str(raised.exception))
         with tempfile.TemporaryDirectory(prefix="kilix-r16-mutation-") as name:
             root = Path(name)
-            target = root / "tests" / GATE.name
-            target.parent.mkdir()
+            worktree = root / "worktree"
+            target = worktree / "tests" / GATE.name
+            target.parent.mkdir(parents=True)
+            (worktree / ".git").mkdir()
+            shutil.copy2(GATE, target)
+            with self.assertRaises(SystemExit) as raised:
+                MUTATIONS.verify_disposable_gate(target)
+            self.assertIn("Git worktree", str(raised.exception))
+            target = root / "candidate" / "tests" / GATE.name
+            target.parent.mkdir(parents=True)
             shutil.copy2(GATE, target)
             with self.assertRaises(SystemExit) as drifted:
                 MUTATIONS.verify_disposable_gate(target)
