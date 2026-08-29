@@ -28,6 +28,9 @@ AUTHORITY_NAME = "authority.json"
 GATE_PATH = Path("tests/check_reproducible_build.py")
 R16_15_README_PATH = Path("contracts/README.md")
 R16_15_TOOL_NAME = "f100_u1_r16_15_adjacent_rows.py"
+R16_14_TOOL_RELATIVE = Path("r16_14/sdist_call_set.py")
+R16_16_TOOL_NAME = "f100_u1_r16_16_accounting.py"
+AUTHORITY_MUTATIONS_TOOL_NAME = "f100_u1_r16_authority_mutations.py"
 HEX_256 = re.compile(r"[0-9a-f]{64}\Z")
 LANE_DISPOSITION_STATES: dict[str, tuple[bool, int | None]] = {
     "candidate-defect-cross-control-refusal": (True, 1),
@@ -309,7 +312,9 @@ def validate_authority_shape(authority: dict[str, Any]) -> None:
             "history",
             "implementation",
             "production_population",
+            "r16_14",
             "r16_15",
+            "r16_16",
             "schema",
             "scope_rows",
         },
@@ -324,7 +329,9 @@ def validate_authority_shape(authority: dict[str, Any]) -> None:
         "R16-9",
         "R16-12",
         "R16-13",
+        "R16-14",
         "R16-15",
+        "R16-16",
     ]:
         refuse("AUTHORITY_SCOPE", repr(authority["scope_rows"]))
 
@@ -332,68 +339,71 @@ def validate_authority_shape(authority: dict[str, Any]) -> None:
 def verify_implementation(value: Any) -> dict[str, Any]:
     implementation = require_closed_object(
         value,
-        {"r16_15_adjacent_rows", "verifier"},
+        {
+            "authority_mutations",
+            "r16_14_sdist_call_set",
+            "r16_15_adjacent_rows",
+            "r16_16_accounting",
+            "verifier",
+        },
         code="IMPLEMENTATION_AUTHORITY_SHAPE",
         label="implementation",
     )
-    verifier = require_closed_object(
-        implementation["verifier"],
-        {"bytes", "path", "sha256"},
-        code="IMPLEMENTATION_AUTHORITY_SHAPE",
-        label="implementation.verifier",
-    )
-    if verifier["path"] != "tools/f100_u1_r16_external_authority.py":
-        refuse("IMPLEMENTATION_VERIFIER_PATH", repr(verifier["path"]))
-    expected = require_sha256(
-        verifier["sha256"],
-        code="IMPLEMENTATION_AUTHORITY_SHAPE",
-        label="implementation.verifier.sha256",
-    )
-    try:
-        raw = Path(__file__).read_bytes()
-    except OSError as exc:
-        refuse("IMPLEMENTATION_VERIFIER_UNREADABLE", str(exc))
-    observed = sha256_bytes(raw)
-    if type(verifier["bytes"]) is not int or len(raw) != verifier["bytes"] or observed != expected:
-        refuse(
-            "IMPLEMENTATION_VERIFIER_DRIFT",
-            f"bytes={len(raw)} sha256={observed}",
-        )
-    adjacent = require_closed_object(
-        implementation["r16_15_adjacent_rows"],
-        {"bytes", "path", "sha256"},
-        code="IMPLEMENTATION_AUTHORITY_SHAPE",
-        label="implementation.r16_15_adjacent_rows",
-    )
-    expected_path = f"tools/{R16_15_TOOL_NAME}"
-    if adjacent["path"] != expected_path:
-        refuse("IMPLEMENTATION_R16_15_TOOL_PATH", repr(adjacent["path"]))
-    adjacent_path = Path(__file__).with_name(R16_15_TOOL_NAME)
-    try:
-        adjacent_raw = adjacent_path.read_bytes()
-    except OSError as exc:
-        refuse("IMPLEMENTATION_R16_15_TOOL_UNREADABLE", str(exc))
-    adjacent_sha256 = sha256_bytes(adjacent_raw)
-    adjacent_expected = require_sha256(
-        adjacent["sha256"],
-        code="IMPLEMENTATION_AUTHORITY_SHAPE",
-        label="implementation.r16_15_adjacent_rows.sha256",
-    )
-    if (
-        type(adjacent["bytes"]) is not int
-        or len(adjacent_raw) != adjacent["bytes"]
-        or adjacent_sha256 != adjacent_expected
-    ):
-        refuse(
-            "IMPLEMENTATION_R16_15_TOOL_DRIFT",
-            f"bytes={len(adjacent_raw)} sha256={adjacent_sha256}",
-        )
-    return {
-        "r16_15_adjacent_rows_bytes": len(adjacent_raw),
-        "r16_15_adjacent_rows_sha256": adjacent_sha256,
-        "verifier_bytes": len(raw),
-        "verifier_sha256": observed,
+    specifications = {
+        "authority_mutations": (
+            Path(__file__).with_name(AUTHORITY_MUTATIONS_TOOL_NAME),
+            f"tools/{AUTHORITY_MUTATIONS_TOOL_NAME}",
+            "IMPLEMENTATION_AUTHORITY_MUTATIONS",
+        ),
+        "r16_14_sdist_call_set": (
+            Path(__file__).parent / R16_14_TOOL_RELATIVE,
+            f"tools/{R16_14_TOOL_RELATIVE.as_posix()}",
+            "IMPLEMENTATION_R16_14_TOOL",
+        ),
+        "r16_15_adjacent_rows": (
+            Path(__file__).with_name(R16_15_TOOL_NAME),
+            f"tools/{R16_15_TOOL_NAME}",
+            "IMPLEMENTATION_R16_15_TOOL",
+        ),
+        "r16_16_accounting": (
+            Path(__file__).with_name(R16_16_TOOL_NAME),
+            f"tools/{R16_16_TOOL_NAME}",
+            "IMPLEMENTATION_R16_16_TOOL",
+        ),
+        "verifier": (
+            Path(__file__),
+            "tools/f100_u1_r16_external_authority.py",
+            "IMPLEMENTATION_VERIFIER",
+        ),
     }
+    observed_tools: dict[str, dict[str, Any]] = {}
+    for name, (path, expected_path, code) in specifications.items():
+        pin = require_closed_object(
+            implementation[name],
+            {"bytes", "path", "sha256"},
+            code="IMPLEMENTATION_AUTHORITY_SHAPE",
+            label=f"implementation.{name}",
+        )
+        if pin["path"] != expected_path:
+            refuse(f"{code}_PATH", repr(pin["path"]))
+        try:
+            raw = path.read_bytes()
+        except OSError as exc:
+            refuse(f"{code}_UNREADABLE", str(exc))
+        observed = sha256_bytes(raw)
+        expected = require_sha256(
+            pin["sha256"],
+            code="IMPLEMENTATION_AUTHORITY_SHAPE",
+            label=f"implementation.{name}.sha256",
+        )
+        if (
+            type(pin["bytes"]) is not int
+            or len(raw) != pin["bytes"]
+            or observed != expected
+        ):
+            refuse(f"{code}_DRIFT", f"bytes={len(raw)} sha256={observed}")
+        observed_tools[name] = {"bytes": len(raw), "sha256": observed}
+    return {"tool_count": len(observed_tools), "tools": observed_tools}
 
 
 def verify_external_roots(candidate_root: Path, authority_root: Path) -> None:
@@ -1426,6 +1436,174 @@ def verify_r16_15(
     }
 
 
+def verify_r16_14(
+    authority_root: Path,
+    gate_raw: bytes,
+    tree: ast.Module,
+    value: Any,
+) -> dict[str, Any]:
+    """Verify the nine-call candidate mirror without granting authority status."""
+    item = require_closed_object(
+        value,
+        {
+            "authority_status",
+            "ledger",
+            "required_call_count",
+            "runtime_effect_result_count",
+        },
+        code="R16_14_AUTHORITY_SHAPE",
+        label="r16_14",
+    )
+    if (
+        item["authority_status"] != "candidate-mirror-not-final-authority"
+        or item["required_call_count"] != 9
+        or item["runtime_effect_result_count"] != 0
+    ):
+        refuse("R16_14_POPULATION_AUTHORITY", repr(item))
+    ledger_pin = require_closed_object(
+        item["ledger"],
+        {"bytes", "path", "sha256"},
+        code="R16_14_AUTHORITY_SHAPE",
+        label="r16_14.ledger",
+    )
+    if ledger_pin["path"] != "r16-14-sdist-call-ledger.json":
+        refuse("R16_14_LEDGER_PATH", repr(ledger_pin["path"]))
+    ledger_raw, ledger_sha256 = read_pinned_evidence(
+        authority_root,
+        ledger_pin,
+        label="r16_14.ledger",
+    )
+    call_set = load_external_module(
+        Path(__file__).parent / R16_14_TOOL_RELATIVE,
+        "f100_u1_r16_14_sdist_call_set_external",
+    )
+    ledger_path = authority_root / ledger_pin["path"]
+    try:
+        ledger = call_set.load_ledger(ledger_path)
+        if ledger.canonical_bytes != ledger_raw:
+            refuse("R16_14_LEDGER_CANONICAL_DRIFT", str(ledger_path))
+        source = gate_raw.decode("utf-8")
+        observed = call_set.enumerate_sdist_calls(source, filename=str(GATE_PATH))
+        result = call_set.verify_call_set(ledger, observed)
+    except call_set.VerificationError as exc:
+        refuse("R16_14_CALL_SET_REFUSED", exc.code)
+    except UnicodeDecodeError as exc:
+        refuse("R16_14_GATE_ENCODING", str(exc))
+
+    expected_events = {
+        event["identity"]: event
+        for event in call_set.expected_effect_events(ledger)
+    }
+    candidate_events = module_constant(tree, "R16_14_SDIST_CALL_EVENTS")
+    if candidate_events != expected_events:
+        refuse("R16_14_EVENT_MIRROR_DRIFT", repr(candidate_events))
+    return {
+        "authority_status": ledger.authority_status,
+        "ledger_sha256": ledger_sha256,
+        "observed_call_count": result["observed_call_count"],
+        "observed_set_sha256": result["observed_set_sha256"],
+        "required_call_count": result["required_call_count"],
+        "runtime_effect_result_count": 0,
+    }
+
+
+def verify_r16_16(
+    candidate_root: Path,
+    authority_root: Path,
+    tree: ast.Module,
+    value: Any,
+) -> dict[str, Any]:
+    """Bind the gate emitter to the proposed external accounting population."""
+    item = require_closed_object(
+        value,
+        {
+            "accounting_authority",
+            "expected_counts",
+            "presentation_labels",
+            "runtime_result_count",
+        },
+        code="R16_16_AUTHORITY_SHAPE",
+        label="r16_16",
+    )
+    expected_counts = {
+        "byte_identities": 2,
+        "effect_classes": 12,
+        "mutation_invocations": 32,
+        "presentations": 5,
+    }
+    presentation_labels = {
+        "direct sdist 1": "direct-sdist-1",
+        "direct sdist 2": "direct-sdist-2",
+        "direct wheel 1": "direct-wheel-1",
+        "direct wheel 2": "direct-wheel-2",
+        "sdist-derived wheel": "sdist-derived-wheel",
+    }
+    if (
+        item["expected_counts"] != expected_counts
+        or item["presentation_labels"] != presentation_labels
+        or item["runtime_result_count"] != 0
+    ):
+        refuse("R16_16_POPULATION_AUTHORITY", repr(item))
+    authority_pin = require_closed_object(
+        item["accounting_authority"],
+        {"bytes", "path", "sha256"},
+        code="R16_16_AUTHORITY_SHAPE",
+        label="r16_16.accounting_authority",
+    )
+    if authority_pin["path"] != "r16-16-accounting-authority.json":
+        refuse("R16_16_ACCOUNTING_AUTHORITY_PATH", repr(authority_pin["path"]))
+    _, authority_sha256 = read_pinned_evidence(
+        authority_root,
+        authority_pin,
+        label="r16_16.accounting_authority",
+    )
+    accounting = load_external_module(
+        Path(__file__).with_name(R16_16_TOOL_NAME),
+        "f100_u1_r16_16_accounting_external",
+    )
+    authority_path = authority_root / authority_pin["path"]
+    try:
+        frozen = accounting.load_authority(
+            authority_path,
+            authority_sha256,
+            candidate_root,
+        )
+    except accounting.AccountingRefusal as exc:
+        refuse("R16_16_ACCOUNTING_AUTHORITY_REFUSED", exc.code)
+    effects = tuple(
+        effect for family in frozen.families for effect in family.effect_ids
+    )
+    presentations = tuple(
+        presentation
+        for family in frozen.families
+        for presentation in family.presentation_ids
+    )
+    observed_counts = {
+        "byte_identities": len(
+            {family.byte_identity_group for family in frozen.families}
+        ),
+        "effect_classes": len(effects),
+        "mutation_invocations": sum(
+            len(family.effect_ids) * len(family.presentation_ids)
+            for family in frozen.families
+        ),
+        "presentations": len(presentations),
+    }
+    if observed_counts != expected_counts:
+        refuse("R16_16_ACCOUNTING_POPULATION_DRIFT", repr(observed_counts))
+    candidate_effects = module_constant(tree, "R16_16_ACCOUNTING_EFFECT_IDS")
+    candidate_presentations = module_constant(tree, "R16_16_PRESENTATION_IDS")
+    if candidate_effects != effects:
+        refuse("R16_16_EFFECT_MIRROR_DRIFT", repr(candidate_effects))
+    if candidate_presentations != presentation_labels:
+        refuse("R16_16_PRESENTATION_MIRROR_DRIFT", repr(candidate_presentations))
+    return {
+        "accounting_authority_sha256": authority_sha256,
+        "expected_counts": expected_counts,
+        "runtime_result_count": 0,
+    }
+
+
 def verify(arguments: argparse.Namespace) -> dict[str, Any]:
     candidate_root = Path(arguments.candidate_root)
     authority_root = Path(arguments.authority_root)
@@ -1465,10 +1643,22 @@ def verify(arguments: argparse.Namespace) -> dict[str, Any]:
         authority["evidence"],
         candidate_gate_raw=gate_raw,
     )
+    r16_14 = verify_r16_14(
+        authority_root,
+        gate_raw,
+        tree,
+        authority["r16_14"],
+    )
     r16_15 = verify_r16_15(
         candidate_root,
         authority_root,
         authority["r16_15"],
+    )
+    r16_16 = verify_r16_16(
+        candidate_root,
+        authority_root,
+        tree,
+        authority["r16_16"],
     )
     return {
         "authority_sha256": observed_authority,
@@ -1477,7 +1667,9 @@ def verify(arguments: argparse.Namespace) -> dict[str, Any]:
         "history": history,
         "implementation": implementation,
         "population": population,
+        "r16_14": r16_14,
         "r16_15": r16_15,
+        "r16_16": r16_16,
         "schema": RESULT_SCHEMA,
         "status": "VERIFIED_NOT_GRADED",
     }

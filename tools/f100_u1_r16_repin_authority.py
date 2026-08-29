@@ -17,9 +17,14 @@ PROJECT = Path(__file__).resolve().parents[1]
 AUTHORITY_PATH = PROJECT / "authority" / "f100-u1-r16" / "authority.json"
 GATE_PATH = PROJECT / "tests" / "check_reproducible_build.py"
 VERIFIER_PATH = PROJECT / "tools" / "f100_u1_r16_external_authority.py"
+R16_14_TOOL_PATH = PROJECT / "tools" / "r16_14" / "sdist_call_set.py"
 R16_15_TOOL_PATH = PROJECT / "tools" / "f100_u1_r16_15_adjacent_rows.py"
+R16_16_TOOL_PATH = PROJECT / "tools" / "f100_u1_r16_16_accounting.py"
+AUTHORITY_MUTATIONS_PATH = PROJECT / "tools" / "f100_u1_r16_authority_mutations.py"
 AUTHORITY_ROOT = AUTHORITY_PATH.parent
+R16_14_LEDGER_PATH = AUTHORITY_ROOT / "r16-14-sdist-call-ledger.json"
 R16_15_LEDGER_PATH = AUTHORITY_ROOT / "r16-15-adjacent-row-ledger.json"
+R16_16_AUTHORITY_PATH = AUTHORITY_ROOT / "r16-16-accounting-authority.json"
 PAIR_PLAN_PATH = AUTHORITY_ROOT / "r15-3-pair-plan.json"
 PAIR_AMENDMENT_PATH = AUTHORITY_ROOT / "r15-3-pair-plan-amendment-1.json"
 PAIR_RESULTS_PATH = AUTHORITY_ROOT / "r15-3-pair-results.json"
@@ -136,8 +141,16 @@ def main() -> int:
         "R16-9",
         "R16-12",
         "R16-13",
+        "R16-14",
         "R16-15",
+        "R16-16",
     ]
+    authority["r16_14"] = {
+        "authority_status": "candidate-mirror-not-final-authority",
+        "ledger": pinned_evidence(R16_14_LEDGER_PATH),
+        "required_call_count": 9,
+        "runtime_effect_result_count": 0,
+    }
     authority["r16_15"] = {
         "ledger": pinned_evidence(R16_15_LEDGER_PATH),
         "row_count": 38,
@@ -146,6 +159,23 @@ def main() -> int:
             "r14-r9-wheel-sdist-parity": 19,
             "r15-registry-boundary": 6,
         },
+    }
+    authority["r16_16"] = {
+        "accounting_authority": pinned_evidence(R16_16_AUTHORITY_PATH),
+        "expected_counts": {
+            "byte_identities": 2,
+            "effect_classes": 12,
+            "mutation_invocations": 32,
+            "presentations": 5,
+        },
+        "presentation_labels": {
+            "direct sdist 1": "direct-sdist-1",
+            "direct sdist 2": "direct-sdist-2",
+            "direct wheel 1": "direct-wheel-1",
+            "direct wheel 2": "direct-wheel-2",
+            "sdist-derived wheel": "sdist-derived-wheel",
+        },
+        "runtime_result_count": 0,
     }
     authority["candidate"] = {
         "commit": commit,
@@ -229,7 +259,10 @@ def main() -> int:
         ),
     }
     implementation_paths = {
+        "authority_mutations": AUTHORITY_MUTATIONS_PATH,
+        "r16_14_sdist_call_set": R16_14_TOOL_PATH,
         "r16_15_adjacent_rows": R16_15_TOOL_PATH,
+        "r16_16_accounting": R16_16_TOOL_PATH,
         "verifier": VERIFIER_PATH,
     }
     authority["implementation"] = {

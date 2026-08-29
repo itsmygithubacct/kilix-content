@@ -259,6 +259,10 @@ class R16ExternalAuthorityTests(unittest.TestCase):
         self.assertEqual(
             result["evidence"]["pair_mutation_definition_check_count"], 6
         )
+        self.assertEqual(result["implementation"]["tool_count"], 5)
+        self.assertEqual(result["r16_14"]["observed_call_count"], 9)
+        self.assertEqual(result["r16_14"]["required_call_count"], 9)
+        self.assertEqual(result["r16_14"]["runtime_effect_result_count"], 0)
         self.assertEqual(result["r16_15"]["row_count"], 38)
         self.assertEqual(result["r16_15"]["deletion_control_count"], 38)
         self.assertEqual(result["r16_15"]["boundary_control_count"], 5)
@@ -270,6 +274,34 @@ class R16ExternalAuthorityTests(unittest.TestCase):
                 "r15-registry-boundary": 6,
             },
         )
+        self.assertEqual(
+            result["r16_16"]["expected_counts"],
+            {
+                "byte_identities": 2,
+                "effect_classes": 12,
+                "mutation_invocations": 32,
+                "presentations": 5,
+            },
+        )
+        self.assertEqual(result["r16_16"]["runtime_result_count"], 0)
+
+    def test_r16_14_ledger_bytes_are_manifest_bound(self) -> None:
+        ledger = self.authority / "r16-14-sdist-call-ledger.json"
+        ledger.write_bytes(ledger.read_bytes() + b"\n")
+        self.assert_refusal("EVIDENCE_DIGEST_MISMATCH")
+
+    def test_r16_16_authority_bytes_are_manifest_bound(self) -> None:
+        authority = self.authority / "r16-16-accounting-authority.json"
+        authority.write_bytes(authority.read_bytes() + b"\n")
+        self.assert_refusal("EVIDENCE_DIGEST_MISMATCH")
+
+    def test_r16_16_external_tool_is_manifest_bound(self) -> None:
+        manifest = self.authority / "authority.json"
+        value = json.loads(manifest.read_bytes())
+        value["implementation"]["r16_16_accounting"]["sha256"] = "0" * 64
+        manifest.write_bytes(AUTHORITY.canonical_json(value))
+        self.authority_sha256 = hashlib.sha256(manifest.read_bytes()).hexdigest()
+        self.assert_refusal("IMPLEMENTATION_R16_16_TOOL_DRIFT")
 
     def test_r16_15_readme_row_deletion_is_named(self) -> None:
         readme = self.candidate / README_RELATIVE

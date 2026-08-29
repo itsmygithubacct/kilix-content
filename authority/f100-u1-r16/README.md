@@ -1,8 +1,8 @@
 # F100 U1 R16 external-authority candidate
 
 This directory is a builder-produced correction candidate for **R16-6, R16-7,
-R16-9, R16-12, R16-13 and R16-15**. It is not a grade, admission or release
-verdict.
+R16-9, R16-12, R16-13, R16-14, R16-15 and R16-16**. It is not a grade,
+admission or release verdict.
 Its verifier deliberately returns `VERIFIED_NOT_GRADED`; an independent session
 must ratify the population and digest, and the trusted operator launcher must
 consume the ratified external copy before any candidate process starts.
@@ -160,6 +160,16 @@ These are direct full-gate builder results on the exact R15 subject gate. They
 remain evidence for independent review, never self-credit, and they do not
 substitute for the still-unadmitted trusted-launcher operator path.
 
+### R16-14 — pinned nine-call candidate mirror
+
+The manifest pins the 9-of-9 sdist-call ledger and the external copy of its
+inert-source enumerator. The verifier independently re-enumerates the exact
+candidate gate, checks exact call-set equality, and binds the gate's 9-of-9
+runtime-event mirror. The ledger remains marked
+`candidate-mirror-not-final-authority`: an independent final freeze is 0 of 1,
+trusted-path runtime traces are 0 of 9, and the 14-of-14 causal campaign has not
+run through the trusted default path.
+
 ### R16-15 — externally pinned adjacent-row population
 
 The manifest pins the separately prepared `r16-15-adjacent-row-ledger.json`
@@ -176,6 +186,17 @@ mutations are not trusted-launcher results. The acceptance criteria's distinct
 mechanism-removal control remains 0 of 1, the eligible reviewer's independent
 38-of-38-row re-derivation remains 0 of 1, and runtime acceptance remains 0 of
 1.
+
+### R16-16 — separated accounting populations
+
+The manifest pins the proposed accounting authority and the external
+accumulator. It binds 32 of 32 mutation invocations, 12 of 12 effect classes, 5
+of 5 presentations and 2 of 2 shipped byte-identity groups, and checks that the
+candidate gate's event scope and presentation map are exactly equal. The gate
+can emit canonical event records only to explicit, previously absent paths
+outside the candidate. Runtime results remain 0 of 1 and all 7 of 7 trusted-path
+causal controls remain outstanding; the 17-of-17 leaf tests are static facility
+evidence only.
 
 ## Current disposition
 
