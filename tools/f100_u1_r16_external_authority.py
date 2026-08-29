@@ -26,6 +26,21 @@ RESULT_SCHEMA = "kilix.content.f100-u1-r16-external-authority-result/v1"
 AUTHORITY_NAME = "authority.json"
 GATE_PATH = Path("tests/check_reproducible_build.py")
 HEX_256 = re.compile(r"[0-9a-f]{64}\Z")
+LANE_DISPOSITION_STATES: dict[str, tuple[bool, int | None]] = {
+    "candidate-defect-cross-control-refusal": (True, 1),
+    "candidate-defect-unhandled-exception": (True, 1),
+    "candidate-defect-wrong-reason": (True, 1),
+    "harness-invalid-archive-setup": (False, None),
+    "harness-invalid-in-export-log": (True, 1),
+    "harness-invalid-in-export-tmpdir": (True, 1),
+    "harness-invalid-wrong-cwd": (False, 2),
+    "retired-rc-not-authoritatively-bound-superseded-by-p1": (True, None),
+    "valid-clean": (True, 0),
+    "valid-clean-diagnostic-skip": (True, 0),
+    "valid-expected-refusal": (True, 1),
+    "valid-parent-baseline": (True, 0),
+    "valid-work-asymmetric-pair": (True, 0),
+}
 
 
 class AuthorityRefusal(Exception):
@@ -638,6 +653,21 @@ def verify_candidate_lane_census(value: dict[str, Any]) -> dict[str, int]:
             refuse("EVIDENCE_CENSUS_LANE_SHAPE", f"index={index} gate_started")
         if item["rc"] is not None and type(item["rc"]) is not int:
             refuse("EVIDENCE_CENSUS_LANE_SHAPE", f"index={index} rc")
+        disposition = item["disposition"]
+        if disposition not in LANE_DISPOSITION_STATES:
+            refuse(
+                "EVIDENCE_LANE_DISPOSITION_UNKNOWN",
+                f"run_id={item['run_id']!r} disposition={disposition!r}",
+            )
+        expected_gate_started, expected_rc = LANE_DISPOSITION_STATES[disposition]
+        observed_state = (item["gate_started"], item["rc"])
+        if observed_state != (expected_gate_started, expected_rc):
+            refuse(
+                "EVIDENCE_LANE_DISPOSITION_CONTRADICTION",
+                f"run_id={item['run_id']!r} disposition={disposition!r} "
+                f"expected={(expected_gate_started, expected_rc)!r} "
+                f"observed={observed_state!r}",
+            )
         run_ids.append(item["run_id"])
     if len(run_ids) != len(set(run_ids)):
         refuse("EVIDENCE_CENSUS_DUPLICATE_RUN_ID", repr(run_ids))
@@ -683,6 +713,7 @@ def verify_candidate_lane_census(value: dict[str, Any]) -> dict[str, int]:
         "candidate_lane_execution_count": len(lanes),
         "evidence_conflict_count": len(conflicts),
         "gate_started_count": gate_started,
+        "lane_semantic_binding_count": len(lanes),
     }
 
 

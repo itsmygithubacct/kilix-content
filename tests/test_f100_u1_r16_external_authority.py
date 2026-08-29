@@ -76,6 +76,8 @@ class R16ExternalAuthorityTests(unittest.TestCase):
         shutil.copy2(PROJECT / GATE_RELATIVE, self.candidate / GATE_RELATIVE)
         shutil.copytree(AUTHORITY_SOURCE, self.authority)
         self.original_gate = (self.candidate / GATE_RELATIVE).read_bytes()
+        self.original_census = (self.authority / "candidate-lane-census.json").read_bytes()
+        self.original_authority = (self.authority / "authority.json").read_bytes()
         self.authority_value = json.loads((self.authority / "authority.json").read_bytes())
         self.authority_sha256 = hashlib.sha256(
             (self.authority / "authority.json").read_bytes()
@@ -109,6 +111,33 @@ class R16ExternalAuthorityTests(unittest.TestCase):
     def reset_gate(self) -> None:
         (self.candidate / GATE_RELATIVE).write_bytes(self.original_gate)
 
+    def reset_authority(self) -> None:
+        (self.authority / "candidate-lane-census.json").write_bytes(
+            self.original_census
+        )
+        manifest = self.authority / "authority.json"
+        manifest.write_bytes(self.original_authority)
+        self.authority_value = json.loads(self.original_authority)
+        self.authority_sha256 = hashlib.sha256(self.original_authority).hexdigest()
+
+    def rewrite_census(self, action) -> None:
+        census_path = self.authority / "candidate-lane-census.json"
+        census = json.loads(census_path.read_bytes())
+        action(census)
+        census_raw = AUTHORITY.canonical_json(census)
+        census_path.write_bytes(census_raw)
+        manifest_path = self.authority / "authority.json"
+        manifest = json.loads(manifest_path.read_bytes())
+        manifest["evidence"]["candidate_lane_census"] = {
+            "bytes": len(census_raw),
+            "path": "candidate-lane-census.json",
+            "sha256": hashlib.sha256(census_raw).hexdigest(),
+        }
+        manifest_raw = AUTHORITY.canonical_json(manifest)
+        manifest_path.write_bytes(manifest_raw)
+        self.authority_value = manifest
+        self.authority_sha256 = hashlib.sha256(manifest_raw).hexdigest()
+
     def test_exact_export_verifies_without_grade(self) -> None:
         result = AUTHORITY.verify(self.arguments())
         self.assertEqual(result["status"], "VERIFIED_NOT_GRADED")
@@ -120,6 +149,7 @@ class R16ExternalAuthorityTests(unittest.TestCase):
         self.assertEqual(result["evidence"]["candidate_lane_execution_count"], 17)
         self.assertEqual(result["evidence"]["gate_started_count"], 14)
         self.assertEqual(result["evidence"]["evidence_conflict_count"], 1)
+        self.assertEqual(result["evidence"]["lane_semantic_binding_count"], 17)
         self.assertEqual(result["evidence"]["pair_obligation_count"], 2)
         self.assertEqual(result["evidence"]["pair_execution_count"], 3)
         self.assertEqual(result["evidence"]["pair_expected_outcome_count"], 2)
@@ -328,6 +358,38 @@ class R16ExternalAuthorityTests(unittest.TestCase):
         self.assertEqual(len(set(identifiers)), 17)
         self.assertEqual(sum(row["gate_started"] for row in census["lanes"]), 14)
         self.assertEqual([row["conflict_id"] for row in census["conflicts"]], ["arm12-exit-status"])
+
+    def test_every_lane_disposition_is_bound_to_gate_and_exit_state(self) -> None:
+        census = json.loads(self.original_census)
+        self.assertEqual(
+            {lane["disposition"] for lane in census["lanes"]},
+            set(AUTHORITY.LANE_DISPOSITION_STATES),
+        )
+        for original in census["lanes"]:
+            with self.subTest(run_id=original["run_id"]):
+                self.reset_authority()
+                incompatible = (
+                    "valid-expected-refusal"
+                    if (original["gate_started"], original["rc"]) == (True, 0)
+                    else "valid-clean"
+                )
+
+                def contradict(value, run_id=original["run_id"], incompatible=incompatible):
+                    lane = next(row for row in value["lanes"] if row["run_id"] == run_id)
+                    lane["disposition"] = incompatible
+
+                self.rewrite_census(contradict)
+                refusal = self.assert_refusal(
+                    "EVIDENCE_LANE_DISPOSITION_CONTRADICTION"
+                )
+                self.assertIn(repr(original["run_id"]), refusal.detail)
+
+    def test_unknown_lane_disposition_cannot_be_added_by_repinning(self) -> None:
+        def replace(value):
+            value["lanes"][0]["disposition"] = "self-certified-clean"
+
+        self.rewrite_census(replace)
+        self.assert_refusal("EVIDENCE_LANE_DISPOSITION_UNKNOWN")
 
 
 if __name__ == "__main__":

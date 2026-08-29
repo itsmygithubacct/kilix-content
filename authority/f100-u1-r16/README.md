@@ -104,6 +104,14 @@ the transcript no credit on that point. The transcript is also not a raw-log
 entry for all 17 lanes. Therefore this bundle makes the bounded evidence stable
 for re-review but does not retroactively satisfy predicate 3.
 
+The verifier also binds every one of the 17 frozen disposition labels to its
+exact `(gate_started, rc)` state. Unknown labels refuse, and changing any clean,
+expected-refusal, defect, harness-invalid or retired lane to a disposition that
+contradicts its recorded state refuses even if the census and all enclosing
+digests are canonically repinned. This generalized semantic check corrects the
+ordinary-lane upgrade gap; it does not repair the historical evidence boundary
+described above.
+
 ### R16-13 — necessity/sufficiency pair
 
 The pair population is exactly the two ordered obligations in R15-3, frozen in
