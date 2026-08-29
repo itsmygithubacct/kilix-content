@@ -78,6 +78,16 @@ class R16ExternalAuthorityTests(unittest.TestCase):
         self.original_gate = (self.candidate / GATE_RELATIVE).read_bytes()
         self.original_census = (self.authority / "candidate-lane-census.json").read_bytes()
         self.original_authority = (self.authority / "authority.json").read_bytes()
+        pair_results_path = self.authority / "r15-3-pair-results.json"
+        self.original_pair_results = pair_results_path.read_bytes()
+        pair_results = json.loads(self.original_pair_results)
+        self.original_pair_logs = {
+            item["case"]: (
+                Path(item["gate_log"]["path"]),
+                (self.authority / item["gate_log"]["path"]).read_bytes(),
+            )
+            for item in pair_results["executions"]
+        }
         self.authority_value = json.loads((self.authority / "authority.json").read_bytes())
         self.authority_sha256 = hashlib.sha256(
             (self.authority / "authority.json").read_bytes()
@@ -115,6 +125,11 @@ class R16ExternalAuthorityTests(unittest.TestCase):
         (self.authority / "candidate-lane-census.json").write_bytes(
             self.original_census
         )
+        (self.authority / "r15-3-pair-results.json").write_bytes(
+            self.original_pair_results
+        )
+        for relative, raw in self.original_pair_logs.values():
+            (self.authority / relative).write_bytes(raw)
         manifest = self.authority / "authority.json"
         manifest.write_bytes(self.original_authority)
         self.authority_value = json.loads(self.original_authority)
@@ -138,6 +153,42 @@ class R16ExternalAuthorityTests(unittest.TestCase):
         self.authority_value = manifest
         self.authority_sha256 = hashlib.sha256(manifest_raw).hexdigest()
 
+    def rewrite_pair_log(
+        self,
+        case: str,
+        injected: bytes,
+        *,
+        before_terminal: bool = False,
+    ) -> None:
+        results_path = self.authority / "r15-3-pair-results.json"
+        results = json.loads(results_path.read_bytes())
+        execution = next(item for item in results["executions"] if item["case"] == case)
+        log_path = self.authority / execution["gate_log"]["path"]
+        log_raw = log_path.read_bytes()
+        if before_terminal:
+            terminal = execution["terminal_fragment"].encode()
+            self.assertEqual(log_raw.count(terminal), 1)
+            log_raw = log_raw.replace(terminal, injected + terminal)
+        else:
+            log_raw += injected
+        log_path.write_bytes(log_raw)
+        execution["gate_log"]["bytes"] = len(log_raw)
+        execution["gate_log"]["sha256"] = hashlib.sha256(log_raw).hexdigest()
+        results_raw = AUTHORITY.canonical_json(results)
+        results_path.write_bytes(results_raw)
+
+        manifest_path = self.authority / "authority.json"
+        manifest = json.loads(manifest_path.read_bytes())
+        manifest["evidence"]["r15_3_pair_results"] = {
+            "bytes": len(results_raw),
+            "path": "r15-3-pair-results.json",
+            "sha256": hashlib.sha256(results_raw).hexdigest(),
+        }
+        manifest_raw = AUTHORITY.canonical_json(manifest)
+        manifest_path.write_bytes(manifest_raw)
+        self.authority_value = manifest
+        self.authority_sha256 = hashlib.sha256(manifest_raw).hexdigest()
+
     def test_exact_export_verifies_without_grade(self) -> None:
         result = AUTHORITY.verify(self.arguments())
         self.assertEqual(result["status"], "VERIFIED_NOT_GRADED")
@@ -154,6 +205,7 @@ class R16ExternalAuthorityTests(unittest.TestCase):
         self.assertEqual(result["evidence"]["pair_execution_count"], 3)
         self.assertEqual(result["evidence"]["pair_expected_outcome_count"], 2)
         self.assertEqual(result["evidence"]["pair_discarded_execution_count"], 1)
+        self.assertEqual(result["evidence"]["pair_log_semantic_check_count"], 3)
 
     def test_structural_ast_dump_normalizes_interpreter_specific_empty_fields(self) -> None:
         node = ast.parse("def empty():\n    return target()\n").body[0]
@@ -390,6 +442,58 @@ class R16ExternalAuthorityTests(unittest.TestCase):
 
         self.rewrite_census(replace)
         self.assert_refusal("EVIDENCE_LANE_DISPOSITION_UNKNOWN")
+
+    def test_pair_final_logs_refuse_planned_forbidden_fragments(self) -> None:
+        forbidden_by_case = {
+            "hollow-label-present": (
+                "reproducible offline build and package audit: PASS"
+            ),
+            "audit-present-label-absent-v2": (
+                "production audit did not run on the shipped artifact: family=wheel"
+            ),
+        }
+        self.assertEqual(len(forbidden_by_case), 2)
+        for case, forbidden in forbidden_by_case.items():
+            with self.subTest(case=case):
+                self.reset_authority()
+                self.rewrite_pair_log(
+                    case,
+                    f"{forbidden}\n".encode(),
+                    before_terminal=True,
+                )
+                refusal = self.assert_refusal(
+                    "EVIDENCE_PAIR_RESULT_FORBIDDEN_FRAGMENT"
+                )
+                self.assertIn(repr(case), refusal.detail)
+
+    def test_pair_final_logs_refuse_tracebacks(self) -> None:
+        cases = ("hollow-label-present", "audit-present-label-absent-v2")
+        self.assertEqual(len(cases), 2)
+        for case in cases:
+            with self.subTest(case=case):
+                self.reset_authority()
+                self.rewrite_pair_log(
+                    case,
+                    b"Traceback (most recent call last):\n",
+                    before_terminal=True,
+                )
+                refusal = self.assert_refusal("EVIDENCE_PAIR_RESULT_TRACEBACK")
+                self.assertIn(repr(case), refusal.detail)
+
+    def test_pair_final_logs_require_the_terminal_to_be_final(self) -> None:
+        cases = ("hollow-label-present", "audit-present-label-absent-v2")
+        self.assertEqual(len(cases), 2)
+        for case in cases:
+            with self.subTest(case=case):
+                self.reset_authority()
+                self.rewrite_pair_log(
+                    case,
+                    b"\nexplicit wrong-reason outcome after required terminal\n",
+                )
+                refusal = self.assert_refusal(
+                    "EVIDENCE_PAIR_RESULT_TERMINAL_NOT_FINAL"
+                )
+                self.assertIn(repr(case), refusal.detail)
 
 
 if __name__ == "__main__":

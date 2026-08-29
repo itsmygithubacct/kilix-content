@@ -1036,6 +1036,26 @@ def verify_pair_results(
             and item["terminal_fragment"] != expected["expected_terminal_fragment"]
         ):
             refuse("EVIDENCE_PAIR_RESULT_TERMINAL_DRIFT", case)
+        forbidden = expected["forbidden_terminal_fragment"]
+        if forbidden in log_text:
+            refuse(
+                "EVIDENCE_PAIR_RESULT_FORBIDDEN_FRAGMENT",
+                f"case={case!r} fragment={forbidden!r}",
+            )
+        if "Traceback" in log_text:
+            refuse("EVIDENCE_PAIR_RESULT_TRACEBACK", f"case={case!r}")
+        terminal_count = log_text.count(item["terminal_fragment"])
+        if terminal_count != 1:
+            refuse(
+                "EVIDENCE_PAIR_RESULT_TERMINAL_COUNT",
+                f"case={case!r} count={terminal_count}",
+            )
+        nonempty_lines = [line for line in log_text.splitlines() if line.strip()]
+        if not nonempty_lines or nonempty_lines[-1] != item["terminal_fragment"]:
+            refuse(
+                "EVIDENCE_PAIR_RESULT_TERMINAL_NOT_FINAL",
+                f"case={case!r}",
+            )
 
         mutation_raw, mutation_digest = read_pinned_evidence(
             authority_root,
@@ -1085,6 +1105,7 @@ def verify_pair_results(
         "pair_discarded_execution_count": discarded,
         "pair_execution_count": len(executions),
         "pair_expected_outcome_count": matched,
+        "pair_log_semantic_check_count": len(executions),
     }
 
 

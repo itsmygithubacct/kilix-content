@@ -137,6 +137,16 @@ source needle occurred twice. Amendment 1 was frozen before v2, and v2 returned
 and no false `production audit did not run` refusal. `r15-3-pair-results.json`
 cross-pins all three logs, patches, mutation records, exit codes and plan hashes.
 
+The verifier's semantic log population is all three retained executions:
+necessity, discarded sufficiency v1 and final sufficiency v2. In each log the
+declared terminal must occur exactly once and be the final nonempty line, the
+case's planned forbidden fragment must be absent, and `Traceback` must be
+absent. The causal calibration population is six canonically repinned mutations:
+the two final obligations crossed with forbidden-fragment, traceback and
+post-terminal wrong-reason classes. This corrects R16-13-M02's required-only
+check; it does not repair M01's historical chronology/exit-status boundary or
+M03's interpreter-sensitive mutation records.
+
 These are direct full-gate builder results on the exact R15 subject gate. They
 remain evidence for independent review, never self-credit, and they do not
 substitute for the still-unadmitted trusted-launcher operator path.
