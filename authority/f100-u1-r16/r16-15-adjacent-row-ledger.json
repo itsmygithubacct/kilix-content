@@ -1,0 +1,577 @@
+{
+  "basis": {
+    "acceptance_criteria_sha256": "80d46598720b00502e3dec6f47d2a7e399ea0aab27c68909e77ce7c366cf8120",
+    "r14_commit": "5c2817f4c7d69c7c31b3d3acd72e23dc93de45fc",
+    "r14_readme_sha256": "28464003ab0b1187fc71349a3b687f2185c2d949cfb74930e215bc810fa27c8b",
+    "r14_tree": "ba36f81f4632c19dbeaf6e6257ea11810dc95fd2",
+    "r15_commit": "ebd7d7f43399aa05fbacd57b3a0d66739891eded",
+    "r15_readme_sha256": "d235ea52b7ec174b4c154213ff5953258b944187c0401e0a420e893bb3cd0ebd",
+    "r15_tree": "ef1dfe0069acb8446fe223bbca5a22f2f1d92bc6"
+  },
+  "row_count": 38,
+  "rows": [
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::expected_wheel_members",
+        "tests/check_reproducible_build.py::wheel_archive_audit"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Complete wheel member set",
+      "population": [
+        "wheel:direct-1",
+        "wheel:direct-2",
+        "wheel:sdist-derived"
+      ],
+      "row_id": "ADJ-R14-R6-01-WHEEL-MEMBER-SET",
+      "source_table": "r14-r6-adjacent-property",
+      "statement_sha256": "e8d1b7f94156a22e814dd3549254961ddfd9d4b30eb00fe10d0e4f4ef6f759a6"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::expected_sdist_members",
+        "tests/check_reproducible_build.py::sdist_member_closure_audit"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Complete sdist member set and distribution root",
+      "population": [
+        "sdist:direct-1",
+        "sdist:direct-2"
+      ],
+      "row_id": "ADJ-R14-R6-02-SDIST-MEMBER-SET",
+      "source_table": "r14-r6-adjacent-property",
+      "statement_sha256": "1cf3c361de943e34fcfd32e7aecc9e5bd9cd7c2a872245d9d4265055a4d0f4e9"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::classify_wheel_member",
+        "tests/check_reproducible_build.py::wheel_archive_audit"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Upper ZIP mode word, creator/type, name/type/payload coherence",
+      "population": [
+        "wheel:direct-1",
+        "wheel:direct-2",
+        "wheel:sdist-derived",
+        "wheel-control:archive-member-types"
+      ],
+      "row_id": "ADJ-R14-R6-03-ZIP-MODE-TYPE-COHERENCE",
+      "source_table": "r14-r6-adjacent-property",
+      "statement_sha256": "9f774661d480190d18fda1bd3a8d7fd16faf10f6d134d258f1155a907b8f9622"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::record_audit",
+        "tests/check_reproducible_build.py::record_self_row_empty_control"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Wheel RECORD membership, SHA-256 digest, and size",
+      "population": [
+        "wheel:direct-1",
+        "wheel:direct-2",
+        "wheel:sdist-derived",
+        "wheel-control:record"
+      ],
+      "row_id": "ADJ-R14-R6-04-WHEEL-RECORD",
+      "source_table": "r14-r6-adjacent-property",
+      "statement_sha256": "dc7b0263b75e23181ee2064463f08d73bdec188c9a08123bfbfccdae9a4546bb"
+    },
+    {
+      "authority_sources": [
+        "contracts/kilix.content.u1-resources-v1.json",
+        "tests/check_reproducible_build.py::production_resources",
+        "tests/check_reproducible_build.py::wheel_resource_audit"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Exact 28-member production-resource projection",
+      "population": [
+        "resource-manifest-members:28/28",
+        "wheel-presentations:3/3",
+        "wheel-resource-roots:2/2"
+      ],
+      "row_id": "ADJ-R14-R6-05-RESOURCE-PROJECTION",
+      "source_table": "r14-r6-adjacent-property",
+      "statement_sha256": "1f26f0e8b29ce8320c63cfdaccb7e9d80b28a72ff642caf379767ab818a8c2c8"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::coresident_resources",
+        "tests/check_reproducible_build.py::wheel_resource_audit"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Exact 33/31 co-resident resource allowlists and semantic directories",
+      "population": [
+        "package-resource-files:33/33",
+        "external-resource-files:31/31",
+        "wheel-presentations:3/3"
+      ],
+      "row_id": "ADJ-R14-R6-06-CORESIDENT-ALLOWLISTS",
+      "source_table": "r14-r6-adjacent-property",
+      "statement_sha256": "6591ff2ea15e5a1f29af81b22051d0f07d67abaa4f6d91dec2c05b44c36cf2c5"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::expected_wheel_members",
+        "tests/check_reproducible_build.py::reproducibility-checks"
+      ],
+      "disposition": "LIMITATION",
+      "normalized_claim": "Non-resource wheel member digests versus source",
+      "population": [
+        "wheel-presentations:3/3",
+        "non-resource-wheel-members:source-derived-closure"
+      ],
+      "row_id": "ADJ-R14-R6-07-NONRESOURCE-DIGESTS",
+      "source_table": "r14-r6-adjacent-property",
+      "statement_sha256": "2367722c0cc999284b92d1e87c8397171edcf79d06af4964afe98d005fc430e3"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::digest",
+        "tests/check_reproducible_build.py::reproducibility-checks"
+      ],
+      "disposition": "LIMITATION",
+      "normalized_claim": "Recorded expected artifact digest",
+      "population": [
+        "sdist-byte-identities:1/1",
+        "wheel-byte-identities:1/1"
+      ],
+      "row_id": "ADJ-R14-R6-08-EXPECTED-ARTIFACT-DIGEST",
+      "source_table": "r14-r6-adjacent-property",
+      "statement_sha256": "a14733d2e59e4325ead1e664eed94dd2c2068c0af6b357ca3473ef5ffa406817"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::reproducibility-checks"
+      ],
+      "disposition": "OUT_OF_SCOPE",
+      "normalized_claim": "ZIP archive comment and per-entry extra fields",
+      "population": [
+        "wheel-presentations:3/3"
+      ],
+      "row_id": "ADJ-R14-R6-09-ZIP-COMMENT-EXTRA",
+      "source_table": "r14-r6-adjacent-property",
+      "statement_sha256": "7d22ca8ae5789d3d119a99a4bf079fa8e63071c6ec3a542ccdf199bb11076a62"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::sdist_payload_audit"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Sdist source-managed payload bytes",
+      "population": [
+        "sdist:direct-1",
+        "sdist:direct-2",
+        "source-managed-sdist-members:all"
+      ],
+      "row_id": "ADJ-R14-R6-10-SDIST-SOURCE-PAYLOAD",
+      "source_table": "r14-r6-adjacent-property",
+      "statement_sha256": "a2c9f5b11c92b4bf8deedea204cdf20c4b4f460ad8f57a7cc67518cff86786a9"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::filesystem_resource_mapping",
+        "tests/check_reproducible_build.py::installed_wheel_audit"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Installed production-resource file and directory modes",
+      "population": [
+        "installed-wheel-presentations:3/3",
+        "installed-resource-roots:2/2"
+      ],
+      "row_id": "ADJ-R14-R6-11-INSTALLED-RESOURCE-MODES",
+      "source_table": "r14-r6-adjacent-property",
+      "statement_sha256": "0f9f397598e8da56bf6033a80c5ec0a1410de749ac77d62f1fbce9adc57ceb23"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::sdist_container_audit",
+        "tests/check_reproducible_build.py::reproducibility-checks"
+      ],
+      "disposition": "OUT_OF_SCOPE",
+      "normalized_claim": "Sdist compression metadata beyond member safety/closure",
+      "population": [
+        "sdist-presentations:2/2"
+      ],
+      "row_id": "ADJ-R14-R6-12-SDIST-COMPRESSION-METADATA",
+      "source_table": "r14-r6-adjacent-property",
+      "statement_sha256": "c8e79ddea04cf92b4c1929317c64d580d3bdaafbbe67a90fe8bb8f310ad7e1e5"
+    },
+    {
+      "authority_sources": [
+        "build-toolchain.json",
+        "tests/check_reproducible_build.py::checked_toolchain"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Interpreter/toolchain identity",
+      "population": [
+        "qualified-toolchain-profile:1/1"
+      ],
+      "row_id": "ADJ-R14-R6-13-TOOLCHAIN-IDENTITY",
+      "source_table": "r14-r6-adjacent-property",
+      "statement_sha256": "b53445a05637f27b00e69561f7705e2d7161f495e4b600e7b9f00eb6649287ec"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::expected_sdist_members",
+        "tests/check_reproducible_build.py::sdist_member_closure_audit"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Complete member-set closure against a source-derived expectation",
+      "population": [
+        "sdist-presentations:2/2"
+      ],
+      "row_id": "ADJ-R14-R9-01-MEMBER-CLOSURE",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "3b2dc32cbd00fbba917bc882cb1c06c20dc6f4f5f08769057b06bd57db8e9ae1"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::sdist_container_audit",
+        "tests/check_reproducible_build.py::wheel_container_audit"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Archive container integrity",
+      "population": [
+        "sdist-presentations:2/2",
+        "wheel-presentations:3/3"
+      ],
+      "row_id": "ADJ-R14-R9-02-CONTAINER-INTEGRITY",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "7f7c9c161950973de03eb707c3b8220b0b743e3550a36b28f09bfa14386c7b9d"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::assert_sdist_enumerator_agreement",
+        "tests/check_reproducible_build.py::PROPERTY_MUTATION_REGISTRY"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Archive member enumeration agreement",
+      "population": [
+        "sdist-presentations:2/2",
+        "sdist-enumerator-controls:all"
+      ],
+      "row_id": "ADJ-R14-R9-03-ENUMERATOR-AGREEMENT",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "ffbf257929a4cb90d7772858941367373c779e30fac50b4062d5bdba79d7e323"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::reproducibility-checks"
+      ],
+      "disposition": "LIMITATION",
+      "normalized_claim": "Compression method and per-entry DOS timestamp",
+      "population": [
+        "sdist-presentations:2/2",
+        "wheel-presentations:3/3"
+      ],
+      "row_id": "ADJ-R14-R9-04-COMPRESSION-TIMESTAMP",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "f5096ac41296a581eaf8cd72ec184a8ea3db3e0330e4dd6860b9cc76f45507de"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::safe_member_name",
+        "tests/check_reproducible_build.py::sdist_member_closure_audit"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Safe member names",
+      "population": [
+        "sdist-members:all"
+      ],
+      "row_id": "ADJ-R14-R9-05-SAFE-NAMES",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "6a2dff6271025304a2474c0472735866aa6b5f85888fdb49f358b4cf16b87102"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::sdist_member_closure_audit"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Normalized-duplicate rejection",
+      "population": [
+        "sdist-members:all"
+      ],
+      "row_id": "ADJ-R14-R9-06-NORMALIZED-DUPLICATE",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "084af5ddc9d8a7b5c6826023991fdecbc90d41a27bd7aaa874eac645d99dc78a"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::sdist_member_closure_audit"
+      ],
+      "disposition": "NOT_TRANSFERABLE",
+      "normalized_claim": "Unambiguous creator/type metadata",
+      "population": [
+        "sdist-members:all"
+      ],
+      "row_id": "ADJ-R14-R9-07-CREATOR-TYPE-METADATA",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "d11eaab89b48d28a34108a55fa42d118900a6c34d1d80971dd2374cb8eff045e"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::sdist_member_closure_audit"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Regular-versus-directory type correctness",
+      "population": [
+        "sdist-members:all"
+      ],
+      "row_id": "ADJ-R14-R9-08-TYPE-CORRECTNESS",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "c2808a4459dac458662afb75cdf88a6cf66b115610d9d66f524eafe299ef4b28"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::sdist_member_closure_audit"
+      ],
+      "disposition": "LIMITATION",
+      "normalized_claim": "Canonical name spelling",
+      "population": [
+        "sdist-directory-members:all"
+      ],
+      "row_id": "ADJ-R14-R9-09-CANONICAL-NAME-SPELLING",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "1c8e87939d6f07146a9846161f64442ffa9ad15c19d3aa74a7055219bca8fad7"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::sdist_member_closure_audit"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Directory members empty",
+      "population": [
+        "sdist-directory-members:all",
+        "sdist-control:nonempty-directory"
+      ],
+      "row_id": "ADJ-R14-R9-10-DIRECTORY-EMPTY",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "15c74089e93b539647ccf5d8b75370b184a111d669c2641740e07c3133be8a74"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::sdist_member_closure_audit"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Permission validation",
+      "population": [
+        "sdist-members:all",
+        "sdist-control:permission"
+      ],
+      "row_id": "ADJ-R14-R9-11-PERMISSIONS",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "af08da1d6fede4e76f2721bfda243c559734496809882802830258905ec39fed"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::sdist_payload_audit",
+        "tests/check_reproducible_build.py::sdist_member_closure_audit"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Payload size, digest, and bytes",
+      "population": [
+        "source-managed-sdist-members:all",
+        "sdist-directory-members:all"
+      ],
+      "row_id": "ADJ-R14-R9-12-PAYLOAD-BYTES",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "0d96d6296dd204c729a1f1b37027bfdfb8bb37663336a2271a9ec1417d903a75"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::sdist_distribution_root",
+        "tests/check_reproducible_build.py::sdist_member_closure_audit"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Root/prefix identity",
+      "population": [
+        "sdist-presentations:2/2"
+      ],
+      "row_id": "ADJ-R14-R9-13-ROOT-IDENTITY",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "442f8b2eff0f91619943445c4bdea3c858588b3a1486e9352b2a919a8e093398"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::sdist_generated_metadata_audit"
+      ],
+      "disposition": "NOT_TRANSFERABLE",
+      "normalized_claim": "RECORD membership, digest, and size",
+      "population": [
+        "generated-sdist-members:7/7",
+        "sdist-pair:2/2"
+      ],
+      "row_id": "ADJ-R14-R9-14-RECORD-MEMBERSHIP",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "eb0e28e27fdb1b4f806b6f0a4a042239218d6e2886516d10b29d4afa8b4a5897"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::record_self_row_empty_control",
+        "tests/check_reproducible_build.py::sdist_generated_metadata_audit"
+      ],
+      "disposition": "NOT_TRANSFERABLE",
+      "normalized_claim": "RECORD self-row digest and size empty",
+      "population": [
+        "wheel-control:record-self-row:1/1",
+        "generated-sdist-members:7/7"
+      ],
+      "row_id": "ADJ-R14-R9-15-RECORD-SELF-ROW",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "0ad2230b7465532544f03df57e117bc6a4043a98e070b087e94292ec691fd113"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::expected_sdist_members",
+        "tests/check_reproducible_build.py::wheel_archive_audit"
+      ],
+      "disposition": "NOT_TRANSFERABLE",
+      "normalized_claim": "Forbidden test/fixture authority paths",
+      "population": [
+        "sdist-source-authority-members:all",
+        "wheel-presentations:3/3"
+      ],
+      "row_id": "ADJ-R14-R9-16-FORBIDDEN-TEST-AUTHORITY",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "07d73582b360c903d47657c050f8eb1c53423bb4a82e2b2640893569a167ede3"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::sdist_distribution_root",
+        "tests/check_reproducible_build.py::sdist_member_closure_audit"
+      ],
+      "disposition": "NOT_TRANSFERABLE",
+      "normalized_claim": "ZIP data-root and dist-info prefix grammar",
+      "population": [
+        "sdist-root-presentations:2/2"
+      ],
+      "row_id": "ADJ-R14-R9-17-ZIP-PREFIX-GRAMMAR",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "bddd5d85cbce855729f2d4570725ef3b366e162be235bda8891bde4f764e2813"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::resource_audit",
+        "tests/check_reproducible_build.py::wheel_resource_audit"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Package/external resource projections and semantic directories",
+      "population": [
+        "source-and-sdist-authority:2/2",
+        "wheel-presentations:3/3",
+        "wheel-resource-roots:2/2"
+      ],
+      "row_id": "ADJ-R14-R9-18-RESOURCE-PRESENTATIONS",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "64e68037e67961725204b181ec96b5b9d473324613f821722385899f0ce87307"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::sdist_container_audit",
+        "tests/check_reproducible_build.py::reproducibility-checks"
+      ],
+      "disposition": "NOT_TRANSFERABLE",
+      "normalized_claim": "ZIP comments and per-entry metadata",
+      "population": [
+        "sdist-presentations:2/2"
+      ],
+      "row_id": "ADJ-R14-R9-19-ZIP-METADATA",
+      "source_table": "r14-r9-wheel-sdist-parity",
+      "statement_sha256": "f55697762e95f9ab5ff28c21eba20868b64bf403a82dcd029de2bf4fc3c5f2d1"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::PROPERTY_MUTATION_REGISTRY",
+        "tests/check_reproducible_build.py::_REQUIRED_SDIST_AUDIT_CALLS",
+        "tests/check_reproducible_build.py::assert_production_audit_completeness"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Which registry covers which family",
+      "population": [
+        "artifact-families:2/2",
+        "production-audit-kinds:12/12",
+        "sdist-call-identities:9/9"
+      ],
+      "row_id": "ADJ-R15-B01-REGISTRY-FAMILY",
+      "source_table": "r15-registry-boundary",
+      "statement_sha256": "2250c34d5afb36b8ea6baf9c120b047778bec60f1256a4dcd39eb5e245e50ef4"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::records_audit_effect",
+        "tests/check_reproducible_build.py::assert_property_registry_coverage"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "What the coverage assertion binds",
+      "population": [
+        "artifact-presentations:5/5",
+        "production-audit-kinds:12/12"
+      ],
+      "row_id": "ADJ-R15-B02-COVERAGE-BINDING",
+      "source_table": "r15-registry-boundary",
+      "statement_sha256": "4a966ae4cc815cec1bd9efd685429d81b9caabec57dc1374fac283aed2f4a230"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::register_production_audit",
+        "tests/check_reproducible_build.py::assert_production_audit_completeness"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Production audits and their registration",
+      "population": [
+        "artifact-presentations:5/5",
+        "production-audit-kinds:12/12"
+      ],
+      "row_id": "ADJ-R15-B03-PRODUCTION-REGISTRATION",
+      "source_table": "r15-registry-boundary",
+      "statement_sha256": "9dda12011b4a2cc072ed8c4cff066225b9f269650a24244b3f743a895e750c4d"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::MAX_SDIST_TAR_PAYLOAD_BYTES",
+        "tests/check_reproducible_build.py::MAX_SDIST_EXPANSION_RATIO",
+        "tests/check_reproducible_build.py::wheel_archive_audit"
+      ],
+      "disposition": "LIMITATION",
+      "normalized_claim": "Wheel decompression bound",
+      "population": [
+        "sdist-reader-bounds:2/2",
+        "wheel-presentations:3/3"
+      ],
+      "row_id": "ADJ-R15-B04-WHEEL-DECOMPRESSION",
+      "source_table": "r15-registry-boundary",
+      "statement_sha256": "6fbf75955174615b24391de0d64e125036e314b62e0a328d3cdf8c7daf806f9b"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::_REQUIRED_COMPLETE_GATE_REGRESSIONS",
+        "tests/check_reproducible_build.py::assert_complete_gate_regressions"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Complete-gate regressions on the release path",
+      "population": [
+        "nested-complete-gate-regressions:2/2",
+        "release-path:default-no-flags"
+      ],
+      "row_id": "ADJ-R15-B05-COMPLETE-GATE",
+      "source_table": "r15-registry-boundary",
+      "statement_sha256": "2592be6afb7d23c46d7e9c4e8db94d0c94900bbd81d2733c87c0ab35a8dc49c0"
+    },
+    {
+      "authority_sources": [
+        "tests/check_reproducible_build.py::FROZEN_REQUIRED_ROW_IDS",
+        "tests/check_reproducible_build.py::FROZEN_MINIMUM_ROW_COUNT",
+        "tests/check_reproducible_build.py::FROZEN_PROPERTY_MUTATION_REGISTRY_SHA256"
+      ],
+      "disposition": "ENFORCED",
+      "normalized_claim": "Append-only enforcement",
+      "population": [
+        "property-mutation-rows:14/14"
+      ],
+      "row_id": "ADJ-R15-B06-APPEND-ONLY",
+      "source_table": "r15-registry-boundary",
+      "statement_sha256": "ecbf821d780abc3ae7a524e8cd9164b9e9825ba852793d1410fb97f5f443d3e1"
+    }
+  ],
+  "schema": "kilix.f100.r16-15.adjacent-row-ledger/v1",
+  "status": "external-preimplementation-freeze"
+}

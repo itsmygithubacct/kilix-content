@@ -17,7 +17,9 @@ PROJECT = Path(__file__).resolve().parents[1]
 AUTHORITY_PATH = PROJECT / "authority" / "f100-u1-r16" / "authority.json"
 GATE_PATH = PROJECT / "tests" / "check_reproducible_build.py"
 VERIFIER_PATH = PROJECT / "tools" / "f100_u1_r16_external_authority.py"
+R16_15_TOOL_PATH = PROJECT / "tools" / "f100_u1_r16_15_adjacent_rows.py"
 AUTHORITY_ROOT = AUTHORITY_PATH.parent
+R16_15_LEDGER_PATH = AUTHORITY_ROOT / "r16-15-adjacent-row-ledger.json"
 PAIR_PLAN_PATH = AUTHORITY_ROOT / "r15-3-pair-plan.json"
 PAIR_AMENDMENT_PATH = AUTHORITY_ROOT / "r15-3-pair-plan-amendment-1.json"
 PAIR_RESULTS_PATH = AUTHORITY_ROOT / "r15-3-pair-results.json"
@@ -128,6 +130,23 @@ def main() -> int:
 
     authority: dict[str, Any] = json.loads(AUTHORITY_PATH.read_bytes())
     repin_pair_evidence(authority, verifier)
+    authority["scope_rows"] = [
+        "R16-6",
+        "R16-7",
+        "R16-9",
+        "R16-12",
+        "R16-13",
+        "R16-15",
+    ]
+    authority["r16_15"] = {
+        "ledger": pinned_evidence(R16_15_LEDGER_PATH),
+        "row_count": 38,
+        "table_counts": {
+            "r14-r6-adjacent-property": 13,
+            "r14-r9-wheel-sdist-parity": 19,
+            "r15-registry-boundary": 6,
+        },
+    }
     authority["candidate"] = {
         "commit": commit,
         "gate_path": "tests/check_reproducible_build.py",
@@ -209,11 +228,17 @@ def main() -> int:
             {(row["artifact_family"], row["audit_kind"]) for row in rows}
         ),
     }
-    verifier_raw = VERIFIER_PATH.read_bytes()
-    authority["implementation"]["verifier"] = {
-        "bytes": len(verifier_raw),
-        "path": VERIFIER_PATH.relative_to(PROJECT).as_posix(),
-        "sha256": hashlib.sha256(verifier_raw).hexdigest(),
+    implementation_paths = {
+        "r16_15_adjacent_rows": R16_15_TOOL_PATH,
+        "verifier": VERIFIER_PATH,
+    }
+    authority["implementation"] = {
+        name: {
+            "bytes": len(raw := path.read_bytes()),
+            "path": path.relative_to(PROJECT).as_posix(),
+            "sha256": hashlib.sha256(raw).hexdigest(),
+        }
+        for name, path in implementation_paths.items()
     }
     AUTHORITY_PATH.write_bytes(verifier.canonical_json(authority))
     print(hashlib.sha256(AUTHORITY_PATH.read_bytes()).hexdigest())

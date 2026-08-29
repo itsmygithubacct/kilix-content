@@ -12,6 +12,7 @@ from __future__ import annotations
 import argparse
 import ast
 import hashlib
+import importlib.util
 import inspect
 import json
 import re
@@ -25,6 +26,8 @@ SCHEMA = "kilix.content.f100-u1-r16-external-authority/v1"
 RESULT_SCHEMA = "kilix.content.f100-u1-r16-external-authority-result/v1"
 AUTHORITY_NAME = "authority.json"
 GATE_PATH = Path("tests/check_reproducible_build.py")
+R16_15_README_PATH = Path("contracts/README.md")
+R16_15_TOOL_NAME = "f100_u1_r16_15_adjacent_rows.py"
 HEX_256 = re.compile(r"[0-9a-f]{64}\Z")
 LANE_DISPOSITION_STATES: dict[str, tuple[bool, int | None]] = {
     "candidate-defect-cross-control-refusal": (True, 1),
@@ -90,6 +93,20 @@ def load_canonical_object(path: Path, *, code: str) -> tuple[dict[str, Any], byt
     if type(value) is not dict or raw != canonical_json(value):
         refuse(code, f"{path}: input is not a canonical JSON object")
     return value, raw
+
+
+def load_external_module(path: Path, name: str) -> Any:
+    """Load verifier code from the already-disjoint external export."""
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        refuse("IMPLEMENTATION_MODULE_UNLOADABLE", str(path))
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    try:
+        spec.loader.exec_module(module)
+    except (ImportError, OSError, SyntaxError) as exc:
+        refuse("IMPLEMENTATION_MODULE_UNLOADABLE", f"{path}: {exc}")
+    return module
 
 
 def require_closed_object(
@@ -292,6 +309,7 @@ def validate_authority_shape(authority: dict[str, Any]) -> None:
             "history",
             "implementation",
             "production_population",
+            "r16_15",
             "schema",
             "scope_rows",
         },
@@ -300,14 +318,21 @@ def validate_authority_shape(authority: dict[str, Any]) -> None:
     )
     if authority["schema"] != SCHEMA:
         refuse("AUTHORITY_SCHEMA", repr(authority["schema"]))
-    if authority["scope_rows"] != ["R16-6", "R16-7", "R16-9", "R16-12", "R16-13"]:
+    if authority["scope_rows"] != [
+        "R16-6",
+        "R16-7",
+        "R16-9",
+        "R16-12",
+        "R16-13",
+        "R16-15",
+    ]:
         refuse("AUTHORITY_SCOPE", repr(authority["scope_rows"]))
 
 
 def verify_implementation(value: Any) -> dict[str, Any]:
     implementation = require_closed_object(
         value,
-        {"verifier"},
+        {"r16_15_adjacent_rows", "verifier"},
         code="IMPLEMENTATION_AUTHORITY_SHAPE",
         label="implementation",
     )
@@ -334,7 +359,41 @@ def verify_implementation(value: Any) -> dict[str, Any]:
             "IMPLEMENTATION_VERIFIER_DRIFT",
             f"bytes={len(raw)} sha256={observed}",
         )
-    return {"verifier_bytes": len(raw), "verifier_sha256": observed}
+    adjacent = require_closed_object(
+        implementation["r16_15_adjacent_rows"],
+        {"bytes", "path", "sha256"},
+        code="IMPLEMENTATION_AUTHORITY_SHAPE",
+        label="implementation.r16_15_adjacent_rows",
+    )
+    expected_path = f"tools/{R16_15_TOOL_NAME}"
+    if adjacent["path"] != expected_path:
+        refuse("IMPLEMENTATION_R16_15_TOOL_PATH", repr(adjacent["path"]))
+    adjacent_path = Path(__file__).with_name(R16_15_TOOL_NAME)
+    try:
+        adjacent_raw = adjacent_path.read_bytes()
+    except OSError as exc:
+        refuse("IMPLEMENTATION_R16_15_TOOL_UNREADABLE", str(exc))
+    adjacent_sha256 = sha256_bytes(adjacent_raw)
+    adjacent_expected = require_sha256(
+        adjacent["sha256"],
+        code="IMPLEMENTATION_AUTHORITY_SHAPE",
+        label="implementation.r16_15_adjacent_rows.sha256",
+    )
+    if (
+        type(adjacent["bytes"]) is not int
+        or len(adjacent_raw) != adjacent["bytes"]
+        or adjacent_sha256 != adjacent_expected
+    ):
+        refuse(
+            "IMPLEMENTATION_R16_15_TOOL_DRIFT",
+            f"bytes={len(adjacent_raw)} sha256={adjacent_sha256}",
+        )
+    return {
+        "r16_15_adjacent_rows_bytes": len(adjacent_raw),
+        "r16_15_adjacent_rows_sha256": adjacent_sha256,
+        "verifier_bytes": len(raw),
+        "verifier_sha256": observed,
+    }
 
 
 def verify_external_roots(candidate_root: Path, authority_root: Path) -> None:
@@ -1294,6 +1353,79 @@ def verify_evidence(
     return observed
 
 
+def verify_r16_15(
+    candidate_root: Path,
+    authority_root: Path,
+    value: Any,
+) -> dict[str, Any]:
+    """Bind the integrated README to the disjoint 38-row authority ledger."""
+    item = require_closed_object(
+        value,
+        {"ledger", "row_count", "table_counts"},
+        code="R16_15_AUTHORITY_SHAPE",
+        label="r16_15",
+    )
+    ledger_pin = require_closed_object(
+        item["ledger"],
+        {"bytes", "path", "sha256"},
+        code="R16_15_AUTHORITY_SHAPE",
+        label="r16_15.ledger",
+    )
+    if ledger_pin["path"] != "r16-15-adjacent-row-ledger.json":
+        refuse("R16_15_LEDGER_PATH", repr(ledger_pin["path"]))
+    ledger_raw, ledger_sha256 = read_pinned_evidence(
+        authority_root,
+        ledger_pin,
+        label="r16_15.ledger",
+    )
+    expected_tables = {
+        "r14-r6-adjacent-property": 13,
+        "r14-r9-wheel-sdist-parity": 19,
+        "r15-registry-boundary": 6,
+    }
+    if item["row_count"] != 38 or item["table_counts"] != expected_tables:
+        refuse(
+            "R16_15_POPULATION_AUTHORITY",
+            f"row_count={item['row_count']!r} table_counts={item['table_counts']!r}",
+        )
+
+    adjacent = load_external_module(
+        Path(__file__).with_name(R16_15_TOOL_NAME),
+        "f100_u1_r16_15_adjacent_rows_external",
+    )
+    ledger_path = authority_root / ledger_pin["path"]
+    readme_path = candidate_root / R16_15_README_PATH
+    try:
+        ledger = adjacent.load_ledger(ledger_path)
+        if adjacent._canonical_json(ledger) != ledger_raw:
+            refuse("R16_15_LEDGER_CANONICAL_DRIFT", str(ledger_path))
+        readme_text = readme_path.read_text(encoding="utf-8")
+        rows = adjacent.validate(ledger, readme_text)
+        controls = adjacent.run_self_test(ledger, readme_text)
+    except adjacent.AdjacentRowError as exc:
+        refuse("R16_15_README_REFUSED", str(exc))
+    except (OSError, UnicodeError) as exc:
+        refuse("R16_15_INPUT_UNREADABLE", f"{readme_path}: {exc}")
+
+    table_counts = {
+        table: sum(row["source_table"] == table for row in rows)
+        for table in expected_tables
+    }
+    if len(rows) != item["row_count"] or table_counts != item["table_counts"]:
+        refuse(
+            "R16_15_POPULATION_DRIFT",
+            f"rows={len(rows)} table_counts={table_counts!r}",
+        )
+    return {
+        "boundary_control_count": controls["boundary_controls"],
+        "deletion_control_count": controls["deletion_controls"],
+        "ledger_sha256": ledger_sha256,
+        "observed_row_ids": [row["row_id"] for row in rows],
+        "row_count": len(rows),
+        "table_counts": table_counts,
+    }
+
+
 def verify(arguments: argparse.Namespace) -> dict[str, Any]:
     candidate_root = Path(arguments.candidate_root)
     authority_root = Path(arguments.authority_root)
@@ -1333,6 +1465,11 @@ def verify(arguments: argparse.Namespace) -> dict[str, Any]:
         authority["evidence"],
         candidate_gate_raw=gate_raw,
     )
+    r16_15 = verify_r16_15(
+        candidate_root,
+        authority_root,
+        authority["r16_15"],
+    )
     return {
         "authority_sha256": observed_authority,
         "candidate_gate_sha256": sha256_bytes(gate_raw),
@@ -1340,6 +1477,7 @@ def verify(arguments: argparse.Namespace) -> dict[str, Any]:
         "history": history,
         "implementation": implementation,
         "population": population,
+        "r16_15": r16_15,
         "schema": RESULT_SCHEMA,
         "status": "VERIFIED_NOT_GRADED",
     }

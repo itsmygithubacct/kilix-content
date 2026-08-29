@@ -17,6 +17,7 @@ PROJECT = Path(__file__).resolve().parents[1]
 TOOL_PATH = PROJECT / "tools" / "f100_u1_r16_external_authority.py"
 AUTHORITY_SOURCE = PROJECT / "authority" / "f100-u1-r16"
 GATE_RELATIVE = Path("tests/check_reproducible_build.py")
+README_RELATIVE = Path("contracts/README.md")
 
 
 def load_tool():
@@ -73,7 +74,9 @@ class R16ExternalAuthorityTests(unittest.TestCase):
         self.candidate = root / "candidate"
         self.authority = root / "authority"
         (self.candidate / "tests").mkdir(parents=True)
+        (self.candidate / "contracts").mkdir(parents=True)
         shutil.copy2(PROJECT / GATE_RELATIVE, self.candidate / GATE_RELATIVE)
+        shutil.copy2(PROJECT / README_RELATIVE, self.candidate / README_RELATIVE)
         shutil.copytree(AUTHORITY_SOURCE, self.authority)
         self.original_gate = (self.candidate / GATE_RELATIVE).read_bytes()
         self.original_census = (self.authority / "candidate-lane-census.json").read_bytes()
@@ -256,6 +259,41 @@ class R16ExternalAuthorityTests(unittest.TestCase):
         self.assertEqual(
             result["evidence"]["pair_mutation_definition_check_count"], 6
         )
+        self.assertEqual(result["r16_15"]["row_count"], 38)
+        self.assertEqual(result["r16_15"]["deletion_control_count"], 38)
+        self.assertEqual(result["r16_15"]["boundary_control_count"], 5)
+        self.assertEqual(
+            result["r16_15"]["table_counts"],
+            {
+                "r14-r6-adjacent-property": 13,
+                "r14-r9-wheel-sdist-parity": 19,
+                "r15-registry-boundary": 6,
+            },
+        )
+
+    def test_r16_15_readme_row_deletion_is_named(self) -> None:
+        readme = self.candidate / README_RELATIVE
+        source = readme.read_text()
+        row_id = "ADJ-R14-R6-01-WHEEL-MEMBER-SET"
+        lines = source.splitlines(keepends=True)
+        retained = [line for line in lines if not line.startswith(f"| {row_id} |")]
+        self.assertEqual(len(lines) - len(retained), 1)
+        readme.write_text("".join(retained))
+        refusal = self.assert_refusal("R16_15_README_REFUSED")
+        self.assertEqual(refusal.detail, f"ADJACENT_ROW_MISSING:{row_id}")
+
+    def test_r16_15_ledger_bytes_are_manifest_bound(self) -> None:
+        ledger = self.authority / "r16-15-adjacent-row-ledger.json"
+        ledger.write_bytes(ledger.read_bytes() + b"\n")
+        self.assert_refusal("EVIDENCE_DIGEST_MISMATCH")
+
+    def test_r16_15_external_tool_is_manifest_bound(self) -> None:
+        manifest = self.authority / "authority.json"
+        value = json.loads(manifest.read_bytes())
+        value["implementation"]["r16_15_adjacent_rows"]["sha256"] = "0" * 64
+        manifest.write_bytes(AUTHORITY.canonical_json(value))
+        self.authority_sha256 = hashlib.sha256(manifest.read_bytes()).hexdigest()
+        self.assert_refusal("IMPLEMENTATION_R16_15_TOOL_DRIFT")
 
     def test_structural_ast_dump_normalizes_interpreter_specific_empty_fields(self) -> None:
         node = ast.parse("def empty():\n    return target()\n").body[0]

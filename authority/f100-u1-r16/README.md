@@ -1,7 +1,8 @@
 # F100 U1 R16 external-authority candidate
 
 This directory is a builder-produced correction candidate for **R16-6, R16-7,
-R16-9, R16-12 and R16-13**. It is not a grade, admission or release verdict.
+R16-9, R16-12, R16-13 and R16-15**. It is not a grade, admission or release
+verdict.
 Its verifier deliberately returns `VERIFIED_NOT_GRADED`; an independent session
 must ratify the population and digest, and the trusted operator launcher must
 consume the ratified external copy before any candidate process starts.
@@ -158,6 +159,23 @@ chronology/exit-status boundary.
 These are direct full-gate builder results on the exact R15 subject gate. They
 remain evidence for independent review, never self-credit, and they do not
 substitute for the still-unadmitted trusted-launcher operator path.
+
+### R16-15 — externally pinned adjacent-row population
+
+The manifest pins the separately prepared `r16-15-adjacent-row-ledger.json`
+and the external copy of `tools/f100_u1_r16_15_adjacent_rows.py`. The disjoint
+verifier uses those external bytes to compare the candidate README; it never
+imports or executes the candidate's checker. The exact population is 38 of 38
+rows: 13 of 38 inherited R6 rows, 19 of 38 inherited R9 rows and 6 of 38 R15
+boundary rows.
+
+The verifier executes 38 of 38 named row-deletion mutations and 5 of 5 static
+boundary mutations covering local count restatement, disposition change,
+authority retarget, duplicate ID and alias ID. Those 43 of 43 facility-level
+mutations are not trusted-launcher results. The acceptance criteria's distinct
+mechanism-removal control remains 0 of 1, the eligible reviewer's independent
+38-of-38-row re-derivation remains 0 of 1, and runtime acceptance remains 0 of
+1.
 
 ## Current disposition
 
