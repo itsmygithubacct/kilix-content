@@ -259,7 +259,7 @@ class R16ExternalAuthorityTests(unittest.TestCase):
         self.assertEqual(
             result["evidence"]["pair_mutation_definition_check_count"], 6
         )
-        self.assertEqual(result["implementation"]["tool_count"], 5)
+        self.assertEqual(result["implementation"]["tool_count"], 6)
         self.assertEqual(result["r16_14"]["observed_call_count"], 9)
         self.assertEqual(result["r16_14"]["required_call_count"], 9)
         self.assertEqual(result["r16_14"]["runtime_effect_result_count"], 0)
@@ -302,6 +302,14 @@ class R16ExternalAuthorityTests(unittest.TestCase):
         manifest.write_bytes(AUTHORITY.canonical_json(value))
         self.authority_sha256 = hashlib.sha256(manifest.read_bytes()).hexdigest()
         self.assert_refusal("IMPLEMENTATION_R16_16_TOOL_DRIFT")
+
+    def test_pipe_observer_is_manifest_bound(self) -> None:
+        manifest = self.authority / "authority.json"
+        value = json.loads(manifest.read_bytes())
+        value["implementation"]["r16_pipe_observer"]["sha256"] = "0" * 64
+        manifest.write_bytes(AUTHORITY.canonical_json(value))
+        self.authority_sha256 = hashlib.sha256(manifest.read_bytes()).hexdigest()
+        self.assert_refusal("IMPLEMENTATION_PIPE_OBSERVER_DRIFT")
 
     def test_r16_15_readme_row_deletion_is_named(self) -> None:
         readme = self.candidate / README_RELATIVE

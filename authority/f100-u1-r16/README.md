@@ -189,14 +189,16 @@ mechanism-removal control remains 0 of 1, the eligible reviewer's independent
 
 ### R16-16 — separated accounting populations
 
-The manifest pins the proposed accounting authority and the external
-accumulator. It binds 32 of 32 mutation invocations, 12 of 12 effect classes, 5
-of 5 presentations and 2 of 2 shipped byte-identity groups, and checks that the
-candidate gate's event scope and presentation map are exactly equal. The gate
-can emit canonical event records only to explicit, previously absent paths
-outside the candidate. Runtime results remain 0 of 1 and all 7 of 7 trusted-path
-causal controls remain outstanding; the 17-of-17 leaf tests are static facility
-evidence only.
+The manifest pins the proposed accounting authority, the external accumulator
+and the external pipe observer. It binds 32 of 32 mutation invocations, 12 of
+12 effect classes, 5 of 5 presentations and 2 of 2 shipped byte-identity groups,
+and checks that the candidate gate's event scope and presentation map are
+exactly equal. Under OD-20 the gate accepts only 2 of 2 distinct writable
+pipe/socket descriptors; it refuses the 2 of 2 legacy path variables, regular
+files, character devices and duplicate channels. The external observer validates
+both records directly from the 2 of 2 pipe byte streams before any preservation
+copy exists. Runtime results remain 0 of 1 and all 7 of 7 trusted-path causal
+controls remain outstanding; the leaf tests are static facility evidence only.
 
 ## Current disposition
 

@@ -30,6 +30,7 @@ R16_15_README_PATH = Path("contracts/README.md")
 R16_15_TOOL_NAME = "f100_u1_r16_15_adjacent_rows.py"
 R16_14_TOOL_RELATIVE = Path("r16_14/sdist_call_set.py")
 R16_16_TOOL_NAME = "f100_u1_r16_16_accounting.py"
+PIPE_OBSERVER_TOOL_NAME = "f100_u1_r16_pipe_observer.py"
 AUTHORITY_MUTATIONS_TOOL_NAME = "f100_u1_r16_authority_mutations.py"
 HEX_256 = re.compile(r"[0-9a-f]{64}\Z")
 LANE_DISPOSITION_STATES: dict[str, tuple[bool, int | None]] = {
@@ -344,6 +345,7 @@ def verify_implementation(value: Any) -> dict[str, Any]:
             "r16_14_sdist_call_set",
             "r16_15_adjacent_rows",
             "r16_16_accounting",
+            "r16_pipe_observer",
             "verifier",
         },
         code="IMPLEMENTATION_AUTHORITY_SHAPE",
@@ -369,6 +371,11 @@ def verify_implementation(value: Any) -> dict[str, Any]:
             Path(__file__).with_name(R16_16_TOOL_NAME),
             f"tools/{R16_16_TOOL_NAME}",
             "IMPLEMENTATION_R16_16_TOOL",
+        ),
+        "r16_pipe_observer": (
+            Path(__file__).with_name(PIPE_OBSERVER_TOOL_NAME),
+            f"tools/{PIPE_OBSERVER_TOOL_NAME}",
+            "IMPLEMENTATION_PIPE_OBSERVER",
         ),
         "verifier": (
             Path(__file__),

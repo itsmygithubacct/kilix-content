@@ -20,6 +20,7 @@ VERIFIER_PATH = PROJECT / "tools" / "f100_u1_r16_external_authority.py"
 R16_14_TOOL_PATH = PROJECT / "tools" / "r16_14" / "sdist_call_set.py"
 R16_15_TOOL_PATH = PROJECT / "tools" / "f100_u1_r16_15_adjacent_rows.py"
 R16_16_TOOL_PATH = PROJECT / "tools" / "f100_u1_r16_16_accounting.py"
+PIPE_OBSERVER_PATH = PROJECT / "tools" / "f100_u1_r16_pipe_observer.py"
 AUTHORITY_MUTATIONS_PATH = PROJECT / "tools" / "f100_u1_r16_authority_mutations.py"
 AUTHORITY_ROOT = AUTHORITY_PATH.parent
 R16_14_LEDGER_PATH = AUTHORITY_ROOT / "r16-14-sdist-call-ledger.json"
@@ -263,6 +264,7 @@ def main() -> int:
         "r16_14_sdist_call_set": R16_14_TOOL_PATH,
         "r16_15_adjacent_rows": R16_15_TOOL_PATH,
         "r16_16_accounting": R16_16_TOOL_PATH,
+        "r16_pipe_observer": PIPE_OBSERVER_PATH,
         "verifier": VERIFIER_PATH,
     }
     authority["implementation"] = {
