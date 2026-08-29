@@ -188,21 +188,19 @@ R16_14_SDIST_CALL_EVENTS = {
         "target_function": "assert_sdist_enumerator_agreement",
     },
 }
-R16_16_ACCOUNTING_EFFECT_IDS = frozenset(
-    {
-        "sdist.container.gzip-trailing",
-        "sdist.enumerator.physical-directory-size",
-        "sdist.member.permission",
-        "sdist.payload.source-byte",
-        "wheel.archive.extra-member",
-        "wheel.container.appended-zip",
-        "wheel.container.prepend",
-        "wheel.container.trailing",
-        "wheel.installed.manifest",
-        "wheel.module.source-byte",
-        "wheel.record.self-row",
-        "wheel.resource.byte",
-    }
+R16_16_ACCOUNTING_EFFECT_IDS = (
+    "sdist.container.gzip-trailing",
+    "sdist.enumerator.physical-directory-size",
+    "sdist.member.permission",
+    "sdist.payload.source-byte",
+    "wheel.archive.extra-member",
+    "wheel.container.appended-zip",
+    "wheel.container.prepend",
+    "wheel.container.trailing",
+    "wheel.installed.manifest",
+    "wheel.module.source-byte",
+    "wheel.record.self-row",
+    "wheel.resource.byte",
 )
 R16_16_PRESENTATION_IDS = {
     "direct sdist 1": "direct-sdist-1",

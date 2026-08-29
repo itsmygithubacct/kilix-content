@@ -66,7 +66,7 @@ class R16GateIntegrationTests(unittest.TestCase):
             for family in authority["families"]
             for presentation in family["presentation_ids"]
         }
-        self.assertEqual(GATE.R16_16_ACCOUNTING_EFFECT_IDS, effect_ids)
+        self.assertEqual(set(GATE.R16_16_ACCOUNTING_EFFECT_IDS), effect_ids)
         self.assertEqual(set(GATE.R16_16_PRESENTATION_IDS.values()), presentation_ids)
 
     def test_external_records_round_trip_through_both_leaf_consumers(self) -> None:
