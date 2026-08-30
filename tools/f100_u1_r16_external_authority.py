@@ -1449,7 +1449,7 @@ def verify_r16_14(
     tree: ast.Module,
     value: Any,
 ) -> dict[str, Any]:
-    """Verify the nine-call candidate mirror without granting authority status."""
+    """Verify the nine-call external freeze without granting acceptance credit."""
     item = require_closed_object(
         value,
         {
@@ -1462,7 +1462,7 @@ def verify_r16_14(
         label="r16_14",
     )
     if (
-        item["authority_status"] != "candidate-mirror-not-final-authority"
+        item["authority_status"] != "external-frozen-authority"
         or item["required_call_count"] != 9
         or item["runtime_effect_result_count"] != 0
     ):
@@ -1489,6 +1489,8 @@ def verify_r16_14(
         ledger = call_set.load_ledger(ledger_path)
         if ledger.canonical_bytes != ledger_raw:
             refuse("R16_14_LEDGER_CANONICAL_DRIFT", str(ledger_path))
+        if ledger.authority_status != item["authority_status"]:
+            refuse("R16_14_LEDGER_AUTHORITY_STATUS", repr(ledger.authority_status))
         source = gate_raw.decode("utf-8")
         observed = call_set.enumerate_sdist_calls(source, filename=str(GATE_PATH))
         result = call_set.verify_call_set(ledger, observed)

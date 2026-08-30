@@ -160,15 +160,25 @@ These are direct full-gate builder results on the exact R15 subject gate. They
 remain evidence for independent review, never self-credit, and they do not
 substitute for the still-unadmitted trusted-launcher operator path.
 
-### R16-14 — pinned nine-call candidate mirror
+### R16-14 — pinned nine-call external freeze
 
 The manifest pins the 9-of-9 sdist-call ledger and the external copy of its
 inert-source enumerator. The verifier independently re-enumerates the exact
-candidate gate, checks exact call-set equality, and binds the gate's 9-of-9
-runtime-event mirror. The ledger remains marked
-`candidate-mirror-not-final-authority`: an independent final freeze is 0 of 1,
-trusted-path runtime traces are 0 of 9, and the 14-of-14 causal campaign has not
-run through the trusted default path.
+candidate gate, checks exact call-set equality, binds the gate's 9-of-9
+runtime-event mirror, and refuses any disagreement between the manifest's
+declared `authority_status` and the pinned ledger's own.
+
+The pinned ledger is the freeze prepared outside the candidate commit,
+`0.2.1-F100-R16-14-SDIST-CALL-LEDGER-R1.json`, SHA-256
+`3292721b7da3b7af40bf5035fc9e8c1f5799576c0bc4e03a745f02fac1587dc3`, marked
+`external-frozen-authority`. It supersedes the candidate-local mirror
+`bee62eed…`, from which it differs in 1 of 1 fields — `authority_status` —
+with all 9 of 9 call records byte-identical.
+
+That freeze is implementer-authored and is preparation, not an independent
+seal. Independent ratification is 0 of 1, trusted-path runtime traces are 0 of
+9, and the 14-of-14 causal campaign has not run through the trusted default
+path. `runtime_effect_result_count` stays pinned at 0.
 
 ### R16-15 — externally pinned adjacent-row population
 

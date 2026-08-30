@@ -147,7 +147,7 @@ def main() -> int:
         "R16-16",
     ]
     authority["r16_14"] = {
-        "authority_status": "candidate-mirror-not-final-authority",
+        "authority_status": "external-frozen-authority",
         "ledger": pinned_evidence(R16_14_LEDGER_PATH),
         "required_call_count": 9,
         "runtime_effect_result_count": 0,
