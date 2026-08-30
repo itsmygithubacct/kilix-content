@@ -331,6 +331,23 @@ def enumerate_sdist_calls(source: str, *, filename: str = "<source>") -> tuple[O
         tree = ast.parse(source, filename=filename)
     except (SyntaxError, ValueError) as exc:
         _refuse(f"SDIST_CALL_SOURCE_INVALID:{type(exc).__name__}")
+    direct_runner_nodes = {
+        id(node.func)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call)
+        and _callable_name(node.func) == "run_sdist_audit"
+    }
+    for node in ast.walk(tree):
+        if (
+            isinstance(node, ast.Name)
+            and isinstance(node.ctx, ast.Load)
+            and node.id == "run_sdist_audit"
+            and id(node) not in direct_runner_nodes
+        ):
+            _refuse(
+                "SDIST_CALL_RUNNER_ALIAS_UNRESOLVED:"
+                f"line={node.lineno}:column={node.col_offset}"
+            )
     visitor = _CallVisitor(_decorated_effects(tree))
     visitor.visit(tree)
     return tuple(sorted(visitor.calls))

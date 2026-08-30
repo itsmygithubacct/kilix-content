@@ -23,6 +23,25 @@ ROOT = Path(__file__).resolve().parents[2]
 SOURCE_PATH = ROOT / "tests" / "check_reproducible_build.py"
 LEDGER_PATH = ROOT / "tools" / "r16_14" / "fixtures" / "sdist-call-ledger.json"
 CONTROL_PATH = Path(__file__).parent / "fixtures" / "causal-controls.json"
+REQUIRED_IDENTITIES = frozenset(
+    {
+        "direct-enumerator",
+        "direct-payload",
+        "enumerator-container",
+        "extract-container",
+        "extract-enumerator",
+        "extract-payload",
+        "generated-enumerator",
+        "generated-metadata-audit",
+        "relative-enumerator",
+    }
+)
+EXPECTED_LEDGER_SHA256 = (
+    "bee62eed27fcf5958573f62f68e5287a69944875f7be806ae52fe1599c985b06"
+)
+EXPECTED_OBSERVED_SET_SHA256 = (
+    "795db299e7e86753495fa9b8e42b2756659a55adaa2e4cebf0d99abfc26f268f"
+)
 
 
 def call_identity(node: ast.Call) -> str | None:
@@ -70,6 +89,46 @@ class RetargetCall(ast.NodeTransformer):
         return node
 
 
+class RenameCall(ast.NodeTransformer):
+    def __init__(self, identity: str, replacement: str) -> None:
+        self.identity = identity
+        self.replacement = replacement
+        self.changed = 0
+
+    def visit_Call(self, node: ast.Call) -> ast.AST:  # noqa: N802
+        node = self.generic_visit(node)
+        if isinstance(node, ast.Call) and call_identity(node) == self.identity:
+            node.args[0] = ast.copy_location(
+                ast.Constant(value=self.replacement), node.args[0]
+            )
+            self.changed += 1
+        return node
+
+
+class ChangeCallArgument(ast.NodeTransformer):
+    def __init__(self, identity: str) -> None:
+        self.identity = identity
+        self.changed = 0
+
+    def visit_Call(self, node: ast.Call) -> ast.AST:  # noqa: N802
+        node = self.generic_visit(node)
+        if not isinstance(node, ast.Call) or call_identity(node) != self.identity:
+            return node
+        action = node.args[1]
+        if (
+            not isinstance(action, ast.Lambda)
+            or not isinstance(action.body, ast.Call)
+            or not action.body.args
+        ):
+            raise AssertionError("control target has no literal lambda argument")
+        action.body.args[-1] = ast.copy_location(
+            ast.Constant(value="r16-14-locator-mutation"),
+            action.body.args[-1],
+        )
+        self.changed += 1
+        return node
+
+
 class DuplicateCall(ast.NodeTransformer):
     def __init__(self, identity: str, *, alias: str | None = None) -> None:
         self.identity = identity
@@ -106,6 +165,24 @@ class AddExtraCall(ast.NodeTransformer):
                 "lambda: sdist_member_closure_audit(archive))"
             ).body[0]
             node.body.append(extra)
+            self.changed += 1
+        return node
+
+
+class AddAliasedExtraCall(ast.NodeTransformer):
+    def __init__(self) -> None:
+        self.changed = 0
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.AST:  # noqa: N802
+        node = self.generic_visit(node)
+        if isinstance(node, ast.FunctionDef) and node.name == "main":
+            node.body.extend(
+                ast.parse(
+                    "r16_14_runner_alias = run_sdist_audit\n"
+                    'r16_14_runner_alias("unreviewed-alias-extra", '
+                    "lambda: sdist_member_closure_audit(archive))"
+                ).body
+            )
             self.changed += 1
         return node
 
@@ -168,11 +245,48 @@ class SdistCallSetTests(unittest.TestCase):
             self.ledger,
             enumerate_sdist_calls(self.source, filename=str(SOURCE_PATH)),
         )
+        self.assertEqual(
+            set(result),
+            {
+                "authority_status",
+                "ledger_sha256",
+                "observed_call_count",
+                "observed_call_ids",
+                "observed_set_sha256",
+                "required_call_count",
+                "required_call_ids",
+                "status",
+            },
+        )
         self.assertEqual(result["observed_call_count"], 9)
         self.assertEqual(result["required_call_count"], 9)
         self.assertEqual(
             result["observed_call_ids"], result["required_call_ids"]
         )
+        self.assertEqual(frozenset(result["required_call_ids"]), REQUIRED_IDENTITIES)
+        self.assertEqual(
+            {call.identity for call in self.ledger.calls}, REQUIRED_IDENTITIES
+        )
+        self.assertEqual(
+            {
+                call.identity
+                for call in self.ledger.calls
+                if call.role == "named-differential-control"
+            },
+            {"relative-enumerator"},
+        )
+        self.assertEqual(
+            sum(call.role == "production-authority" for call in self.ledger.calls),
+            8,
+        )
+        self.assertEqual(
+            result["authority_status"], "candidate-mirror-not-final-authority"
+        )
+        self.assertEqual(result["ledger_sha256"], EXPECTED_LEDGER_SHA256)
+        self.assertEqual(
+            result["observed_set_sha256"], EXPECTED_OBSERVED_SET_SHA256
+        )
+        self.assertEqual(result["status"], "PASS")
 
     def test_enumerator_never_executes_the_subject(self) -> None:
         hostile = """
@@ -222,6 +336,18 @@ def carrier(archive):
         self.assertTrue(refusal.startswith("SDIST_CALL_EXTRA:function=main;"))
         self.assertIn("target=sdist_member_closure_audit", refusal)
 
+    def test_indirect_runner_reference_cannot_hide_an_extra_call(self) -> None:
+        mutation = AddAliasedExtraCall()
+        mutated = transformed_source(self.source, mutation)
+        self.assertEqual(mutation.changed, 1)
+        with self.assertRaises(VerificationError) as caught:
+            enumerate_sdist_calls(mutated)
+        self.assertTrue(
+            caught.exception.code.startswith(
+                "SDIST_CALL_RUNNER_ALIAS_UNRESOLVED:line="
+            )
+        )
+
     def test_retarget_refuses_by_exact_identity(self) -> None:
         mutation = RetargetCall("direct-payload", "sdist_container_audit")
         mutated = transformed_source(self.source, mutation)
@@ -229,6 +355,24 @@ def carrier(archive):
         self.assertEqual(
             self.refusal(mutated),
             "SDIST_CALL_TARGET_MISMATCH:direct-payload",
+        )
+
+    def test_renamed_call_refuses_by_original_required_identity(self) -> None:
+        mutation = RenameCall("direct-payload", "renamed-direct-payload")
+        mutated = transformed_source(self.source, mutation)
+        self.assertEqual(mutation.changed, 1)
+        self.assertEqual(
+            self.refusal(mutated),
+            "SDIST_CALL_MISSING:direct-payload",
+        )
+
+    def test_structural_locator_drift_refuses_by_exact_identity(self) -> None:
+        mutation = ChangeCallArgument("direct-payload")
+        mutated = transformed_source(self.source, mutation)
+        self.assertEqual(mutation.changed, 1)
+        self.assertEqual(
+            self.refusal(mutated),
+            "SDIST_CALL_LOCATOR_MISMATCH:direct-payload",
         )
 
     def test_duplicate_refuses_by_exact_identity(self) -> None:
@@ -311,11 +455,67 @@ def carrier(archive):
         )
 
     def test_control_manifest_closes_fourteen_of_fourteen(self) -> None:
+        expected = {
+            "SCALL-DEL-direct-enumerator": (
+                "SDIST_CALL_MISSING:direct-enumerator"
+            ),
+            "SCALL-DEL-direct-payload": "SDIST_CALL_MISSING:direct-payload",
+            "SCALL-DEL-enumerator-container": (
+                "SDIST_CALL_MISSING:enumerator-container"
+            ),
+            "SCALL-DEL-extract-container": (
+                "SDIST_CALL_MISSING:extract-container"
+            ),
+            "SCALL-DEL-extract-enumerator": (
+                "SDIST_CALL_MISSING:extract-enumerator"
+            ),
+            "SCALL-DEL-extract-payload": "SDIST_CALL_MISSING:extract-payload",
+            "SCALL-DEL-generated-enumerator": (
+                "SDIST_CALL_MISSING:generated-enumerator"
+            ),
+            "SCALL-DEL-generated-metadata-audit": (
+                "SDIST_CALL_MISSING:generated-metadata-audit"
+            ),
+            "SCALL-DEL-relative-enumerator": (
+                "SDIST_CALL_MISSING:relative-enumerator"
+            ),
+            "SCALL-DUP": "SDIST_CALL_DUPLICATE:relative-enumerator",
+            "SCALL-EXTRA": "SDIST_CALL_EXTRA:",
+            "SCALL-NOREACH": "SDIST_CALL_EFFECT_UNOBSERVED:direct-payload",
+            "SCALL-RESTATE": "SDIST_CALL_MISSING:direct-payload",
+            "SCALL-RETARGET": "SDIST_CALL_TARGET_MISMATCH:direct-payload",
+        }
+        self.assertEqual(
+            CONTROL_PATH.read_bytes(),
+            canonical_json_bytes(self.control_manifest),
+        )
+        self.assertEqual(
+            set(self.control_manifest),
+            {"control_count", "controls", "schema_version"},
+        )
+        self.assertEqual(
+            self.control_manifest["schema_version"],
+            "r16-14-causal-controls-v1",
+        )
         rows = self.control_manifest["controls"]
+        self.assertIs(type(self.control_manifest["control_count"]), int)
         self.assertEqual(self.control_manifest["control_count"], 14)
         self.assertEqual(len(rows), 14)
         self.assertEqual(len({row["id"] for row in rows}), 14)
-        deletion_ids = {row["id"] for row in rows if row["id"].startswith("SCALL-DEL-")}
+        self.assertTrue(
+            all(
+                type(row) is dict
+                and set(row) == {"expected", "id"}
+                and type(row["expected"]) is str
+                and type(row["id"]) is str
+                for row in rows
+            )
+        )
+        actual = {row["id"]: row["expected"] for row in rows}
+        self.assertEqual(actual, expected)
+        deletion_ids = {
+            row["id"] for row in rows if row["id"].startswith("SCALL-DEL-")
+        }
         self.assertEqual(len(deletion_ids), 9)
 
 
