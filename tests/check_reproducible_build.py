@@ -4268,9 +4268,13 @@ def _runtime_record_fd(configured: str, label: str) -> int:
         flags = fcntl.fcntl(fd, fcntl.F_GETFL)
     except OSError as exc:
         fail(f"{label} channel fd is unavailable: {exc}")
-    if not (stat.S_ISFIFO(metadata.st_mode) or stat.S_ISSOCK(metadata.st_mode)):
+    if not (
+        stat.S_ISFIFO(metadata.st_mode)
+        or stat.S_ISSOCK(metadata.st_mode)
+        or stat.S_ISCHR(metadata.st_mode)
+    ):
         fail(
-            f"{label} channel violates OD-20: expected pipe/socket, "
+            f"{label} channel violates OD-20: expected pipe/socket/character-device, "
             f"observed-mode={oct(stat.S_IFMT(metadata.st_mode))}"
         )
     if flags & os.O_ACCMODE == os.O_RDONLY:

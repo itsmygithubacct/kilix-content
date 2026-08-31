@@ -29,7 +29,9 @@ def load_module(name: str, path: Path):
     return module
 
 
-GATE = load_module("f100_u1_r16_integrated_gate", PROJECT / "tests/check_reproducible_build.py")
+GATE = load_module(
+    "f100_u1_r16_integrated_gate", PROJECT / "tests/check_reproducible_build.py"
+)
 ACCOUNTING = load_module(
     "f100_u1_r16_integrated_accounting",
     PROJECT / "tools/f100_u1_r16_16_accounting.py",
@@ -101,7 +103,9 @@ class R16GateIntegrationTests(unittest.TestCase):
             root = Path(name)
             authority_path = root / "r16-16-authority.json"
             authority_path.write_bytes(
-                ACCOUNTING.canonical_json(fixtures.authority(ACCOUNTING.AUTHORITY_SCHEMA))
+                ACCOUNTING.canonical_json(
+                    fixtures.authority(ACCOUNTING.AUTHORITY_SCHEMA)
+                )
             )
             authority_sha256 = hashlib.sha256(authority_path.read_bytes()).hexdigest()
             r16_14_read, r16_14_write = os.pipe()
@@ -176,27 +180,24 @@ class R16GateIntegrationTests(unittest.TestCase):
             with patch.dict(os.environ, environment, clear=True):
                 with self.assertRaisesRegex(
                     SystemExit,
-                    "R16-14 trace channel violates OD-20: expected pipe/socket",
+                    "R16-14 trace channel violates OD-20: "
+                    "expected pipe/socket/character-device",
                 ):
                     GATE.write_r16_runtime_records()
 
-    def test_character_device_channel_refuses_under_od20(self) -> None:
+    def test_character_device_channel_is_permitted_under_od20_ruling(self) -> None:
         first = os.open("/dev/null", os.O_WRONLY)
         second_read, second_write = os.pipe()
-        self.addCleanup(os.close, first)
-        self.addCleanup(os.close, second_read)
-        self.addCleanup(os.close, second_write)
         environment = {
             "KILIX_F100_R16_14_TRACE_FD": str(first),
             "KILIX_F100_R16_16_ACCOUNTING_AUTHORITY_SHA256": "0" * 64,
             "KILIX_F100_R16_16_EVENTS_FD": str(second_write),
         }
         with patch.dict(os.environ, environment, clear=True):
-            with self.assertRaisesRegex(
-                SystemExit,
-                "R16-14 trace channel violates OD-20: expected pipe/socket",
-            ):
-                GATE.write_r16_runtime_records()
+            GATE.write_r16_runtime_records()
+        record = json.loads(self.read_pipe(second_read))
+        self.assertEqual(record["authority_sha256"], "0" * 64)
+        self.assertEqual(len(record["events"]), 0)
 
     def test_duplicate_pipe_channel_refuses(self) -> None:
         read_fd, write_fd = os.pipe()

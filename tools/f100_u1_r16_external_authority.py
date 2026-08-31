@@ -1576,8 +1576,8 @@ def verify_r16_15(
         if adjacent._canonical_json(ledger) != ledger_raw:
             refuse("R16_15_LEDGER_CANONICAL_DRIFT", str(ledger_path))
         readme_text = readme_path.read_text(encoding="utf-8")
-        rows = adjacent.validate(ledger, readme_text)
-        controls = adjacent.run_self_test(ledger, readme_text)
+        rows = adjacent.validate(ledger, readme_text, source_root=candidate_root)
+        controls = adjacent.run_self_test(ledger, readme_text, candidate_root)
     except adjacent.AdjacentRowError as exc:
         refuse("R16_15_README_REFUSED", str(exc))
     except (OSError, UnicodeError) as exc:
@@ -1593,6 +1593,7 @@ def verify_r16_15(
             f"rows={len(rows)} table_counts={table_counts!r}",
         )
     return {
+        "authority_locator_count": controls["authority_locators"],
         "boundary_control_count": controls["boundary_controls"],
         "deletion_control_count": controls["deletion_controls"],
         "ledger_sha256": ledger_sha256,

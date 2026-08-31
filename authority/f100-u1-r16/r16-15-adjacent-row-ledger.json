@@ -1,6 +1,8 @@
 {
   "basis": {
     "acceptance_criteria_sha256": "80d46598720b00502e3dec6f47d2a7e399ea0aab27c68909e77ce7c366cf8120",
+    "authority_locator_correction": "6/70 locator occurrences replace the nonexistent reproducibility-checks pseudo-symbol with the real top-level main mechanism",
+    "predecessor_ledger_sha256": "83d61ad5a0458e22e231fcaf1f2fce6caed28351bc84d6683dc72ce66526a388",
     "r14_commit": "5c2817f4c7d69c7c31b3d3acd72e23dc93de45fc",
     "r14_readme_sha256": "28464003ab0b1187fc71349a3b687f2185c2d949cfb74930e215bc810fa27c8b",
     "r14_tree": "ba36f81f4632c19dbeaf6e6257ea11810dc95fd2",
@@ -111,7 +113,7 @@
     {
       "authority_sources": [
         "tests/check_reproducible_build.py::expected_wheel_members",
-        "tests/check_reproducible_build.py::reproducibility-checks"
+        "tests/check_reproducible_build.py::main"
       ],
       "disposition": "LIMITATION",
       "normalized_claim": "Non-resource wheel member digests versus source",
@@ -126,7 +128,7 @@
     {
       "authority_sources": [
         "tests/check_reproducible_build.py::digest",
-        "tests/check_reproducible_build.py::reproducibility-checks"
+        "tests/check_reproducible_build.py::main"
       ],
       "disposition": "LIMITATION",
       "normalized_claim": "Recorded expected artifact digest",
@@ -140,7 +142,7 @@
     },
     {
       "authority_sources": [
-        "tests/check_reproducible_build.py::reproducibility-checks"
+        "tests/check_reproducible_build.py::main"
       ],
       "disposition": "OUT_OF_SCOPE",
       "normalized_claim": "ZIP archive comment and per-entry extra fields",
@@ -184,7 +186,7 @@
     {
       "authority_sources": [
         "tests/check_reproducible_build.py::sdist_container_audit",
-        "tests/check_reproducible_build.py::reproducibility-checks"
+        "tests/check_reproducible_build.py::main"
       ],
       "disposition": "OUT_OF_SCOPE",
       "normalized_claim": "Sdist compression metadata beyond member safety/closure",
@@ -255,7 +257,7 @@
     },
     {
       "authority_sources": [
-        "tests/check_reproducible_build.py::reproducibility-checks"
+        "tests/check_reproducible_build.py::main"
       ],
       "disposition": "LIMITATION",
       "normalized_claim": "Compression method and per-entry DOS timestamp",
@@ -467,7 +469,7 @@
     {
       "authority_sources": [
         "tests/check_reproducible_build.py::sdist_container_audit",
-        "tests/check_reproducible_build.py::reproducibility-checks"
+        "tests/check_reproducible_build.py::main"
       ],
       "disposition": "NOT_TRANSFERABLE",
       "normalized_claim": "ZIP comments and per-entry metadata",

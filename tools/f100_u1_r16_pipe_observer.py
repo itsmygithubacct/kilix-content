@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Observe R16 gate records through OD-20-compliant anonymous pipes.
+"""Observe R16 gate records through OD-20-compliant result channels.
 
 Run this tool only from an external-authority export disjoint from the candidate.
 It verifies the pinned candidate and authority before execution, launches the
-exact default gate, validates both records directly from pipe bytes, and writes
+exact default gate, validates both records directly from channel bytes, and writes
 one canonical result to stdout.  A later preservation copy is not an input to
 the verdict.
 """
@@ -79,21 +79,35 @@ def decode_r16_14(raw: bytes, module: ModuleType) -> Any:
         return result
 
     try:
-        value = json.loads(
-            raw.decode("utf-8"),
+        text = raw.decode("utf-8")
+        decoder = json.JSONDecoder(
             object_pairs_hook=strict_pairs,
-            parse_constant=lambda token: refuse(
-                f"OBSERVER_R16_14_NONFINITE:{token}"
-            ),
+            parse_constant=lambda token: refuse(f"OBSERVER_R16_14_NONFINITE:{token}"),
         )
+        position = 0
+        values: list[Any] = []
+        while position < len(text):
+            while position < len(text) and text[position].isspace():
+                position += 1
+            if position == len(text):
+                break
+            value, position = decoder.raw_decode(text, position)
+            values.append(value)
+            if len(values) > 1:
+                refuse(f"OBSERVER_R16_14_MULTIPLE_VALUES:observed={len(values)}/1")
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         refuse(f"OBSERVER_R16_14_JSON_INVALID:{type(exc).__name__}")
+    if len(values) != 1:
+        refuse(f"OBSERVER_R16_14_VALUE_COUNT:observed={len(values)}/1")
+    value = values[0]
     if raw != module.canonical_json_bytes(value):
         refuse("OBSERVER_R16_14_NONCANONICAL")
     return value
 
 
-def _read_bounded(fd: int, label: str, result: dict[str, bytes], errors: list[str]) -> None:
+def _read_bounded(
+    fd: int, label: str, result: dict[str, bytes], errors: list[str]
+) -> None:
     chunks: list[bytes] = []
     total = 0
     try:
@@ -232,9 +246,7 @@ def observe(arguments: argparse.Namespace) -> dict[str, Any]:
         execution_root, static_result["candidate_gate_sha256"]
     )
     accounting_sha256 = static_result["r16_16"]["accounting_authority_sha256"]
-    ledger = r16_14_tool.load_ledger(
-        authority_root / "r16-14-sdist-call-ledger.json"
-    )
+    ledger = r16_14_tool.load_ledger(authority_root / "r16-14-sdist-call-ledger.json")
     accounting_authority = accounting.load_authority(
         authority_root / "r16-16-accounting-authority.json",
         accounting_sha256,

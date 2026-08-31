@@ -189,13 +189,13 @@ imports or executes the candidate's checker. The exact population is 38 of 38
 rows: 13 of 38 inherited R6 rows, 19 of 38 inherited R9 rows and 6 of 38 R15
 boundary rows.
 
-The verifier executes 38 of 38 named row-deletion mutations and 5 of 5 static
-boundary mutations covering local count restatement, disposition change,
-authority retarget, duplicate ID and alias ID. Those 43 of 43 facility-level
-mutations are not trusted-launcher results. The acceptance criteria's distinct
-mechanism-removal control remains 0 of 1, the eligible reviewer's independent
-38-of-38-row re-derivation remains 0 of 1, and runtime acceptance remains 0 of
-1.
+The verifier executes 38 of 38 named row-deletion mutations and 5 of 5 distinct
+static control families covering local count restatement, disposition change,
+authority retarget, duplicate/alias ID and mechanism removal. All 70 of 70
+frozen authority locators resolve from source without importing the candidate.
+Those 43 of 43 facility-level mutations are not trusted-launcher results. The
+eligible reviewer's independent 38/38-row re-derivation remains 0 of 1, and
+runtime acceptance remains 0 of 1.
 
 ### R16-16 — separated accounting populations
 
@@ -203,12 +203,14 @@ The manifest pins the proposed accounting authority, the external accumulator
 and the external pipe observer. It binds 32 of 32 mutation invocations, 12 of
 12 effect classes, 5 of 5 presentations and 2 of 2 shipped byte-identity groups,
 and checks that the candidate gate's event scope and presentation map are
-exactly equal. Under OD-20 the gate accepts only 2 of 2 distinct writable
-pipe/socket descriptors; it refuses the 2 of 2 legacy path variables, regular
-files, character devices and duplicate channels. The external observer validates
-both records directly from the 2 of 2 pipe byte streams before any preservation
-copy exists. Runtime results remain 0 of 1 and all 7 of 7 trusted-path causal
-controls remain outstanding; the leaf tests are static facility evidence only.
+exactly equal. Under the OD-20 character-device ruling the gate accepts 2 of 2
+distinct writable pipe, socket or character-device descriptors; it refuses the
+2 of 2 legacy path variables, regular files and duplicate channels. The external
+observer validates both records directly from 2 of 2 channel byte streams before
+any preservation copy exists. Its parsers execute the ruling's required injected
+second-value control and refuse 2 of 2 two-value streams. Runtime results remain
+0 of 1 and all 7 of 7 trusted-path causal controls remain outstanding; the leaf
+tests are static facility evidence only.
 
 ## Current disposition
 

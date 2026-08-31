@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 from pathlib import Path
+import tempfile
 import unittest
 
 
@@ -28,11 +29,16 @@ ROW = {
     "source_table": "r14-r6-adjacent-property",
     "statement_sha256": statement_digest(STATEMENT),
 }
+TEST_TABLE_POPULATIONS = {
+    "r14-r6-adjacent-property": 13,
+    "r14-r9-wheel-sdist-parity": 19,
+    "r15-registry-boundary": 6,
+}
 
 
 def ledger() -> dict[str, object]:
     rows = []
-    for table, count in adjacent.TABLE_POPULATIONS.items():
+    for table, count in TEST_TABLE_POPULATIONS.items():
         prefix = {
             "r14-r6-adjacent-property": "ADJ-R14-R6",
             "r14-r9-wheel-sdist-parity": "ADJ-R14-R9",
@@ -46,6 +52,11 @@ def ledger() -> dict[str, object]:
             row["source_table"] = table
             if table == "r14-r6-adjacent-property" and number == 1:
                 row["disposition"] = "LIMITATION"
+            if table == "r14-r6-adjacent-property" and number == 4:
+                row["authority_sources"] = [
+                    "tests/check_reproducible_build.py::record_audit"
+                ]
+                row["row_id"] = "ADJ-R14-R6-04-WHEEL-RECORD"
             rows.append(row)
     return {
         "basis": {"fixture": "unit-only-not-authority"},
@@ -57,11 +68,17 @@ def ledger() -> dict[str, object]:
 
 
 def readme(value: dict[str, object]) -> str:
-    lines = [adjacent.BEGIN]
+    lines = [
+        adjacent.BEGIN,
+        "R6 adjacent-property disposition (13/13 inherited R14 rows):",
+    ]
     for row in value["rows"]:
+        authorities = "<br>".join(
+            f"`{locator}`" for locator in row["authority_sources"]
+        )
         lines.append(
             f"| {row['row_id']} | {row['disposition']} | "
-            f"{row['normalized_claim']} | `tests/example.py::check` | "
+            f"{row['normalized_claim']} | {authorities} | "
             f"`examples:1/1` | {STATEMENT} |"
         )
     lines.append(adjacent.END)
@@ -70,11 +87,23 @@ def readme(value: dict[str, object]) -> str:
 
 class AdjacentRowParserTests(unittest.TestCase):
     def setUp(self) -> None:
+        self.temporary = tempfile.TemporaryDirectory(prefix="kilix-r16-15-test-")
+        self.source_root = Path(self.temporary.name)
+        example = self.source_root / "tests" / "example.py"
+        example.parent.mkdir(parents=True)
+        example.write_text("def check():\n    return True\n", encoding="utf-8")
+        mechanism = self.source_root / "tests" / "check_reproducible_build.py"
+        mechanism.write_text("def record_audit():\n    return True\n", encoding="utf-8")
         self.ledger = ledger()
         self.readme = readme(self.ledger)
 
+    def tearDown(self) -> None:
+        self.temporary.cleanup()
+
     def test_exact_38_row_fixture_matches(self) -> None:
-        observed = adjacent.validate(self.ledger, self.readme)
+        observed = adjacent.validate(
+            self.ledger, self.readme, source_root=self.source_root
+        )
         self.assertEqual(len(observed), 38)
         report = adjacent.summary(self.ledger, observed)
         expected_digest = hashlib.sha256(
@@ -88,9 +117,11 @@ class AdjacentRowParserTests(unittest.TestCase):
         )
 
     def test_each_of_38_deletions_is_named(self) -> None:
-        controls = adjacent.run_self_test(self.ledger, self.readme)
+        controls = adjacent.run_self_test(self.ledger, self.readme, self.source_root)
         self.assertEqual(controls["deletion_controls"], 38)
         self.assertEqual(controls["boundary_controls"], 5)
+        self.assertEqual(controls["authority_locators"], 38)
+        self.assertEqual(controls["authority_locators_required"], 38)
 
     def test_local_count_restatement_cannot_hide_deleted_row(self) -> None:
         target = self.ledger["rows"][0]["row_id"]
@@ -101,9 +132,34 @@ class AdjacentRowParserTests(unittest.TestCase):
             adjacent.AdjacentRowError,
             f"ADJACENT_ROW_MISSING:{target}",
         ):
-            adjacent.validate(self.ledger, mutated_readme)
+            adjacent.validate(self.ledger, mutated_readme, source_root=self.source_root)
         with self.assertRaisesRegex(adjacent.AdjacentRowError, "LEDGER_COUNT_MISMATCH"):
-            adjacent.validate(mutated_ledger, mutated_readme)
+            adjacent.validate(
+                mutated_ledger, mutated_readme, source_root=self.source_root
+            )
+
+    def test_table_denominators_come_from_the_external_ledger(self) -> None:
+        self.assertFalse(hasattr(adjacent, "TABLE_POPULATIONS"))
+        observed = adjacent.validate(
+            self.ledger, self.readme, source_root=self.source_root
+        )
+        self.assertEqual(len(observed), 38)
+
+    def test_missing_enforced_mechanism_is_named(self) -> None:
+        self.ledger["rows"][0]["authority_sources"] = [
+            "tests/example.py::missing_check"
+        ]
+        self.readme = self.readme.replace(
+            "`tests/example.py::check`", "`tests/example.py::missing_check`", 1
+        )
+        row_id = self.ledger["rows"][0]["row_id"]
+        self.ledger["rows"][0]["disposition"] = "ENFORCED"
+        self.readme = self.readme.replace("| LIMITATION |", "| ENFORCED |", 1)
+        with self.assertRaisesRegex(
+            adjacent.AdjacentRowError,
+            f"ADJACENT_ROW_EFFECT_UNOBSERVED:{row_id}",
+        ):
+            adjacent.validate(self.ledger, self.readme, source_root=self.source_root)
 
 
 if __name__ == "__main__":

@@ -76,7 +76,8 @@ def events() -> list[dict[str, str]]:
 
 
 def control(case: str) -> tuple[list[dict[str, str]], dict[str, Any]]:
-    mutated = deepcopy(events())
+    before = deepcopy(events())
+    mutated = deepcopy(before)
     details: dict[str, Any] = {"case": case, "mutation_fired": False}
     if case == "COUNT-DUP-INVOKE":
         mutated.append(deepcopy(mutated[0]))
@@ -88,31 +89,44 @@ def control(case: str) -> tuple[list[dict[str, str]], dict[str, Any]]:
         for event in mutated:
             if event["presentation_id"] == "direct-wheel-2":
                 event["artifact_sha256"] = "3" * 64
-        details["mutation_fired"] = sum(
-            event["artifact_sha256"] == "3" * 64 for event in mutated
-        ) == 8
+        details["mutation_fired"] = (
+            sum(event["artifact_sha256"] == "3" * 64 for event in mutated) == 8
+        )
     elif case == "COUNT-NEW-EFFECT":
         mutated[0]["effect_id"] = "sdist.unreviewed.effect"
         details["mutation_fired"] = mutated[0]["effect_id"].endswith(".effect")
     elif case == "COUNT-DELETE-EFFECT":
         target = SDIST_EFFECTS[0]
         mutated = [event for event in mutated if event["effect_id"] != target]
-        details["mutation_fired"] = (
-            len(mutated) == 30
-            and all(event["effect_id"] != target for event in mutated)
+        details["mutation_fired"] = len(mutated) == 30 and all(
+            event["effect_id"] != target for event in mutated
         )
     elif case == "COUNT-DELETE-PRESENTATION":
         target = "direct-wheel-2"
         for event in mutated:
             if event["presentation_id"] == target:
                 event["presentation_id"] = "direct-wheel-1"
-        details["mutation_fired"] = (
-            len(mutated) == 32
-            and all(event["presentation_id"] != target for event in mutated)
+        details["mutation_fired"] = len(mutated) == 32 and all(
+            event["presentation_id"] != target for event in mutated
         )
     elif case == "COUNT-SAME-DIGEST":
+        # Start from an exact refusing prestate, then make the named mutation:
+        # restore one divergent presentation to the shared shipped-wheel bytes.
+        # The old fixture merely observed that the untouched baseline already
+        # had one wheel digest and called that observation a mutation.
+        for event in before:
+            if event["presentation_id"] == "direct-wheel-2":
+                event["artifact_sha256"] = "3" * 64
+        mutated = deepcopy(before)
+        changed = 0
+        for event in mutated:
+            if event["presentation_id"] == "direct-wheel-2":
+                event["artifact_sha256"] = WHEEL_SHA256
+                changed += 1
         details["mutation_fired"] = (
-            len(
+            changed == len(WHEEL_EFFECTS)
+            and before != mutated
+            and len(
                 {
                     event["artifact_sha256"]
                     for event in mutated
@@ -121,10 +135,13 @@ def control(case: str) -> tuple[list[dict[str, str]], dict[str, Any]]:
             )
             == 1
         )
+        details["changed_event_count"] = changed
+        details["prestate_events"] = before
     else:
         raise ValueError(f"unknown control: {case}")
     if not details["mutation_fired"]:
         raise AssertionError(f"control mutation did not fire: {case}")
     details["events_after"] = len(mutated)
-    details["events_before"] = 32
+    details["events_before"] = len(before)
+    details["record_population_changed"] = before != mutated
     return mutated, details

@@ -136,6 +136,14 @@ class R16SixteenAccountingTests(unittest.TestCase):
     def test_count_same_digest_control(self) -> None:
         values, details = fixtures.control("COUNT-SAME-DIGEST")
         self.assertIs(details["mutation_fired"], True)
+        self.assertIs(details["record_population_changed"], True)
+        self.assertEqual(details["changed_event_count"], 8)
+        prestate = details["prestate_events"]
+        self.assertNotEqual(
+            ACCOUNTING.canonical_json(prestate),
+            ACCOUNTING.canonical_json(values),
+        )
+        self.assert_refusal("COUNT_BYTE_IDENTITY_MISMATCH:wheel-bytes", prestate)
         result = ACCOUNTING.accumulate(self.authority, self.mutation_events(values))
         presentations = result["populations"]["presentations"]
         identities = result["populations"]["shipped_byte_identities"]
@@ -143,8 +151,29 @@ class R16SixteenAccountingTests(unittest.TestCase):
             member for member in presentations["members"] if member["family"] == "wheel"
         ]
         self.assertEqual(len(wheel_presentations), 3)
-        self.assertEqual(len({row["artifact_sha256"] for row in wheel_presentations}), 1)
+        self.assertEqual(
+            len({row["artifact_sha256"] for row in wheel_presentations}), 1
+        )
         self.assertEqual(identities["count"], 2)
+
+    def test_all_seven_controls_change_the_retained_record_population(self) -> None:
+        cases = (
+            "COUNT-DUP-INVOKE",
+            "COUNT-ALIAS-PRESENTATION",
+            "COUNT-NEW-BYTES",
+            "COUNT-NEW-EFFECT",
+            "COUNT-DELETE-EFFECT",
+            "COUNT-DELETE-PRESENTATION",
+            "COUNT-SAME-DIGEST",
+        )
+        changed = 0
+        for case in cases:
+            with self.subTest(case=case):
+                _, details = fixtures.control(case)
+                self.assertIs(details["mutation_fired"], True)
+                self.assertIs(details["record_population_changed"], True)
+                changed += 1
+        self.assertEqual(changed, len(cases))
 
     def test_missing_single_invocation_refuses_by_exact_member(self) -> None:
         values = fixtures.events()
@@ -171,10 +200,10 @@ class R16SixteenAccountingTests(unittest.TestCase):
 
     def test_authority_requires_exact_digest(self) -> None:
         with self.assertRaises(ACCOUNTING.AccountingRefusal) as raised:
-            ACCOUNTING.load_authority(
-                self.authority_path, "0" * 64, self.candidate
-            )
-        self.assertTrue(raised.exception.code.startswith("COUNT_AUTHORITY_DIGEST_MISMATCH:"))
+            ACCOUNTING.load_authority(self.authority_path, "0" * 64, self.candidate)
+        self.assertTrue(
+            raised.exception.code.startswith("COUNT_AUTHORITY_DIGEST_MISMATCH:")
+        )
 
     def test_authority_requires_canonical_bytes(self) -> None:
         value = fixtures.authority(ACCOUNTING.AUTHORITY_SCHEMA)
@@ -188,9 +217,7 @@ class R16SixteenAccountingTests(unittest.TestCase):
 
     def test_authority_refuses_duplicate_json_keys(self) -> None:
         path = self.root / "duplicate-authority.json"
-        path.write_bytes(
-            b'{"families":[],"schema":"x","schema":"y"}\n'
-        )
+        path.write_bytes(b'{"families":[],"schema":"x","schema":"y"}\n')
         with self.assertRaises(ACCOUNTING.AccountingRefusal) as raised:
             ACCOUNTING.load_authority(
                 path, ACCOUNTING.sha256(path.read_bytes()), self.candidate
@@ -279,7 +306,9 @@ class R16SixteenAccountingTests(unittest.TestCase):
         self.assertEqual(output.read_bytes(), ACCOUNTING.canonical_json(value))
         repeated = subprocess.run(command, check=False, capture_output=True, text=True)
         self.assertEqual(repeated.returncode, 2)
-        self.assertEqual(repeated.stderr.strip(), "R16_16_REFUSE:COUNT_OUTPUT_ALREADY_EXISTS")
+        self.assertEqual(
+            repeated.stderr.strip(), "R16_16_REFUSE:COUNT_OUTPUT_ALREADY_EXISTS"
+        )
 
 
 if __name__ == "__main__":

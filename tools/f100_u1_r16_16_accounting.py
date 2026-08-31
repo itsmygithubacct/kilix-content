@@ -123,15 +123,29 @@ def _decode_json(raw: bytes, *, subject: str, maximum: int) -> Any:
         return result
 
     try:
-        value = json.loads(
-            raw.decode("utf-8"),
+        text = raw.decode("utf-8")
+        decoder = json.JSONDecoder(
             object_pairs_hook=closed_pairs,
             parse_constant=lambda token: refuse(
                 f"COUNT_{subject}_NONFINITE_NUMBER:{token}"
             ),
         )
+        position = 0
+        values: list[Any] = []
+        while position < len(text):
+            while position < len(text) and text[position].isspace():
+                position += 1
+            if position == len(text):
+                break
+            value, position = decoder.raw_decode(text, position)
+            values.append(value)
+            if len(values) > 1:
+                refuse(f"COUNT_{subject}_MULTIPLE_VALUES:observed={len(values)}/1")
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         refuse(f"COUNT_{subject}_JSON_INVALID:{type(error).__name__}")
+    if len(values) != 1:
+        refuse(f"COUNT_{subject}_VALUE_COUNT:observed={len(values)}/1")
+    value = values[0]
     if raw != canonical_json(value):
         refuse(f"COUNT_{subject}_JSON_NONCANONICAL")
     return value
@@ -188,9 +202,7 @@ def load_authority(
     if len(set(effects)) != len(effects):
         refuse("COUNT_AUTHORITY_EFFECT_CROSS_FAMILY_DUPLICATE")
     presentations = [
-        presentation
-        for family in families
-        for presentation in family.presentation_ids
+        presentation for family in families for presentation in family.presentation_ids
     ]
     if len(set(presentations)) != len(presentations):
         refuse("COUNT_AUTHORITY_PRESENTATION_CROSS_FAMILY_DUPLICATE")
@@ -203,9 +215,7 @@ def load_authority(
 def decode_events(raw: bytes, authority_sha256: str) -> tuple[MutationEvent, ...]:
     authority_digest = _digest(authority_sha256, "EVENT_AUTHORITY")
     value = _decode_json(raw, subject="EVENTS", maximum=MAX_EVENTS_BYTES)
-    root = _closed_object(
-        value, {"authority_sha256", "events", "schema"}, "EVENTS"
-    )
+    root = _closed_object(value, {"authority_sha256", "events", "schema"}, "EVENTS")
     if root["schema"] != EVENTS_SCHEMA:
         refuse("COUNT_EVENTS_SCHEMA_INVALID")
     if root["authority_sha256"] != authority_digest:
@@ -265,9 +275,7 @@ def accumulate(
         if event.presentation_id not in presentation_family:
             refuse(f"COUNT_UNEXPECTED_PRESENTATION:{event.presentation_id}")
         if presentation_family[event.presentation_id] != event.family:
-            refuse(
-                f"COUNT_PRESENTATION_FAMILY_MISMATCH:{event.presentation_id}"
-            )
+            refuse(f"COUNT_PRESENTATION_FAMILY_MISMATCH:{event.presentation_id}")
 
     seen_effects = {event.effect_id for event in observed}
     for effect in sorted(set(effect_family) - seen_effects):
@@ -422,7 +430,9 @@ def main(arguments: list[str] | None = None) -> int:
             refuse("COUNT_OUTPUT_ALREADY_EXISTS")
         args.output.write_bytes(canonical_json(result))
     except (AccountingRefusal, OSError) as error:
-        code = error.code if isinstance(error, AccountingRefusal) else type(error).__name__
+        code = (
+            error.code if isinstance(error, AccountingRefusal) else type(error).__name__
+        )
         print(f"R16_16_REFUSE:{code}", file=sys.stderr)
         return 2
     populations = result["populations"]

@@ -8,6 +8,7 @@ candidate, run the release gate, or promote its result to acceptance.
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 from pathlib import Path
@@ -32,11 +33,11 @@ ROW_KEYS = {
     "source_table",
     "statement_sha256",
 }
-TABLE_POPULATIONS = {
-    "r14-r6-adjacent-property": 13,
-    "r14-r9-wheel-sdist-parity": 19,
-    "r15-registry-boundary": 6,
-}
+SOURCE_TABLES = (
+    "r14-r6-adjacent-property",
+    "r14-r9-wheel-sdist-parity",
+    "r15-registry-boundary",
+)
 ROW_ID = re.compile(r"^ADJ-(?:R14-R[69]-\d{2}|R15-B\d{2})-[A-Z0-9-]+$")
 SHA256 = re.compile(r"^[0-9a-f]{64}$")
 
@@ -95,7 +96,6 @@ def validate_ledger(value: dict[str, Any]) -> None:
     rows = value["rows"]
     if not isinstance(rows, list) or len(rows) != value["row_count"]:
         raise AdjacentRowError("LEDGER_COUNT_MISMATCH")
-    observed_tables = {name: 0 for name in TABLE_POPULATIONS}
     identifiers: list[str] = []
     claims: list[tuple[str, str]] = []
     for index, row in enumerate(rows):
@@ -108,7 +108,9 @@ def validate_ledger(value: dict[str, Any]) -> None:
             raise AdjacentRowError(f"LEDGER_DISPOSITION:{row_id}")
         if not isinstance(row["normalized_claim"], str) or not row["normalized_claim"]:
             raise AdjacentRowError(f"LEDGER_CLAIM:{row_id}")
-        if row["source_table"] not in TABLE_POPULATIONS:
+        if row["source_table"] not in SOURCE_TABLES:
+            raise AdjacentRowError(f"LEDGER_SOURCE_TABLE:{row_id}")
+        if row["source_table"] != _source_table(row_id):
             raise AdjacentRowError(f"LEDGER_SOURCE_TABLE:{row_id}")
         if not isinstance(row["statement_sha256"], str) or not SHA256.fullmatch(
             row["statement_sha256"]
@@ -118,15 +120,10 @@ def validate_ledger(value: dict[str, Any]) -> None:
         _string_list(row["population"], f"population:{row_id}")
         identifiers.append(row_id)
         claims.append((row["source_table"], row["normalized_claim"]))
-        observed_tables[row["source_table"]] += 1
     if len(identifiers) != len(set(identifiers)):
         raise AdjacentRowError("LEDGER_DUPLICATE_ROW_ID")
     if len(claims) != len(set(claims)):
         raise AdjacentRowError("LEDGER_DUPLICATE_CLAIM")
-    if observed_tables != TABLE_POPULATIONS:
-        raise AdjacentRowError(
-            f"LEDGER_TABLE_POPULATION:expected={TABLE_POPULATIONS!r}:observed={observed_tables!r}"
-        )
 
 
 def _source_table(row_id: str) -> str:
@@ -202,6 +199,90 @@ def parse_readme(path: Path) -> list[dict[str, Any]]:
         raise AdjacentRowError(f"README_INVALID:{error}") from error
 
 
+def _top_level_symbols(raw: bytes, relative: str) -> set[str]:
+    try:
+        tree = ast.parse(raw.decode("utf-8"), filename=relative)
+    except (UnicodeDecodeError, SyntaxError) as error:
+        raise AdjacentRowError(
+            f"AUTHORITY_SOURCE_INVALID:{relative}:{error}"
+        ) from error
+    symbols: set[str] = set()
+    for node in tree.body:
+        if isinstance(node, (ast.AsyncFunctionDef, ast.ClassDef, ast.FunctionDef)):
+            symbols.add(node.name)
+        elif isinstance(node, (ast.Assign, ast.AnnAssign)):
+            targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+            for target in targets:
+                if isinstance(target, ast.Name):
+                    symbols.add(target.id)
+    return symbols
+
+
+def verify_authority_sources(
+    ledger: dict[str, Any],
+    source_root: Path,
+    *,
+    source_overrides: dict[str, bytes] | None = None,
+) -> dict[str, int]:
+    """Resolve every frozen source locator without importing the candidate."""
+    root = source_root.resolve(strict=True)
+    overrides = source_overrides or {}
+    cache: dict[str, tuple[bytes, set[str] | None]] = {}
+    resolved = 0
+    required = sum(len(row["authority_sources"]) for row in ledger["rows"])
+    for row in ledger["rows"]:
+        row_id = row["row_id"]
+        for locator in row["authority_sources"]:
+            relative, separator, symbol = locator.partition("::")
+            relative_path = Path(relative)
+            if (
+                not relative
+                or relative_path.is_absolute()
+                or ".." in relative_path.parts
+                or (separator and not symbol)
+            ):
+                raise AdjacentRowError(
+                    f"ADJACENT_ROW_AUTHORITY_UNRESOLVED:{row_id}:{locator}"
+                )
+            if relative not in cache:
+                target = (root / relative_path).resolve(strict=False)
+                try:
+                    target.relative_to(root)
+                except ValueError as error:
+                    raise AdjacentRowError(
+                        f"ADJACENT_ROW_AUTHORITY_UNRESOLVED:{row_id}:{locator}"
+                    ) from error
+                try:
+                    raw = overrides.get(relative, target.read_bytes())
+                except OSError as error:
+                    code = (
+                        "ADJACENT_ROW_EFFECT_UNOBSERVED"
+                        if row["disposition"] == "ENFORCED"
+                        else "ADJACENT_ROW_AUTHORITY_UNRESOLVED"
+                    )
+                    raise AdjacentRowError(f"{code}:{row_id}") from error
+                cache[relative] = (raw, None)
+            raw, symbols = cache[relative]
+            if separator:
+                if symbols is None:
+                    symbols = _top_level_symbols(raw, relative)
+                    cache[relative] = (raw, symbols)
+                if symbol not in symbols:
+                    code = (
+                        "ADJACENT_ROW_EFFECT_UNOBSERVED"
+                        if row["disposition"] == "ENFORCED"
+                        else "ADJACENT_ROW_AUTHORITY_UNRESOLVED"
+                    )
+                    suffix = f":{locator}" if code.endswith("UNRESOLVED") else ""
+                    raise AdjacentRowError(f"{code}:{row_id}{suffix}")
+            resolved += 1
+    if resolved != required:
+        raise AdjacentRowError(
+            f"AUTHORITY_SOURCE_POPULATION:expected={required}:observed={resolved}"
+        )
+    return {"required": required, "resolved": resolved}
+
+
 def compare_rows(ledger: dict[str, Any], observed: list[dict[str, Any]]) -> None:
     expected_rows = ledger["rows"]
     expected = {row["row_id"]: row for row in expected_rows}
@@ -238,10 +319,22 @@ def compare_rows(ledger: dict[str, Any], observed: list[dict[str, Any]]) -> None
         )
 
 
-def validate(ledger: dict[str, Any], readme_text: str) -> list[dict[str, Any]]:
+def validate(
+    ledger: dict[str, Any],
+    readme_text: str,
+    *,
+    source_root: Path | None = None,
+    source_overrides: dict[str, bytes] | None = None,
+) -> list[dict[str, Any]]:
     validate_ledger(ledger)
     rows = parse_readme_text(readme_text)
     compare_rows(ledger, rows)
+    if source_root is not None:
+        verify_authority_sources(
+            ledger,
+            source_root,
+            source_overrides=source_overrides,
+        )
     return rows
 
 
@@ -260,33 +353,57 @@ def _replace_row(text: str, row_id: str, replacement: str | None) -> str:
     return "".join(lines)
 
 
-def run_self_test(ledger: dict[str, Any], readme_text: str) -> dict[str, int]:
-    baseline = validate(ledger, readme_text)
+def run_self_test(
+    ledger: dict[str, Any], readme_text: str, source_root: Path
+) -> dict[str, int]:
+    baseline = validate(ledger, readme_text, source_root=source_root)
+    authority_sources = verify_authority_sources(ledger, source_root)
+
+    def refuses(
+        expected: str,
+        mutated_readme: str,
+        *,
+        source_overrides: dict[str, bytes] | None = None,
+    ) -> bool:
+        try:
+            validate(
+                ledger,
+                mutated_readme,
+                source_root=source_root,
+                source_overrides=source_overrides,
+            )
+        except AdjacentRowError as error:
+            return str(error) == expected
+        return False
+
     deletion_rejections = 0
     for row in ledger["rows"]:
         row_id = row["row_id"]
         mutated = _replace_row(readme_text, row_id, None)
-        try:
-            validate(ledger, mutated)
-        except AdjacentRowError as error:
-            if str(error) == f"ADJACENT_ROW_MISSING:{row_id}":
-                deletion_rejections += 1
+        if refuses(f"ADJACENT_ROW_MISSING:{row_id}", mutated):
+            deletion_rejections += 1
     if deletion_rejections != ledger["row_count"]:
         raise AdjacentRowError(
             "SELF_TEST_DELETION_CONTROLS:"
             f"expected={ledger['row_count']}:observed={deletion_rejections}"
         )
 
-    controls = 0
+    control_families: set[str] = set()
     local_row_id = baseline[0]["row_id"]
-    locally_restated = _replace_row(readme_text, local_row_id, None).replace(
-        "13/13 inherited R14 rows", "12/12 inherited R14 rows", 1
+    r6_count = sum(
+        row["source_table"] == "r14-r6-adjacent-property" for row in ledger["rows"]
     )
-    try:
-        validate(ledger, locally_restated)
-    except AdjacentRowError as error:
-        if str(error) == f"ADJACENT_ROW_MISSING:{local_row_id}":
-            controls += 1
+    local_anchor = f"{r6_count}/{r6_count} inherited R14 rows"
+    restated_anchor = f"{r6_count - 1}/{r6_count - 1} inherited R14 rows"
+    if readme_text.count(local_anchor) != 1:
+        raise AdjacentRowError(
+            f"SELF_TEST_LOCAL_ANCHOR:expected=1:observed={readme_text.count(local_anchor)}"
+        )
+    locally_restated = _replace_row(readme_text, local_row_id, None).replace(
+        local_anchor, restated_anchor, 1
+    )
+    if refuses(f"ADJACENT_ROW_MISSING:{local_row_id}", locally_restated):
+        control_families.add("local-restatement")
 
     limitation = next(row for row in baseline if row["disposition"] == "LIMITATION")
     row_id = limitation["row_id"]
@@ -296,11 +413,11 @@ def run_self_test(ledger: dict[str, Any], readme_text: str) -> dict[str, int]:
         if line.startswith(f"| {row_id} |")
     )
     mutated_line = line.replace("| LIMITATION |", "| ENFORCED |", 1)
-    try:
-        validate(ledger, _replace_row(readme_text, row_id, mutated_line))
-    except AdjacentRowError as error:
-        if str(error) == f"ADJACENT_ROW_DISPOSITION_MISMATCH:{row_id}":
-            controls += 1
+    if refuses(
+        f"ADJACENT_ROW_DISPOSITION_MISMATCH:{row_id}",
+        _replace_row(readme_text, row_id, mutated_line),
+    ):
+        control_families.add("disposition-flip")
 
     target = baseline[-6]
     row_id = target["row_id"]
@@ -313,11 +430,11 @@ def run_self_test(ledger: dict[str, Any], readme_text: str) -> dict[str, int]:
     mutated_line = line.replace(
         old, "`tests/check_reproducible_build.py::wrong-authority`", 1
     )
-    try:
-        validate(ledger, _replace_row(readme_text, row_id, mutated_line))
-    except AdjacentRowError as error:
-        if str(error) == f"ADJACENT_ROW_AUTHORITY_MISMATCH:{row_id}":
-            controls += 1
+    if refuses(
+        f"ADJACENT_ROW_AUTHORITY_MISMATCH:{row_id}",
+        _replace_row(readme_text, row_id, mutated_line),
+    ):
+        control_families.add("authority-retarget")
 
     duplicate_id = baseline[0]["row_id"]
     duplicate_line = next(
@@ -326,25 +443,46 @@ def run_self_test(ledger: dict[str, Any], readme_text: str) -> dict[str, int]:
         if line.startswith(f"| {duplicate_id} |")
     )
     duplicated = readme_text.replace(duplicate_line, duplicate_line + duplicate_line, 1)
-    try:
-        validate(ledger, duplicated)
-    except AdjacentRowError as error:
-        if str(error) == f"ADJACENT_ROW_DUPLICATE:{duplicate_id}":
-            controls += 1
+    duplicate_refused = refuses(f"ADJACENT_ROW_DUPLICATE:{duplicate_id}", duplicated)
 
     alias_id = "ADJ-R14-R6-99-ALIAS"
     alias_line = duplicate_line.replace(duplicate_id, alias_id, 1)
     aliased = readme_text.replace(END, alias_line + END, 1)
-    try:
-        validate(ledger, aliased)
-    except AdjacentRowError as error:
-        if str(error) == f"ADJACENT_ROW_UNEXPECTED:{alias_id}":
-            controls += 1
+    alias_refused = refuses(f"ADJACENT_ROW_UNEXPECTED:{alias_id}", aliased)
+    if duplicate_refused and alias_refused:
+        control_families.add("duplicate-alias")
+
+    mechanism_row_id = "ADJ-R14-R6-04-WHEEL-RECORD"
+    mechanism_locator = "tests/check_reproducible_build.py::record_audit"
+    mechanism_row = next(
+        row for row in ledger["rows"] if row["row_id"] == mechanism_row_id
+    )
+    if mechanism_locator not in mechanism_row["authority_sources"]:
+        raise AdjacentRowError("SELF_TEST_MECHANISM_LOCATOR:expected=1:observed=0")
+    mechanism_path = mechanism_locator.split("::", 1)[0]
+    mechanism_raw = (source_root / mechanism_path).read_bytes()
+    needle = b"def record_audit("
+    if mechanism_raw.count(needle) != 1:
+        raise AdjacentRowError(
+            "SELF_TEST_MECHANISM_MUTATION:"
+            f"expected=1:observed={mechanism_raw.count(needle)}"
+        )
+    mechanism_mutated = mechanism_raw.replace(needle, b"def removed_record_audit(", 1)
+    if refuses(
+        f"ADJACENT_ROW_EFFECT_UNOBSERVED:{mechanism_row_id}",
+        readme_text,
+        source_overrides={mechanism_path: mechanism_mutated},
+    ):
+        control_families.add("mechanism-removal")
+
+    controls = len(control_families)
     if controls != 5:
         raise AdjacentRowError(
             f"SELF_TEST_BOUNDARY_CONTROLS:expected=5:observed={controls}"
         )
     return {
+        "authority_locators": authority_sources["resolved"],
+        "authority_locators_required": authority_sources["required"],
         "boundary_controls": controls,
         "deletion_controls": deletion_rejections,
         "rows": len(baseline),
@@ -361,21 +499,22 @@ def summary(
     observed_ids = ",".join(row["row_id"] for row in observed)
     by_table = {
         table: sum(row["source_table"] == table for row in rows)
-        for table in TABLE_POPULATIONS
+        for table in SOURCE_TABLES
     }
     message = (
-        "PASS (R16-15 developer leaf only; final gate and authority are not wired): "
+        "PASS (R16-15 static facility only; trusted-path acceptance not run): "
         f"{len(rows)}/{ledger['row_count']} rows match; "
-        f"{by_table['r14-r6-adjacent-property']}/{TABLE_POPULATIONS['r14-r6-adjacent-property']} inherited R6 rows; "
-        f"{by_table['r14-r9-wheel-sdist-parity']}/{TABLE_POPULATIONS['r14-r9-wheel-sdist-parity']} inherited R9 rows; "
-        f"{by_table['r15-registry-boundary']}/{TABLE_POPULATIONS['r15-registry-boundary']} R15 boundary rows; "
+        f"{by_table['r14-r6-adjacent-property']}/{by_table['r14-r6-adjacent-property']} inherited R6 rows; "
+        f"{by_table['r14-r9-wheel-sdist-parity']}/{by_table['r14-r9-wheel-sdist-parity']} inherited R9 rows; "
+        f"{by_table['r15-registry-boundary']}/{by_table['r15-registry-boundary']} R15 boundary rows; "
         f"external-ledger-sha256={ledger_sha256}; "
         f"observed-row-ids={observed_ids}"
     )
     if controls is not None:
         message += (
             f"; {controls['deletion_controls']}/{ledger['row_count']} deletion controls refused by row ID; "
-            f"{controls['boundary_controls']}/5 local-restatement/disposition/authority/duplicate/alias controls refused"
+            f"{controls['boundary_controls']}/5 distinct local-restatement/disposition/authority/duplicate-alias/mechanism-removal controls refused; "
+            f"{controls['authority_locators']}/{controls['authority_locators_required']} authority locators resolved"
         )
     return message
 
@@ -388,8 +527,8 @@ def main(argv: list[str] | None = None) -> int:
     arguments = parser.parse_args(argv)
     ledger = load_ledger(arguments.ledger.resolve(strict=True))
     readme_text = arguments.readme.resolve(strict=True).read_text(encoding="utf-8")
-    observed = validate(ledger, readme_text)
-    controls = run_self_test(ledger, readme_text) if arguments.self_test else None
+    observed = validate(ledger, readme_text, source_root=ROOT)
+    controls = run_self_test(ledger, readme_text, ROOT) if arguments.self_test else None
     print(summary(ledger, observed, controls))
     return 0
 

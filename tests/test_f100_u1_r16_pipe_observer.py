@@ -94,6 +94,16 @@ class R16PipeObserverTests(unittest.TestCase):
             )
         self.assertEqual(raised.exception.code, "OBSERVER_R16_14_NONCANONICAL")
 
+    def test_r16_14_parser_refuses_a_two_value_channel(self) -> None:
+        genuine = self.r16_14_bytes()
+        injected = self.r16_14_bytes()
+        with self.assertRaises(OBSERVER.ObserverRefusal) as raised:
+            OBSERVER.decode_r16_14(genuine + injected, R16_14)
+        self.assertEqual(
+            raised.exception.code,
+            "OBSERVER_R16_14_MULTIPLE_VALUES:observed=2/1",
+        )
+
     def test_r16_16_pipe_parser_and_accumulator_need_no_event_file(self) -> None:
         raw = self.r16_16_bytes()
         value = json.loads(raw)
@@ -117,6 +127,17 @@ class R16PipeObserverTests(unittest.TestCase):
         self.assertEqual(populations["unique_effect_classes"]["count"], 12)
         self.assertEqual(populations["presentations"]["count"], 5)
         self.assertEqual(populations["shipped_byte_identities"]["count"], 2)
+
+    def test_r16_16_parser_refuses_a_two_value_channel(self) -> None:
+        genuine = self.r16_16_bytes()
+        injected = self.r16_16_bytes()
+        authority_sha256 = json.loads(genuine)["authority_sha256"]
+        with self.assertRaises(ACCOUNTING.AccountingRefusal) as raised:
+            ACCOUNTING.decode_events(genuine + injected, authority_sha256)
+        self.assertEqual(
+            raised.exception.code,
+            "COUNT_EVENTS_MULTIPLE_VALUES:observed=2/1",
+        )
 
     def test_execution_gate_must_match_the_static_candidate_gate(self) -> None:
         expected = OBSERVER.sha256(
