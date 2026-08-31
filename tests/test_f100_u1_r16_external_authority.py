@@ -19,6 +19,10 @@ TOOL_PATH = PROJECT / "tools" / "f100_u1_r16_external_authority.py"
 AUTHORITY_SOURCE = PROJECT / "authority" / "f100-u1-r16"
 GATE_RELATIVE = Path("tests/check_reproducible_build.py")
 README_RELATIVE = Path("contracts/README.md")
+R16_15_SOURCE_RELATIVES = (
+    Path("build-toolchain.json"),
+    Path("contracts/kilix.content.u1-resources-v1.json"),
+)
 
 
 def load_tool():
@@ -78,6 +82,10 @@ class R16ExternalAuthorityTests(unittest.TestCase):
         (self.candidate / "contracts").mkdir(parents=True)
         shutil.copy2(PROJECT / GATE_RELATIVE, self.candidate / GATE_RELATIVE)
         shutil.copy2(PROJECT / README_RELATIVE, self.candidate / README_RELATIVE)
+        for relative in R16_15_SOURCE_RELATIVES:
+            target = self.candidate / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(PROJECT / relative, target)
         shutil.copytree(AUTHORITY_SOURCE, self.authority)
         self.original_gate = (self.candidate / GATE_RELATIVE).read_bytes()
         self.original_census = (self.authority / "candidate-lane-census.json").read_bytes()
