@@ -124,6 +124,21 @@ def main() -> int:
     tree_id = object_id(arguments.candidate_tree, "--candidate-tree")
 
     verifier = load_verifier()
+    # The identity written here used to be whatever the operator typed: shape
+    # was checked, correspondence with the repository was not, and a pin four
+    # commits stale shipped in an authority manifest with no control able to
+    # detect it.  Refuse to write an identity that the repository contradicts.
+    try:
+        identity = verifier.verify_repository_identity(
+            PROJECT, commit, tree_id, live_root=PROJECT
+        )
+    except verifier.AuthorityRefusal as refusal:
+        fail(f"candidate identity is not repository-bound: {refusal.code}: {refusal.detail}")
+    print(
+        f"candidate identity repository-bound: commit={identity['commit']} "
+        f"tree={identity['tree']} governed_paths="
+        f"{identity['governed_path_count']} of {identity['governed_path_count']}"
+    )
     gate_raw = GATE_PATH.read_bytes()
     tree = ast.parse(gate_raw)
     functions = verifier.module_functions(tree)

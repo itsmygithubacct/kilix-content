@@ -16,6 +16,7 @@ import importlib.util
 import inspect
 import json
 import re
+import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
@@ -33,6 +34,22 @@ R16_16_TOOL_NAME = "f100_u1_r16_16_accounting.py"
 PIPE_OBSERVER_TOOL_NAME = "f100_u1_r16_pipe_observer.py"
 AUTHORITY_MUTATIONS_TOOL_NAME = "f100_u1_r16_authority_mutations.py"
 HEX_256 = re.compile(r"[0-9a-f]{64}\Z")
+HEX_OBJECT_ID = re.compile(r"[0-9a-f]{40}\Z")
+# The candidate paths whose bytes the R16 authority claims to govern.  A
+# candidate.tree that does not carry these exact bytes is not the tree this
+# authority was derived from, whatever its label says.  authority.json is
+# deliberately absent: a manifest cannot contain the id of the tree that
+# contains it, and that residual is bounded by AUTHORITY_PIN_MISMATCH, which
+# pins the manifest's own bytes from outside the export.
+GOVERNED_CANDIDATE_PATHS = (
+    "tests/check_reproducible_build.py",
+    "tools/f100_u1_r16_15_adjacent_rows.py",
+    "tools/f100_u1_r16_16_accounting.py",
+    "tools/f100_u1_r16_authority_mutations.py",
+    "tools/f100_u1_r16_external_authority.py",
+    "tools/f100_u1_r16_pipe_observer.py",
+    "tools/r16_14/sdist_call_set.py",
+)
 LANE_DISPOSITION_STATES: dict[str, tuple[bool, int | None]] = {
     "candidate-defect-cross-control-refusal": (True, 1),
     "candidate-defect-unhandled-exception": (True, 1),
@@ -413,6 +430,135 @@ def verify_implementation(value: Any) -> dict[str, Any]:
     return {"tool_count": len(observed_tools), "tools": observed_tools}
 
 
+def read_repository_blob(repository: Path, tree_id: str, path: str) -> bytes | None:
+    """Read one blob out of a named tree, as data, without running candidate code.
+
+    git is invoked against the *authority-side* repository -- the one carrying
+    this verifier -- never against a candidate export, and with configuration
+    discovery disabled, so a repository-local setting cannot turn a read into
+    an execution.
+    """
+    completed = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repository),
+            "-c",
+            "core.fsmonitor=false",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "--no-pager",
+            "cat-file",
+            "blob",
+            f"{tree_id}:{path}",
+        ],
+        capture_output=True,
+        env={
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "GIT_CONFIG_GLOBAL": "/dev/null",
+            "GIT_CONFIG_SYSTEM": "/dev/null",
+            "GIT_TERMINAL_PROMPT": "0",
+            "HOME": "/nonexistent",
+            "LC_ALL": "C.UTF-8",
+        },
+    )
+    if completed.returncode != 0:
+        return None
+    return completed.stdout
+
+
+def resolve_repository_object(repository: Path, revision: str) -> str | None:
+    completed = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(repository),
+            "-c",
+            "core.fsmonitor=false",
+            "-c",
+            "core.hooksPath=/dev/null",
+            "--no-pager",
+            "rev-parse",
+            "--verify",
+            "--quiet",
+            revision,
+        ],
+        capture_output=True,
+        text=True,
+        env={
+            "PATH": "/usr/local/bin:/usr/bin:/bin",
+            "GIT_CONFIG_GLOBAL": "/dev/null",
+            "GIT_CONFIG_SYSTEM": "/dev/null",
+            "GIT_TERMINAL_PROMPT": "0",
+            "HOME": "/nonexistent",
+            "LC_ALL": "C.UTF-8",
+        },
+    )
+    if completed.returncode != 0:
+        return None
+    resolved = completed.stdout.strip()
+    return resolved if HEX_OBJECT_ID.match(resolved) else None
+
+
+def verify_repository_identity(
+    repository: Path,
+    commit: str,
+    tree_id: str,
+    *,
+    live_root: Path,
+) -> dict[str, Any]:
+    """Bind an asserted candidate identity to the bytes that tree really holds.
+
+    R7-2 bound the sdist root to the distribution identity because a root taken
+    on the archive's own say-so is a root no control can falsify.  The same
+    defect is reachable here: candidate.commit and candidate.tree were operator
+    assertions that nothing compared with the repository, so a pin could name a
+    tree whose governed bytes are not the bytes running.  Every governed path
+    must therefore agree between the named tree and the live source.
+    """
+    for label, value_text in (("commit", commit), ("tree", tree_id)):
+        if type(value_text) is not str or HEX_OBJECT_ID.match(value_text) is None:
+            refuse("CANDIDATE_IDENTITY_SHAPE", f"candidate.{label}={value_text!r}")
+    resolved_commit = resolve_repository_object(repository, f"{commit}^{{commit}}")
+    if resolved_commit is None:
+        refuse("CANDIDATE_COMMIT_UNRESOLVABLE", commit)
+    resolved_tree = resolve_repository_object(repository, f"{commit}^{{tree}}")
+    if resolved_tree is None:
+        refuse("CANDIDATE_COMMIT_UNRESOLVABLE", f"{commit}^{{tree}}")
+    if resolved_tree != tree_id:
+        refuse(
+            "CANDIDATE_TREE_MISMATCH",
+            f"commit={commit} expected={tree_id} observed={resolved_tree}",
+        )
+    drifted: list[str] = []
+    missing: list[str] = []
+    for path in GOVERNED_CANDIDATE_PATHS:
+        pinned = read_repository_blob(repository, tree_id, path)
+        if pinned is None:
+            missing.append(path)
+            continue
+        try:
+            live = (live_root / path).read_bytes()
+        except OSError as exc:
+            refuse("CANDIDATE_GOVERNED_PATH_UNREADABLE", f"{path}: {exc}")
+        if sha256_bytes(pinned) != sha256_bytes(live):
+            drifted.append(path)
+    if missing:
+        refuse("CANDIDATE_TREE_PATH_MISSING", f"tree={tree_id} paths={missing!r}")
+    if drifted:
+        refuse(
+            "CANDIDATE_TREE_CONTENT_DRIFT",
+            f"tree={tree_id} drifted={len(drifted)} of "
+            f"{len(GOVERNED_CANDIDATE_PATHS)} paths={drifted!r}",
+        )
+    return {
+        "candidate_identity_binding": "repository-verified",
+        "commit": resolved_commit,
+        "governed_path_count": len(GOVERNED_CANDIDATE_PATHS),
+        "tree": resolved_tree,
+    }
+
+
 def verify_external_roots(candidate_root: Path, authority_root: Path) -> None:
     try:
         candidate = candidate_root.resolve(strict=True)
@@ -542,6 +688,18 @@ def verify_population(
     )
     if candidate_value["gate_path"] != GATE_PATH.as_posix():
         refuse("CANDIDATE_GATE_PATH", repr(candidate_value["gate_path"]))
+    # candidate.commit and candidate.tree were previously read for their shape
+    # only by require_closed_object, which checks the key set and not the value,
+    # so any string at all -- including "" -- was accepted in a shipped
+    # authority manifest.  Bind the shape here; the repository-side binding
+    # that these ids name the tree carrying GOVERNED_CANDIDATE_PATHS is
+    # performed by verify_repository_identity, which runs where a repository
+    # exists.  A verification run reaches this code only from an export, which
+    # verify_external_roots requires to have no .git at all.
+    for key in ("commit", "tree"):
+        value_text = candidate_value[key]
+        if type(value_text) is not str or HEX_OBJECT_ID.match(value_text) is None:
+            refuse("CANDIDATE_IDENTITY_SHAPE", f"candidate.{key}={value_text!r}")
     expected_gate = require_sha256(
         candidate_value["gate_sha256"],
         code="CANDIDATE_AUTHORITY_SHAPE",
@@ -667,6 +825,7 @@ def verify_population(
         )
     return {
         "audit_count": len(audits),
+        "candidate_identity_binding": "shape-bound-in-export",
         "reachable_call_site_count": len(inventory),
         "reachable_call_sites_sha256": observed_inventory_digest,
         "reachable_owner_count": observed_owner_count,

@@ -7,6 +7,7 @@ import hashlib
 import importlib.util
 import json
 import shutil
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -284,6 +285,63 @@ class R16ExternalAuthorityTests(unittest.TestCase):
             },
         )
         self.assertEqual(result["r16_16"]["runtime_result_count"], 0)
+
+    # --- R7-2-shaped candidate identity binding -------------------------
+    # candidate.commit and candidate.tree were shipped as operator assertions
+    # that nothing compared with the repository.  Each control below alters
+    # exactly one thing and requires its own named refusal.
+
+    def test_candidate_commit_shape_is_bound(self) -> None:
+        manifest = self.authority / "authority.json"
+        value = json.loads(manifest.read_bytes())
+        value["candidate"]["commit"] = "not-a-commit"
+        manifest.write_bytes(AUTHORITY.canonical_json(value))
+        self.authority_sha256 = hashlib.sha256(manifest.read_bytes()).hexdigest()
+        refusal = self.assert_refusal("CANDIDATE_IDENTITY_SHAPE")
+        self.assertIn("candidate.commit", refusal.detail)
+
+    def test_candidate_empty_commit_is_bound(self) -> None:
+        manifest = self.authority / "authority.json"
+        value = json.loads(manifest.read_bytes())
+        value["candidate"]["commit"] = ""
+        manifest.write_bytes(AUTHORITY.canonical_json(value))
+        self.authority_sha256 = hashlib.sha256(manifest.read_bytes()).hexdigest()
+        self.assert_refusal("CANDIDATE_IDENTITY_SHAPE")
+
+    def test_candidate_tree_shape_is_bound(self) -> None:
+        manifest = self.authority / "authority.json"
+        value = json.loads(manifest.read_bytes())
+        value["candidate"]["tree"] = "0" * 39
+        manifest.write_bytes(AUTHORITY.canonical_json(value))
+        self.authority_sha256 = hashlib.sha256(manifest.read_bytes()).hexdigest()
+        refusal = self.assert_refusal("CANDIDATE_IDENTITY_SHAPE")
+        self.assertIn("candidate.tree", refusal.detail)
+
+    def test_uppercase_object_id_is_refused(self) -> None:
+        manifest = self.authority / "authority.json"
+        value = json.loads(manifest.read_bytes())
+        value["candidate"]["commit"] = value["candidate"]["commit"].upper()
+        manifest.write_bytes(AUTHORITY.canonical_json(value))
+        self.authority_sha256 = hashlib.sha256(manifest.read_bytes()).hexdigest()
+        self.assert_refusal("CANDIDATE_IDENTITY_SHAPE")
+
+    def test_export_run_reports_its_own_binding_arm(self) -> None:
+        # An export cannot reach a repository, so it must say which binding it
+        # performed rather than imply the stronger one.
+        result = AUTHORITY.verify(self.arguments())
+        self.assertEqual(
+            result["population"]["candidate_identity_binding"],
+            "shape-bound-in-export",
+        )
+
+    def test_governed_path_set_covers_every_pinned_tool_and_the_gate(self) -> None:
+        # If a tool joins the manifest's implementation block but not the
+        # governed set, its bytes stop being bound to the named tree silently.
+        manifest = json.loads((self.authority / "authority.json").read_bytes())
+        pinned = {entry["path"] for entry in manifest["implementation"].values()}
+        pinned.add(manifest["candidate"]["gate_path"])
+        self.assertEqual(set(AUTHORITY.GOVERNED_CANDIDATE_PATHS), pinned)
+        self.assertEqual(len(AUTHORITY.GOVERNED_CANDIDATE_PATHS), 7)
 
     def test_r16_14_ledger_bytes_are_manifest_bound(self) -> None:
         ledger = self.authority / "r16-14-sdist-call-ledger.json"
@@ -640,3 +698,145 @@ class R16ExternalAuthorityTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class R16RepositoryIdentityBindingTests(unittest.TestCase):
+    """Causal controls for the repository-side candidate identity binding.
+
+    The export-side verifier can only bind the shape of candidate.commit and
+    candidate.tree, because verify_external_roots requires the candidate to
+    carry no .git at all.  The binding that a named tree really holds the
+    governed bytes therefore runs where a repository exists -- in the repin
+    tool -- and these controls prove it fails there for its own reasons.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.repository = tempfile.mkdtemp(prefix="r16-identity-")
+        root = Path(cls.repository)
+        for relative in AUTHORITY.GOVERNED_CANDIDATE_PATHS:
+            target = root / relative
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(PROJECT / relative, target)
+        cls.run_git(root, "init", "--quiet", "-b", "control")
+        cls.run_git(root, "config", "user.name", "control")
+        cls.run_git(root, "config", "user.email", "control@example.invalid")
+        cls.run_git(root, "add", "-A")
+        cls.run_git(root, "commit", "--quiet", "-m", "governed baseline")
+        cls.commit = cls.capture(root, "rev-parse", "HEAD")
+        cls.tree = cls.capture(root, "rev-parse", "HEAD^{tree}")
+
+        # A second commit that changes one governed file, so a pin naming the
+        # first commit becomes exactly the adjudicated defect: an identity that
+        # is internally consistent, resolvable, and names a tree whose governed
+        # bytes are not the bytes running.
+        drifted = root / "tools/f100_u1_r16_pipe_observer.py"
+        drifted.write_bytes(drifted.read_bytes() + b"\n# drift\n")
+        cls.run_git(root, "add", "-A")
+        cls.run_git(root, "commit", "--quiet", "-m", "change one governed tool")
+        cls.stale_commit = cls.commit
+        cls.stale_tree = cls.tree
+        cls.head_commit = cls.capture(root, "rev-parse", "HEAD")
+        cls.head_tree = cls.capture(root, "rev-parse", "HEAD^{tree}")
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        shutil.rmtree(cls.repository, ignore_errors=True)
+
+    @staticmethod
+    def run_git(root: Path, *arguments: str) -> None:
+        subprocess.run(
+            ["git", "-C", str(root), *arguments],
+            check=True,
+            capture_output=True,
+            env={"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": "/nonexistent"},
+        )
+
+    @staticmethod
+    def capture(root: Path, *arguments: str) -> str:
+        completed = subprocess.run(
+            ["git", "-C", str(root), *arguments],
+            check=True,
+            capture_output=True,
+            text=True,
+            env={"PATH": "/usr/local/bin:/usr/bin:/bin", "HOME": "/nonexistent"},
+        )
+        return completed.stdout.strip()
+
+    def bind(self, commit: str, tree_id: str):
+        return AUTHORITY.verify_repository_identity(
+            Path(self.repository), commit, tree_id, live_root=Path(self.repository)
+        )
+
+    def assert_refusal(self, code: str, commit: str, tree_id: str):
+        with self.assertRaises(AUTHORITY.AuthorityRefusal) as raised:
+            self.bind(commit, tree_id)
+        self.assertEqual(raised.exception.code, code)
+        return raised.exception
+
+    def test_the_true_identity_is_accepted(self) -> None:
+        # Anti-vacuity: a check observed only failing is as useless as one
+        # observed only passing.
+        result = self.bind(self.head_commit, self.head_tree)
+        self.assertEqual(result["candidate_identity_binding"], "repository-verified")
+        self.assertEqual(result["commit"], self.head_commit)
+        self.assertEqual(result["tree"], self.head_tree)
+        self.assertEqual(
+            result["governed_path_count"], len(AUTHORITY.GOVERNED_CANDIDATE_PATHS)
+        )
+
+    def test_stale_pin_whose_governed_bytes_moved_is_refused(self) -> None:
+        # This is the adjudicated R222 defect reproduced exactly: the pin is
+        # well-formed, resolvable, and its tree really is that commit's tree.
+        # Only the governed bytes have moved underneath it.
+        refusal = self.assert_refusal(
+            "CANDIDATE_TREE_CONTENT_DRIFT", self.stale_commit, self.stale_tree
+        )
+        self.assertIn("f100_u1_r16_pipe_observer.py", refusal.detail)
+        self.assertIn("drifted=1 of 7", refusal.detail)
+
+    def test_incoherent_commit_and_tree_pair_is_refused(self) -> None:
+        refusal = self.assert_refusal(
+            "CANDIDATE_TREE_MISMATCH", self.head_commit, self.stale_tree
+        )
+        self.assertIn(self.stale_tree, refusal.detail)
+
+    def test_unresolvable_commit_is_refused(self) -> None:
+        self.assert_refusal("CANDIDATE_COMMIT_UNRESOLVABLE", "0" * 40, self.head_tree)
+
+    def test_malformed_identity_is_refused_before_any_repository_read(self) -> None:
+        self.assert_refusal("CANDIDATE_IDENTITY_SHAPE", "not-a-commit", self.head_tree)
+        self.assert_refusal("CANDIDATE_IDENTITY_SHAPE", self.head_commit, "")
+
+    def test_tree_missing_a_governed_path_is_refused(self) -> None:
+        root = Path(self.repository)
+        self.run_git(root, "rm", "--quiet", "tools/r16_14/sdist_call_set.py")
+        self.run_git(root, "commit", "--quiet", "-m", "remove a governed tool")
+        try:
+            commit = self.capture(root, "rev-parse", "HEAD")
+            tree_id = self.capture(root, "rev-parse", "HEAD^{tree}")
+            refusal = self.assert_refusal(
+                "CANDIDATE_TREE_PATH_MISSING", commit, tree_id
+            )
+            self.assertIn("sdist_call_set.py", refusal.detail)
+        finally:
+            self.run_git(root, "reset", "--hard", "--quiet", self.head_commit)
+
+    def test_binding_does_not_execute_repository_configuration(self) -> None:
+        # A repository-local hook or fsmonitor must not become an execution
+        # path for a program whose whole premise is reading candidate data
+        # rather than running it.
+        root = Path(self.repository)
+        marker = Path(self.repository) / "fsmonitor-fired"
+        hook = Path(self.repository) / "evil.sh"
+        hook.write_text(f"#!/bin/sh\ntouch {marker}\nexit 1\n")
+        hook.chmod(0o755)
+        self.run_git(root, "config", "core.fsmonitor", str(hook))
+        try:
+            result = self.bind(self.head_commit, self.head_tree)
+            self.assertEqual(
+                result["candidate_identity_binding"], "repository-verified"
+            )
+            self.assertFalse(marker.exists(), "repository config was executed")
+        finally:
+            self.run_git(root, "config", "--unset", "core.fsmonitor")
