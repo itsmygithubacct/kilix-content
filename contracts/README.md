@@ -128,8 +128,12 @@ all other declared interpreters and platforms remain explicitly unqualified.
 The build backend and wheel tooling are pinned in both `build-system` and the
 `build` dependency group: setuptools 77.0.3, wheel 0.45.1, and build 1.3.0.
 `.python-version` pins CPython 3.12.8. The committed `build-toolchain.json`
-records the exact Python and `/usr/local/bin/uv` executable digests plus the
-closed build/test environment. The reviewed offline wheelhouse contains 24
+records the exact Python and `uv` **image** digests plus the closed build/test
+environment. The `uv` pin is a digest of the launcher that actually invokes the
+gate, read through `/proc/<ppid>/exe`, not a path on the host: a recorded path
+proves only what is installed at that location, so it passes under any `uv`.
+Supply the release-pinned `uv` 0.12.5 yourself; it does not have to be the one
+on `PATH`. The reviewed offline wheelhouse contains 24
 wheels; its canonical manifest SHA-256 is
 `56eb2a5734937a7b2e0eab03df36ef77387d6c91e9724ef03cd054d1e21e776c`,
 and `uv.lock` is
@@ -143,8 +147,9 @@ candidate_commit="$(git rev-parse HEAD)"
 review_export="$(mktemp -d /var/tmp/kilix-content-u1-r14-review.XXXXXX)"
 git archive "$candidate_commit" | tar -x -C "$review_export"
 cd "$review_export"
+release_uv=/absolute/path/to/release-pinned-uv-0.12.5
 TMPDIR=/var/tmp/kilix-content-u1-r14-tmp \
-  /usr/local/bin/uv run --python 3.12.8 --locked --offline --all-groups \
+  "$release_uv" run --python 3.12.8 --locked --offline --all-groups \
   python tests/check_reproducible_build.py
 ```
 

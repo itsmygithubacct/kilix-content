@@ -42,6 +42,8 @@ FROZEN_CORESIDENT_HASHES = {
     "contracts/kilix.content.u1-resources-v1.json": "ac2f61600985035664c0ff586455006be5e4bc94952c7d778095c9fdf6941bd2",
 }
 SOURCE_DATE_EPOCH = "1776729600"
+LAUNCHER_FD_ENV = "KILIX_CONTENT_BUILD_LAUNCHER_FD"
+_BUILD_LAUNCHER_FD: int | None = None
 EXPECTED_TOOLS = {
     "build": "1.3.0",
     "ruff": "0.12.8",
@@ -516,6 +518,54 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def digest_fd(fd: int) -> str:
+    """Digest an open descriptor rather than a path.
+
+    The bytes measured are the bytes the kernel already holds open, so no
+    substitution between the check and any later use can go unnoticed.
+    """
+    hasher = hashlib.sha256()
+    os.lseek(fd, 0, os.SEEK_SET)
+    while chunk := os.read(fd, 1 << 20):
+        hasher.update(chunk)
+    return hasher.hexdigest()
+
+
+def open_build_launcher() -> tuple[int, Path]:
+    """Open the uv image that actually invoked this gate.
+
+    The documented release command is `uv run ... python
+    tests/check_reproducible_build.py`, so uv is this process's parent and
+    /proc/<ppid>/exe names its running image. Nested child gates are spawned by
+    Python rather than by uv, so they inherit the already-open descriptor; its
+    digest is re-verified there, which makes the inherited number validated
+    input rather than a trusted claim.
+
+    A path recorded in build-toolchain.json is deliberately not consulted. Such
+    a path proves what is installed at that location on this host, not what
+    produced the artifacts, so it passes under any uv.
+    """
+    inherited = os.environ.get(LAUNCHER_FD_ENV)
+    if inherited is not None:
+        if not inherited.isdigit():
+            fail("inherited build-launcher descriptor is not a descriptor number")
+        fd = int(inherited)
+        try:
+            os.fstat(fd)
+            resolved = Path(os.readlink(f"/proc/self/fd/{fd}"))
+        except OSError:
+            fail("inherited build-launcher descriptor is not open")
+        return fd, resolved
+    exe = Path("/proc") / str(os.getppid()) / "exe"
+    try:
+        fd = os.open(exe, os.O_RDONLY)
+        resolved = Path(os.readlink(exe))
+    except OSError:
+        fail("this gate was not invoked through the pinned uv launcher")
+    os.set_inheritable(fd, True)
+    return fd, resolved
+
+
 def canonical_json(value: Any, *, newline: bool = False) -> bytes:
     suffix = "\n" if newline else ""
     return (
@@ -660,9 +710,13 @@ def checked_toolchain() -> tuple[dict[str, str], Path, Path]:
     uv = toolchain.get("uv")
     if type(uv) is not dict:
         fail("uv toolchain identity is absent")
-    uv_path = Path(str(uv.get("executable")))
-    if not uv_path.is_file() or digest(uv_path) != uv.get("sha256"):
-        fail("uv executable digest does not match build-toolchain.json")
+    if "executable" in uv:
+        fail("uv executable path is not a build-authority field")
+    global _BUILD_LAUNCHER_FD
+    uv_fd, uv_path = open_build_launcher()
+    if digest_fd(uv_fd) != uv.get("sha256"):
+        fail("invoking uv image does not match build-toolchain.json")
+    _BUILD_LAUNCHER_FD = uv_fd
     version = run(
         [str(uv_path), "--version"],
         cwd=PROJECT,
@@ -671,6 +725,7 @@ def checked_toolchain() -> tuple[dict[str, str], Path, Path]:
     ).stdout.split()
     if len(version) < 2 or version[1] != uv.get("version"):
         fail("uv version does not match build-toolchain.json")
+    print(f"build-authority launcher: measured_sha256={uv.get('sha256')} image={uv_path}")
 
     inputs = toolchain.get("inputs")
     expected_inputs = {
@@ -3172,6 +3227,8 @@ def r12_reader_reversion_regression(
         base_env,
         install_project=False,
     )
+    if _BUILD_LAUNCHER_FD is None:
+        fail("build-authority launcher descriptor is absent for the child gate")
     result = subprocess.run(
         [
             str(child_python),
@@ -3179,7 +3236,8 @@ def r12_reader_reversion_regression(
             "--r13-skip-regressions",
         ],
         cwd=candidate,
-        env=child_env,
+        env={**child_env, LAUNCHER_FD_ENV: str(_BUILD_LAUNCHER_FD)},
+        pass_fds=(_BUILD_LAUNCHER_FD,),
         capture_output=True,
         text=True,
     )
@@ -3318,6 +3376,8 @@ def r13_callsite_wiring_regression(
         base_env,
         install_project=False,
     )
+    if _BUILD_LAUNCHER_FD is None:
+        fail("build-authority launcher descriptor is absent for the child gate")
     result = subprocess.run(
         [
             str(child_python),
@@ -3325,7 +3385,8 @@ def r13_callsite_wiring_regression(
             "--r13-skip-regressions",
         ],
         cwd=candidate,
-        env=child_env,
+        env={**child_env, LAUNCHER_FD_ENV: str(_BUILD_LAUNCHER_FD)},
+        pass_fds=(_BUILD_LAUNCHER_FD,),
         capture_output=True,
         text=True,
     )
