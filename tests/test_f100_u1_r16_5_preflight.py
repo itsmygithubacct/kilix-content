@@ -14,6 +14,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 
 PROJECT = Path(__file__).resolve().parents[1]
@@ -246,6 +247,36 @@ kilix_content = []
         self.assertEqual(
             raised.exception.code,
             "R16_5_REFERENCE_SOURCE_PAYLOAD_MISMATCH",
+        )
+
+    def test_packaging_glob_parent_escape_refuses(self) -> None:
+        (self.candidate / "pyproject.toml").write_text(
+            """[project]
+name = "kilix-content"
+version = "1.0.0"
+license-files = []
+
+[tool.setuptools.package-data]
+kilix_content = ["../*.txt"]
+
+[tool.setuptools.data-files]
+"""
+        )
+        with self.assertRaises(PREFLIGHT.PreflightRefusal) as raised:
+            PREFLIGHT.derive_candidate_projection(self.candidate)
+        self.assertEqual(raised.exception.code, "R16_5_PACKAGING_GLOB_UNSAFE")
+
+    def test_reference_uncompressed_budget_refuses_before_payload_reads(self) -> None:
+        _wheel, clean_wheel, _expectation = self.build_artifact()
+        projection = PREFLIGHT.derive_candidate_projection(self.candidate)
+        with (
+            mock.patch.object(PREFLIGHT, "MAX_WHEEL_UNCOMPRESSED_BYTES", 1),
+            self.assertRaises(PREFLIGHT.PreflightRefusal) as raised,
+        ):
+            PREFLIGHT.verify_reference_wheel(clean_wheel, projection)
+        self.assertEqual(
+            raised.exception.code,
+            "R16_5_REFERENCE_UNCOMPRESSED_SIZE_OUT_OF_BOUNDS",
         )
 
     def test_exact_artifact_digest_drift_refuses(self) -> None:

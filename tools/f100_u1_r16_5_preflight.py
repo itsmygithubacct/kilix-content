@@ -55,6 +55,7 @@ EXACT_MEMBERS = (
 )
 EXACT_MODULE_MEMBERS = tuple(name for name in EXACT_MEMBERS if name.endswith(".py"))
 HEX_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+MAX_WHEEL_UNCOMPRESSED_BYTES = 16 * 1024 * 1024
 
 
 class PreflightRefusal(Exception):
@@ -184,6 +185,17 @@ def _safe_member(name: str) -> None:
         refuse("R16_5_ARTIFACT_MEMBER_UNSAFE", name)
 
 
+def _bounded_uncompressed_bytes(
+    infos: list[zipfile.ZipInfo], maximum: int, code: str
+) -> int:
+    observed = sum(info.file_size for info in infos)
+    if any(info.file_size < 0 or info.file_size > maximum for info in infos) or (
+        observed > maximum
+    ):
+        refuse(code, f"observed={observed} maximum={maximum}")
+    return observed
+
+
 def _record_rows(
     archive: zipfile.ZipFile,
     names: tuple[str, ...],
@@ -230,7 +242,7 @@ def verify_artifact(
 ]:
     if HEX_SHA256.fullmatch(expectation.sha256) is None or expectation.size <= 0:
         refuse("R16_5_EXPECTATION_INVALID", "invalid frozen identity")
-    raw, descriptor_stat = _read_retained_regular(wheel, expectation.size)
+    raw, _descriptor_stat = _read_retained_regular(wheel, expectation.size)
     observed_sha256 = sha256_bytes(raw)
     if len(raw) != expectation.size or observed_sha256 != expectation.sha256:
         refuse(
@@ -249,6 +261,11 @@ def verify_artifact(
                 "R16_5_ARTIFACT_MEMBER_POPULATION_MISMATCH",
                 f"observed={len(names)} expected={len(expectation.members)}",
             )
+        uncompressed_bytes = _bounded_uncompressed_bytes(
+            infos,
+            MAX_WHEEL_UNCOMPRESSED_BYTES,
+            "R16_5_ARTIFACT_UNCOMPRESSED_SIZE_OUT_OF_BOUNDS",
+        )
         for info in infos:
             _safe_member(info.filename)
             mode = info.external_attr >> 16
@@ -267,6 +284,9 @@ def verify_artifact(
         "retained_descriptor_stable": population(1, 1),
         "sha256": observed_sha256,
         "source_stat_identity_is_authority": False,
+        "uncompressed_bytes": population(
+            uncompressed_bytes, MAX_WHEEL_UNCOMPRESSED_BYTES
+        ),
         "wheel_members_executed": population(0, len(expectation.module_members)),
     }
     return raw, payloads, record_rows, details
@@ -281,19 +301,44 @@ def _closed_string_list(value: Any, label: str) -> tuple[str, ...]:
 
 
 def _real_files(root: Path, pattern: str, label: str) -> list[Path]:
+    parsed = PurePosixPath(pattern)
+    if parsed.is_absolute() or ".." in parsed.parts or "\\" in pattern:
+        refuse("R16_5_PACKAGING_GLOB_UNSAFE", f"{label}:{pattern}")
     paths = sorted(root.glob(pattern))
     if not paths:
         refuse("R16_5_PACKAGING_GLOB_EMPTY", f"{label}:{pattern}")
     result: list[Path] = []
+    try:
+        resolved_root = root.resolve(strict=True)
+    except OSError as exc:
+        refuse("R16_5_SOURCE_ROOT_UNREADABLE", f"{label}:{exc}")
     for path in paths:
         if path.is_symlink() or not path.is_file():
             refuse("R16_5_SOURCE_MEMBER_UNSAFE", path.relative_to(root).as_posix())
+        try:
+            resolved_path = path.resolve(strict=True)
+        except OSError as exc:
+            refuse("R16_5_SOURCE_MEMBER_UNSAFE", f"{label}:{exc}")
+        if not resolved_path.is_relative_to(resolved_root):
+            refuse("R16_5_SOURCE_MEMBER_UNSAFE", path.relative_to(root).as_posix())
+        cursor = path.parent
+        while cursor != root:
+            if cursor.is_symlink():
+                refuse(
+                    "R16_5_SOURCE_MEMBER_UNSAFE",
+                    path.relative_to(root).as_posix(),
+                )
+            if cursor == cursor.parent:
+                refuse("R16_5_SOURCE_MEMBER_UNSAFE", str(path))
+            cursor = cursor.parent
         result.append(path)
     return result
 
 
 def derive_candidate_projection(candidate: Path) -> CandidateProjection:
     pyproject_path = candidate / "pyproject.toml"
+    if candidate.is_symlink() or not candidate.is_dir() or pyproject_path.is_symlink():
+        refuse("R16_5_CANDIDATE_ROOT_UNSAFE", "candidate root or pyproject")
     try:
         pyproject_raw = pyproject_path.read_bytes()
         pyproject = tomllib.loads(pyproject_raw.decode("utf-8"))
@@ -359,6 +404,14 @@ def derive_candidate_projection(candidate: Path) -> CandidateProjection:
     for destination, value in data_files.items():
         if type(destination) is not str or not destination:
             refuse("R16_5_PYPROJECT_INVALID", "data-files destination")
+        parsed_destination = PurePosixPath(destination)
+        if (
+            parsed_destination.is_absolute()
+            or ".." in parsed_destination.parts
+            or "\\" in destination
+            or posixpath.normpath(destination) != destination
+        ):
+            refuse("R16_5_DATA_DESTINATION_UNSAFE", destination)
         for pattern in _closed_string_list(value, f"data-files:{destination}"):
             for path in _real_files(candidate, pattern, f"data-files:{destination}"):
                 member = f"{distribution}.data/data/{destination}/{path.name}"
@@ -431,6 +484,11 @@ def verify_reference_wheel(
                 "R16_5_REFERENCE_MEMBER_POPULATION_MISMATCH",
                 f"observed={len(names)} expected={len(projection.expected_members)}",
             )
+        uncompressed_bytes = _bounded_uncompressed_bytes(
+            infos,
+            MAX_WHEEL_UNCOMPRESSED_BYTES,
+            "R16_5_REFERENCE_UNCOMPRESSED_SIZE_OUT_OF_BOUNDS",
+        )
         for info in infos:
             _safe_member(info.filename)
             if not stat.S_ISREG(info.external_attr >> 16):
@@ -460,6 +518,9 @@ def verify_reference_wheel(
         "source_bound_members": population(
             len(projection.source_member_payloads),
             len(projection.source_member_payloads),
+        ),
+        "uncompressed_bytes": population(
+            uncompressed_bytes, MAX_WHEEL_UNCOMPRESSED_BYTES
         ),
         "wheel_members_executed": population(0, len(projection.module_payloads)),
     }
