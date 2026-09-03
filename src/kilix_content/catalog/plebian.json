@@ -1338,7 +1338,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-graphs",
-        "ref": "cdb201dbac9bab6686bd88d0144f628c5be53430"
+        "ref": "98740e44740c4649a61d39138b9ea7ed911163e8"
       },
       "binary": "kilix-graphs",
       "build": [
@@ -1362,6 +1362,13 @@
           ],
           "accepts_input": true,
           "description": "Render a chart from CSV or JSON"
+        },
+        "view": {
+          "argv": [
+            "tui"
+          ],
+          "accepts_input": true,
+          "description": "Open a graph in the interactive terminal viewer"
         },
         "doctor": {
           "argv": [
