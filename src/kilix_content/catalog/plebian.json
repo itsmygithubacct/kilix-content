@@ -1338,7 +1338,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-graphs",
-        "ref": "98740e44740c4649a61d39138b9ea7ed911163e8"
+        "ref": "0a6ef7c32502616fe085ba7428ea7d728d5ec90b"
       },
       "binary": "kilix-graphs",
       "build": [
@@ -1349,7 +1349,9 @@
       "capabilities": [
         "filesystem-read",
         "filesystem-write",
-        "kitty-graphics"
+        "kitty-graphics",
+        "kitty-keyboard",
+        "kitty-mouse"
       ],
       "actions": {
         "draw": {
@@ -1365,10 +1367,17 @@
         },
         "view": {
           "argv": [
+            "gui"
+          ],
+          "accepts_input": true,
+          "description": "Open a graph in the pane viewer: pan, zoom, select"
+        },
+        "outline": {
+          "argv": [
             "tui"
           ],
           "accepts_input": true,
-          "description": "Open a graph in the interactive terminal viewer"
+          "description": "Open a graph in the cell viewer, without pixels"
         },
         "doctor": {
           "argv": [
