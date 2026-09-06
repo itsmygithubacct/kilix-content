@@ -1338,7 +1338,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-graphs",
-        "ref": "0a6ef7c32502616fe085ba7428ea7d728d5ec90b"
+        "ref": "720af007c0246f93d0b0e2309f7340a46d667faf"
       },
       "binary": "kilix-graphs",
       "build": [
@@ -1355,6 +1355,9 @@
       ],
       "actions": {
         "draw": {
+          "argv": [
+            "draw"
+          ],
           "accepts_input": true,
           "description": "Lay out and render a graph"
         },
@@ -1395,6 +1398,65 @@
       "launch": {
         "mode": "terminal",
         "preferred_size": "960x700"
+      }
+    },
+    {
+      "id": "kilix-techno",
+      "label": "Techno",
+      "kind": "app",
+      "icon": "music",
+      "description": "Electronic-music workstation for the terminal: eight-track step sequencer, arrangement, piano roll, native synthesis and effects; WAV, stems and MIDI out.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-techno",
+        "ref": "0992edcb1e39df9186f0aaa04b542eef675185bb"
+      },
+      "binary": "build/kilix-techno",
+      "build": [
+        "make",
+        "all"
+      ],
+      "dependency_hint": "needs make, a C11 compiler, zlib, and the libsndfile and FluidSynth development files; soundbanks are optional and installed separately with kilix install",
+      "capabilities": [
+        "filesystem-read",
+        "filesystem-write",
+        "audio-output",
+        "kitty-graphics",
+        "kitty-keyboard",
+        "kitty-mouse"
+      ],
+      "actions": {
+        "new": {
+          "argv": [
+            "--new"
+          ],
+          "description": "Start a new project in the pane"
+        },
+        "open": {
+          "argv": [
+            "--open"
+          ],
+          "accepts_input": true,
+          "description": "Open a .ktech project in the pane"
+        },
+        "describe": {
+          "argv": [
+            "--headless",
+            "--open"
+          ],
+          "accepts_input": true,
+          "description": "Describe a project without a terminal UI"
+        },
+        "version": {
+          "argv": [
+            "--version"
+          ],
+          "description": "Print the version"
+        }
+      },
+      "launch": {
+        "mode": "terminal",
+        "preferred_size": "1100x720"
       }
     }
   ]
