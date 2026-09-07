@@ -509,7 +509,12 @@ class LicenseDecision:
             "user-supplied": frozenset(("supply",)),
             "restricted": frozenset(("decline",)),
         }
-        if decision_class not in outcomes or outcome not in outcomes[decision_class]:
+        if (
+            not isinstance(decision_class, str)
+            or not isinstance(outcome, str)
+            or decision_class not in outcomes
+            or outcome not in outcomes[decision_class]
+        ):
             raise DecisionInvalid("decision class and outcome are inconsistent")
         upstream_url = ""
         input_sha256 = ""

@@ -144,6 +144,20 @@ class ReceiptStoreTests(unittest.TestCase):
         with self.assertRaises(DecisionInvalid):
             LicenseDecision.loads("[" * 1000 + "0" + "]" * 1000)
 
+    def test_non_string_decision_enums_have_typed_refusals(self) -> None:
+        informational = load_json(
+            FIXTURES / "valid" / "license-informational-decision.json"
+        )
+        for field in ("decision_class", "outcome"):
+            for value in ([], {}, None, True, 0):
+                document = {**informational, field: value}
+                with self.subTest(field=field, value=value, entry="mapping"):
+                    with self.assertRaises(DecisionInvalid):
+                        LicenseDecision.from_mapping(document)
+                with self.subTest(field=field, value=value, entry="json"):
+                    with self.assertRaises(DecisionInvalid):
+                        LicenseDecision.loads(json.dumps(document))
+
     def test_restricted_decision_is_typed_but_can_never_create_authority(self) -> None:
         requirement = replace(self.spec.licenses[0], decision="restricted")
         spec = replace(self.spec, licenses=(requirement,))

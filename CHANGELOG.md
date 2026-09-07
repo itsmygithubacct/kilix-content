@@ -49,6 +49,8 @@ pre-1.0.
 
 ### Changed
 
+- Return a typed refusal for non-string license decision classes and outcomes,
+  including arrays and objects supplied through JSON.
 - Integrate the packaged asset and license authority with the current catalog,
   preserving all 43 applications and the shared package selection. Bind the
   canonical catalog to release `0.2.2`; production assets remain empty pending
