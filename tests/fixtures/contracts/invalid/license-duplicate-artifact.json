@@ -1,0 +1,14 @@
+{
+  "artifact_ids": [
+    "voice.demo-small",
+    "voice.demo-small"
+  ],
+  "decision_class": "affirmative",
+  "kind": "decision",
+  "license_id": "model-license",
+  "license_text_sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+  "outcome": "accept",
+  "presenter": "kilix-installer",
+  "release": "0.2.1",
+  "schema": "kilix.install.license/v1"
+}

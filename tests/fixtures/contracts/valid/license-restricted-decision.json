@@ -1,0 +1,13 @@
+{
+  "artifact_ids": [
+    "game.restricted"
+  ],
+  "decision_class": "restricted",
+  "kind": "decision",
+  "license_id": "restricted-license",
+  "license_text_sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+  "outcome": "decline",
+  "presenter": "kilix-installer",
+  "release": "0.2.1",
+  "schema": "kilix.install.license/v1"
+}

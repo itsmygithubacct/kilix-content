@@ -1,0 +1,44 @@
+{
+  "compatibility": {
+    "consumer_schema": "kilix-content-catalog",
+    "maximum": 3,
+    "minimum": 3
+  },
+  "files": [
+    {
+      "bytes": 12,
+      "path": "models/voice.bin",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  ],
+  "id": "voice.demo-small",
+  "label": "Demo small voice model",
+  "licenses": [
+    {
+      "decision": "informational",
+      "id": "mit",
+      "text_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  ],
+  "provider": "kilix-voicebox",
+  "schema": "kilix.content.asset/v1",
+  "sizes": {
+    "download_bytes": 10,
+    "installed_bytes": 12,
+    "temporary_bytes": 22
+  },
+  "source": {
+    "archive_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+    "mirrors": [
+      "https://downloads.kilix.dev/voice/demo-small.tar.zst"
+    ],
+    "mode": "mirrored",
+    "provenance": {
+      "original_url": "https://example.org/models/demo-small",
+      "project": "Demo Voice",
+      "revision": "1.0"
+    }
+  },
+  "stream": "F104",
+  "version": "1.0"
+}

@@ -1,0 +1,49 @@
+{
+  "compatibility": {
+    "consumer_schema": "kilix-encodec.model",
+    "maximum": 1,
+    "minimum": 1
+  },
+  "files": [
+    {
+      "bytes": 2,
+      "path": "model.onnx",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "bytes": 3,
+      "path": "model.onnx",
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  ],
+  "id": "encodec.duplicate",
+  "label": "Duplicate path",
+  "licenses": [
+    {
+      "decision": "informational",
+      "id": "MIT",
+      "text_sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    }
+  ],
+  "provider": "kilix-encodec",
+  "schema": "kilix.content.asset/v1",
+  "sizes": {
+    "download_bytes": 5,
+    "installed_bytes": 5,
+    "temporary_bytes": 5
+  },
+  "source": {
+    "archive_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+    "mirrors": [
+      "https://example.org/model.tar"
+    ],
+    "mode": "mirrored",
+    "provenance": {
+      "original_url": "https://example.org/model",
+      "project": "fixture",
+      "revision": "1"
+    }
+  },
+  "stream": "F100",
+  "version": "1"
+}

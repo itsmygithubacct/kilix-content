@@ -1,0 +1,44 @@
+{
+  "compatibility": {
+    "consumer_schema": "catalog",
+    "maximum": 3,
+    "minimum": 3
+  },
+  "files": [
+    {
+      "bytes": 1,
+      "path": "model.bin",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    }
+  ],
+  "id": "bad.mirror",
+  "label": "Insecure mirror",
+  "licenses": [
+    {
+      "decision": "informational",
+      "id": "mit",
+      "text_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  ],
+  "provider": "fixture",
+  "schema": "kilix.content.asset/v1",
+  "sizes": {
+    "download_bytes": 1,
+    "installed_bytes": 1,
+    "temporary_bytes": 1
+  },
+  "source": {
+    "archive_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+    "mirrors": [
+      "http://example.org/a"
+    ],
+    "mode": "mirrored",
+    "provenance": {
+      "original_url": "https://example.org/a",
+      "project": "Fixture",
+      "revision": "1"
+    }
+  },
+  "stream": "F100",
+  "version": "1"
+}

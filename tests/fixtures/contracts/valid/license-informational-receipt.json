@@ -1,0 +1,14 @@
+{
+  "artifact_ids": [
+    "font.demo"
+  ],
+  "decision_class": "informational",
+  "kind": "receipt",
+  "license_id": "OFL-1.1",
+  "license_text_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "local_user": "alice",
+  "outcome": "recorded",
+  "recorded_at": "2026-08-19T12:00:00Z",
+  "release": "0.2.1",
+  "schema": "kilix.install.license/v1"
+}

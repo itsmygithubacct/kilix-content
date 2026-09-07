@@ -1,0 +1,15 @@
+{
+  "artifact_ids": [
+    "encodec.24khz"
+  ],
+  "decision_class": "user-supplied",
+  "input_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "kind": "decision",
+  "license_id": "NOASSERTION",
+  "license_text_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "outcome": "supply",
+  "presenter": "kilix-installer",
+  "release": "0.2.1",
+  "schema": "kilix.install.license/v1",
+  "upstream_url": "https://dl.fbaipublicfiles.com/encodec/v0/encodec_24khz-d7cc33bc.th"
+}
