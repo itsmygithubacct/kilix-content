@@ -2192,6 +2192,24 @@ class Installer:
             input_path=input_path,
         )
 
+    def import_asset_archive(
+        self, spec: AssetSpec, store: ReceiptStore, release: ReleaseContext,
+        path: str, *, maximum_bytes: int, timeout: float = 120.0,
+        cancelled: Callable[[], bool] | None = None,
+    ) -> tuple[str, ...]:
+        """Explicitly import an exact local tar without network or conversion.
+
+        The packaged catalog and existing license receipts remain mandatory.
+        This installs only a new version; every existing selection is preserved.
+        """
+        from .local_archive import _import_asset_archive
+
+        spec = self._validated_asset_spec(spec)
+        return _import_asset_archive(
+            self.root, spec, store, release, path, maximum_bytes=maximum_bytes,
+            timeout=timeout, cancelled=cancelled,
+        )
+
     def executable(self, spec: ContentSpec, directory: str | None = None) -> str:
         selected = os.path.abspath(directory or self.destination(spec))
         try:

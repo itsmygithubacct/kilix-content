@@ -220,6 +220,30 @@ conversion is accepted only when its one declared output is byte-identical to
 the input; archives are never expanded implicitly. Manifest files must also
 remain caller-owned, non-executable regular files with one link.
 
+`Installer.import_asset_archive(spec, store, release, path, maximum_bytes=...)`
+explicitly imports a locally supplied, uncompressed tar archive for a new asset
+version. It uses the same packaged catalog and durable license receipts as
+network acquisition. Mirrored and multipart records require the exact complete
+archive size and digest; a user-supplied record requires its exact input identity
+and must not declare a converter. This separate operation never downloads,
+executes a converter, or changes the existing identity-copy method's behavior.
+
+The importer pins safe owned input and destination directory chains, copies one
+bounded regular input to a private unlinked file, and checks every extracted
+file against the declared path, size and digest population. Links, executable
+members, duplicates and undeclared members are refused. Selected files use mode
+0600 and directories mode0700. The available filesystem space must cover the
+declared archive-plus-extraction budget. Selection uses a no-replace atomic
+rename; every existing version entry, including an empty directory or dangling
+link, is preserved. Callers can inspect an existing selection with `open_asset`.
+
+`timeout` defaults to120 seconds and is bounded at3600; `cancelled` is an
+optional predicate. The same deadline covers cooperative receipt/install-lock
+waits, copying, extraction and final authorization. Kernel operations on an
+unresponsive filesystem cannot be interrupted by a Python callback. An imported
+archive establishes exact installed bytes and license binding; it does not
+establish hardware fit, quality, source-license grants or published mirrors.
+
 `command` is an argv vector for a system-owned application such as
 `["kilix", "bonsai"]`; it is mutually exclusive with a package-relative
 `binary`. Actions add only trusted fixed argv and declare separately whether
