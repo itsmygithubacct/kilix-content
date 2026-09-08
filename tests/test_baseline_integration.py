@@ -4,8 +4,8 @@ Each side is independently covered by its own suite. These tests prove the
 combined behavior: the baseline's executable package-identity locking, bounded
 child-command timeouts and process-group cleanup apply to the F100 asset
 conversion-tool path, and the merged packaged catalog still carries the whole
-published baseline and later application admissions alongside the empty
-production asset array.
+published baseline and later application admissions alongside the exact
+speech asset population.
 """
 
 from __future__ import annotations
@@ -219,9 +219,10 @@ class MergedCatalogProjectionTests(unittest.TestCase):
     def setUp(self) -> None:
         self.catalog = default_catalog()
 
-    def test_schema_is_v4_with_an_explicit_empty_production_asset_array(self) -> None:
+    def test_schema_is_v4_with_the_exact_speech_asset_population(self) -> None:
         self.assertEqual(self.catalog.schema_version, 4)
-        self.assertEqual(tuple(self.catalog.assets), ())
+        self.assertEqual(tuple(asset.asset_id for asset in self.catalog.assets),
+                         ('qwen3-tts-0.6b-base', 'qwen3-tts-0.6b-customvoice', 'qwen3-tts-1.7b-voicedesign', 'whisper-tiny-ggml'))
 
     def test_every_published_baseline_record_survives(self) -> None:
         identifiers = [entry.content_id for entry in self.catalog]

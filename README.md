@@ -8,9 +8,10 @@ the applications it provides, so one checkout and build can expose several
 catalog IDs without duplicating source or installation state. Schema version 3
 adds argv-only named actions, accepted input types, host command vectors, and
 lifecycle/fallback policy. Schema version 4 adds immutable non-executable asset
-records; the packaged catalog ships at version 4 in canonical form with an
-explicit empty `assets` array. Asset populations require a separately reviewed
-catalog update with exact acquisition and license metadata.
+records. The review-stage packaged catalog contains the exact Whisper tiny and
+Qwen Base, CustomVoice and VoiceDesign model populations, with their acquisition
+digests, notices and license decisions. Candidate archive URLs are unpublished;
+local acquisition uses an explicitly selected, exact archive.
 
 The installer accepts only argument arrays; it never invokes a shell. Managed
 Git content is fetched at an exact 40-character commit into a private staging
@@ -265,13 +266,15 @@ destination symlink is replaced rather than followed.
 ## Catalog contract
 
 The packaged `plebian.json` catalog ships at schema version 4, in canonical
-form — sorted keys, compact separators, UTF-8 — with an explicit empty top-level
-`assets` array. Canonical bytes are what the code-pinned digest constant
-covers, so the shipped file can be verified before it is parsed. The empty
-array is deliberate: the asset record type is available to readers now, while
-production asset records still require review. The packaged release identity
-is `0.2.2`; all 43 current application records and the shared package record
-are preserved. Readers accept
+form — sorted keys, compact separators, UTF-8 — with four exact speech asset
+records. The code-pinned digest covers the canonical bytes and is verified
+before parsing. These review candidates retain their complete model and notice
+populations. Their archive URLs name the unpublished candidate namespace; this
+source change does not publish model payloads or claim hardware, listening or
+provider qualification. Each acquisition still requires the exact durable
+informational license receipt. The packaged release identity is `0.2.2`; all
+43 current application records and the shared package record are preserved.
+Readers accept
 schema versions 1 through 4; a catalog that declares assets below version 4 is
 rejected rather than reinterpreted. Schema version 2 added a top-level
 `packages` array. Each package owns an installable Git/archive

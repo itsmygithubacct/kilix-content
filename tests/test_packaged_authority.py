@@ -105,7 +105,7 @@ def past_the_digest(document: object) -> MockPackagedBytes:
 class PackagedCatalogTests(unittest.TestCase):
     """G1, G2, G3, G4, G5 — the shipped bytes and the constants that pin them."""
 
-    def test_packaged_catalog_is_canonical_schema_v4_with_no_production_assets(
+    def test_packaged_catalog_is_canonical_schema_v4_with_exact_speech_assets(
         self,
     ) -> None:
         raw = PACKAGED_CATALOG.read_bytes()
@@ -113,10 +113,9 @@ class PackagedCatalogTests(unittest.TestCase):
         self.assertEqual(raw, canonical(document), "packaged catalog is not canonical")
         self.assertEqual(document["schema_version"], 4)
         self.assertEqual(
-            document["assets"],
-            [],
-            "step 5 ships an explicit empty production assets array; real assets "
-            "arrive with F101 at plan step 7",
+            [asset["id"] for asset in document["assets"]],
+            ["qwen3-tts-0.6b-base", "qwen3-tts-0.6b-customvoice",
+             "qwen3-tts-1.7b-voicedesign", "whisper-tiny-ggml"],
         )
         self.assertTrue(document["content"], "content records must survive promotion")
 
@@ -800,10 +799,11 @@ class CatalogCollisionTests(unittest.TestCase):
 class PackagedCatalogParsesTests(unittest.TestCase):
     """The verified production catalog is usable, not merely well formed."""
 
-    def test_default_catalog_verifies_and_exposes_no_assets(self) -> None:
+    def test_default_catalog_verifies_and_exposes_exact_speech_assets(self) -> None:
         catalog = verified_packaged_catalog()
         self.assertEqual(catalog.schema_version, 4)
-        self.assertEqual(catalog.assets, ())
+        self.assertEqual(tuple(asset.asset_id for asset in catalog.assets),
+                         ('qwen3-tts-0.6b-base', 'qwen3-tts-0.6b-customvoice', 'qwen3-tts-1.7b-voicedesign', 'whisper-tiny-ggml'))
         self.assertTrue(tuple(catalog))
 
 
