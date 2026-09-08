@@ -237,12 +237,21 @@ def _open_installed_asset(selected: str, spec: AssetSpec, store: ReceiptStore,
             or spec.installed_bytes > maximum_bytes or len(spec.files) > _MAX_MEMBERS):
         raise InstalledAssetError("installed asset exceeds the caller's snapshot budget")
     if (isinstance(timeout, bool) or not isinstance(timeout, (int, float))
-            or not math.isfinite(timeout) or not 0 < timeout <= 3600
+            or not 0 < timeout <= 3600 or not math.isfinite(timeout)
             or (cancelled is not None and not callable(cancelled))):
         raise InstalledAssetError("installed snapshot requires a bounded timeout and cancellation hook")
     if type(store) is not ReceiptStore:
         raise InstalledAssetError("installed snapshots require the production receipt store")
-    receipts = store.require_asset(spec, release)
+    deadline = time.monotonic() + timeout
+
+    def check() -> None:
+        if cancelled is not None and cancelled():
+            raise InstalledAssetError("installed asset snapshot was cancelled")
+        if time.monotonic() >= deadline:
+            raise InstalledAssetError("installed asset snapshot deadline exceeded")
+
+    check()
+    receipts = store.require_asset(spec, release, check=check)
     expected: dict[str, dict[str, bool]] = {"": {}}
     for item in spec.files:
         parts = PurePosixPath(item.path).parts
@@ -257,14 +266,6 @@ def _open_installed_asset(selected: str, spec: AssetSpec, store: ReceiptStore,
             members[name] = directory
     if len(expected) > _MAX_DIRECTORIES:
         raise InstalledAssetError("installed asset directory count exceeds its bound")
-    deadline = time.monotonic() + timeout
-
-    def check() -> None:
-        if cancelled is not None and cancelled():
-            raise InstalledAssetError("installed asset snapshot was cancelled")
-        if time.monotonic() >= deadline:
-            raise InstalledAssetError("installed asset snapshot deadline exceeded")
-
     directories = _Directories()
     descriptors: dict[str, int] = {}
     try:
@@ -309,7 +310,7 @@ def _open_installed_asset(selected: str, spec: AssetSpec, store: ReceiptStore,
             if _identity(os.stat(PurePosixPath(path).name, dir_fd=parent_descriptor,
                                  follow_symlinks=False)) != identity:
                 raise InstalledAssetError("installed asset selection changed during snapshot")
-        if store.require_asset(spec, release) != receipts:
+        if store.require_asset(spec, release, check=check) != receipts:
             raise InstalledAssetError("installed asset authorization changed during snapshot")
         check()
         result = InstalledAsset(_TOKEN, descriptors, spec, release, receipts)

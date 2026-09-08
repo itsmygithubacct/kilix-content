@@ -10,6 +10,8 @@ import json
 import os
 from pathlib import Path
 import tempfile
+import threading
+import time
 import unittest
 from unittest.mock import patch
 
@@ -143,12 +145,83 @@ class InstalledAssetTests(unittest.TestCase):
     def test_invalid_budgets_and_cancellation_inputs_refuse(self):
         cases = [{"maximum_bytes": value} for value in
                  (False, 0, -1, 1.0, self.spec.installed_bytes - 1, 8 * 1024**3 + 1)]
-        cases += [{"timeout": value} for value in (True, 0, -1, float("nan"), float("inf"), 3601)]
+        cases += [{"timeout": value} for value in
+                  (True, 0, -1, float("nan"), float("inf"), 3601, 10**1000)]
         cases.append({"cancelled": []})
         with patch.object(installed, "_create_memfd", side_effect=AssertionError("must not allocate")):
             for args in cases:
                 with self.subTest(args=args), self.assertRaises(InstalledAssetError):
                     self.open(**args)
+
+    def test_receipt_lock_waits_share_snapshot_deadline_and_cancellation(self):
+        # Keep each real lock held until the caller has already refused. This
+        # catches a late check that reports timeout only after acquiring it.
+        for phase in ("initial", "final"):
+            for kind in ("flock", "thread"):
+                for ending in ("deadline", "already-cancelled", "cancel-waiter"):
+                    with self.subTest(phase=phase, kind=kind, ending=ending):
+                        before = self.fd_count()
+                        descriptor = os.open(f"/proc/self/fd/{self.store._lock_descriptor}",
+                                             os.O_RDWR | os.O_CLOEXEC)
+                        held = threading.Event()
+                        cancel = threading.Event()
+                        errors = []
+                        completed_while_held = False
+                        copied = 0
+                        member = installed._member
+
+                        def hold():
+                            if kind == "flock":
+                                fcntl.flock(descriptor, fcntl.LOCK_EX)
+                            else:
+                                self.store._thread_lock.acquire()
+                            if ending == "already-cancelled":
+                                cancel.set()
+                            held.set()
+
+                        def after_copy(parent, item, check):
+                            nonlocal copied
+                            result = member(parent, item, check)
+                            copied += 1
+                            if copied == len(self.spec.files):
+                                hold()
+                            return result
+
+                        def call():
+                            try:
+                                with self.open(timeout=0.15, cancelled=cancel.is_set):
+                                    errors.append("unexpected success")
+                            except BaseException as error:
+                                errors.append(error)
+
+                        if phase == "initial":
+                            hold()
+                        with patch.object(installed, "_member",
+                                          after_copy if phase == "final" else member):
+                            worker = threading.Thread(target=call)
+                            try:
+                                worker.start()
+                                self.assertTrue(held.wait(1), "final receipt check not reached")
+                                if ending == "cancel-waiter":
+                                    time.sleep(0.02)
+                                    cancel.set()
+                                worker.join(0.75)
+                                completed_while_held = not worker.is_alive()
+                            finally:
+                                if held.is_set():
+                                    if kind == "flock":
+                                        fcntl.flock(descriptor, fcntl.LOCK_UN)
+                                    else:
+                                        self.store._thread_lock.release()
+                                os.close(descriptor)
+                                worker.join(6)
+                        self.assertFalse(worker.is_alive())
+                        self.assertTrue(completed_while_held, "receipt wait ignored operation budget")
+                        self.assertEqual(len(errors), 1)
+                        self.assertIsInstance(errors[0], InstalledAssetError)
+                        self.assertIn("deadline" if ending == "deadline" else "cancelled",
+                                      str(errors[0]))
+                        self.assertEqual(self.fd_count(), before)
 
     def test_invalid_populations_are_refused_without_descriptor_leaks(self):
         for kind in ("missing", "extra", "empty-directory", "symlink", "fifo", "hardlink",

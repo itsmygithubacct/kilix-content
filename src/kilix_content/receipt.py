@@ -23,7 +23,7 @@ import stat
 import threading
 import time
 import unicodedata
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -1516,15 +1516,22 @@ class ReceiptStore:
                     self._read_envelope(target)
 
     @contextmanager
-    def _locked(self, *, timeout: float = 5.0):
+    def _locked(self, *, timeout: float = 5.0,
+                check: Callable[[], None] | None = None):
         if self._lock_descriptor < 0:
             raise UnsafeStore("receipt store is closed")
         # Check before touching a possibly inherited locked mutex after fork.
         self._require_current_identity()
         deadline = time.monotonic() + timeout
-        remaining = max(0.0, deadline - time.monotonic())
-        if not self._thread_lock.acquire(timeout=remaining):
-            raise StoreBusy("receipt store remained locked in this process")
+        while True:
+            if check is not None:
+                check()
+            remaining = max(0.0, deadline - time.monotonic())
+            interval = remaining if check is None else min(0.01, remaining)
+            if self._thread_lock.acquire(timeout=interval):
+                break
+            if time.monotonic() >= deadline:
+                raise StoreBusy("receipt store remained locked in this process")
         flock_held = False
         try:
             self._require_current_identity()
@@ -1546,6 +1553,8 @@ class ReceiptStore:
             ):
                 raise UnsafeStore("receipt-store lock path was replaced or is unsafe")
             while True:
+                if check is not None:
+                    check()
                 try:
                     fcntl.flock(
                         self._lock_descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB
@@ -1555,11 +1564,13 @@ class ReceiptStore:
                 except BlockingIOError as exc:
                     if time.monotonic() >= deadline:
                         raise StoreBusy("receipt store remained locked") from exc
-                    time.sleep(0.01)
+                    time.sleep(min(0.01, max(0.0, deadline - time.monotonic())))
                 except InterruptedError:
                     continue
                 except OSError as exc:
                     raise ReceiptError("receipt-store locking is unavailable") from exc
+            if check is not None:
+                check()
             yield
         finally:
             try:
@@ -1889,22 +1900,35 @@ class ReceiptStore:
         return tuple(sorted(names))
 
     def require_asset(
-        self, spec: AssetSpec, release: ReleaseContext
+        self, spec: AssetSpec, release: ReleaseContext, *,
+        check: Callable[[], None] | None = None,
     ) -> tuple[VerifiedReceipt, ...]:
-        """Require exact coverage for every license before returning asset paths."""
+        """Require exact coverage for every license before returning asset paths.
+
+        An optional operation check may raise to cancel or expire a containing
+        operation. It runs before authorization, between waits of at most 10 ms
+        for either cooperative lock, and while inspecting receipts.
+        The store's existing five-second lock ceiling also remains in force.
+        """
+        if check is not None:
+            if not callable(check):
+                raise ReceiptError("receipt operation check must be callable")
+            check()
         _verify_frozen_schema()
         catalog = self._require_release_authority(release)
         # Prove the caller's record is the packaged catalog's own before any
         # licence, source or receipt logic reads it, and continue with the
         # canonical object only.
         spec = self._require_catalog_membership(catalog, spec)
-        with self._locked():
+        with self._locked(check=check):
             self._cleanup_temporaries()
             self._require_no_pending()
             binding = ArtifactBinding.from_spec(spec)
             results: list[VerifiedReceipt] = []
             names = self._receipt_names()
             for requirement in spec.licenses:
+                if check is not None:
+                    check()
                 if requirement.decision == "restricted":
                     raise ReceiptMissing("restricted content cannot be authorized")
                 expected_receipt = _LicenseReceipt(
@@ -1953,6 +1977,8 @@ class ReceiptStore:
                         )
                 if found is None:
                     for name in names:
+                        if check is not None:
+                            check()
                         if name == direct_name:
                             continue
                         try:
@@ -1977,6 +2003,8 @@ class ReceiptStore:
                         "no exact durable receipt covers the requested asset license"
                     )
                 results.append(found)
+            if check is not None:
+                check()
             return tuple(results)
 
     def list_metadata(self) -> tuple[dict[str, Any], ...]:
