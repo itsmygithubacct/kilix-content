@@ -94,7 +94,9 @@ and extraction. A supervised worker enforces a one-hour wall deadline across
 DNS, TLS, headers and body reads, then is reaped before selection or cleanup.
 Each connection/read also has a timeout of at most 60 seconds. HTTPS redirects to
 signed CDN URLs work; redirects to plaintext or credential-bearing authorities
-refuse. A failure preserves any earlier selection and removes staging data.
+refuse. A failure preserves any earlier selection. Staging is removed after
+worker teardown; if teardown cannot be proven, installation refuses and retains
+the private staging directories for diagnosis.
 License receipts bind the full v2 record, including part order and identities.
 
 Assets have version-qualified manifests, per-file SHA-256 and size, mirrored or

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import ssl
 import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -14,9 +16,10 @@ from pathlib import Path
 from unittest import mock
 from urllib.parse import urlsplit
 
-from kilix_content import AssetSpec, InstallError
+from kilix_content import AssetSpec, Installer, InstallError, LicenseDecision, ReleaseContext
 from kilix_content import install
-from tests.test_multipart import fixture
+from tests.receipt_store_support import open_test_store
+from tests.test_multipart import LICENSE, fixture
 
 
 class MultipartHTTPSTests(unittest.TestCase):
@@ -231,6 +234,57 @@ class MultipartHTTPSTests(unittest.TestCase):
                 self.download()
             self.assertEqual(self.destination.read_bytes(), b"keep old output")
             self.assertEqual(list(self.root.iterdir()), [self.destination])
+
+    def test_public_installer_preserves_live_stage_only_on_cleanup_refusal(self):
+        spec = AssetSpec.from_mapping(self.document)
+        release = ReleaseContext.from_catalog("0.2.2", b"owned cleanup refusal fixture")
+        installer = Installer(str(self.root / "content"))
+        captured = {}
+        processes = []
+        def refusal(_argv, *, cwd, **_kwargs):
+            captured["acquisition"] = Path(cwd)
+            captured["installation"] = Path(cwd).parent
+            process = subprocess.Popen(
+                [sys.executable, "-I", "-S", "-c", "import time; time.sleep(60)"],
+                cwd=cwd, start_new_session=True, stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+            processes.append(process)
+            raise install._CleanupRefusal("injected unproven worker teardown")
+        with open_test_store(str(self.root / "state"), assets=[spec]) as store:
+            decision = LicenseDecision.from_mapping({
+                "schema": "kilix.install.license/v1", "kind": "decision",
+                "decision_class": "informational", "license_id": "fixture-license",
+                "license_text_sha256": hashlib.sha256(LICENSE).hexdigest(),
+                "artifact_ids": [spec.asset_id], "release": "0.2.2",
+                "presenter": "fixture", "outcome": "record",
+            })
+            store.record(decision, LICENSE, release, [spec])
+            try:
+                with (
+                    mock.patch.object(install, "_run_with_tail", side_effect=refusal),
+                    self.assertRaises(install._CleanupRefusal),
+                ):
+                    installer.ensure_asset(spec, store, release)
+                self.assertIsNone(processes[0].poll())
+                self.assertTrue(captured["acquisition"].is_dir())
+                self.assertTrue(captured["installation"].is_dir())
+                self.assertFalse(Path(installer.asset_destination(spec)).exists())
+                self.assertIsNone(installer.asset_ready(spec, store, release))
+            finally:
+                for process in processes:
+                    process.terminate()
+                    process.wait(timeout=5)
+            # A normal failure is known to have completed teardown, and still
+            # cleans both layers without removing the separately retained one.
+            retained = captured["installation"]
+            with (
+                mock.patch.object(install, "_run_with_tail", side_effect=InstallError("ordinary refusal")),
+                self.assertRaises(InstallError),
+            ):
+                installer.ensure_asset(spec, store, release)
+            self.assertEqual(list(retained.parent.glob(".asset-install-*")), [retained])
+            self.assertTrue(captured["acquisition"].is_dir())
 
 
 if __name__ == "__main__":

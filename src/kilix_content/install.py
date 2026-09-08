@@ -2103,6 +2103,7 @@ class Installer:
                     "refusing to replace an unverified asset selection"
                 )
             stage = tempfile.mkdtemp(prefix=".asset-install-", dir=parent)
+            cleanup = True
             try:
                 if spec.source_mode in ("mirrored", "multipart-mirrored"):
                     output = self._populate_mirrored_asset(spec, stage, report)
@@ -2125,6 +2126,11 @@ class Installer:
                         destination,
                         verified_input,
                     )
+            except _CleanupRefusal:
+                # The acquisition/conversion runner could not prove its
+                # worker gone. Retain every containing directory as well.
+                cleanup = False
+                raise
             except (InstallError, ReceiptError):
                 raise
             except (
@@ -2135,7 +2141,8 @@ class Installer:
             ) as exc:
                 raise InstallError("asset installation failed") from exc
             finally:
-                shutil.rmtree(stage, ignore_errors=True)
+                if cleanup:
+                    shutil.rmtree(stage, ignore_errors=True)
 
     def ensure_asset(
         self,
