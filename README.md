@@ -12,6 +12,9 @@ records. The review-stage packaged catalog contains the exact Whisper tiny and
 Qwen Base, CustomVoice and VoiceDesign model populations, with their acquisition
 digests, notices and license decisions. Candidate archive URLs are unpublished;
 local acquisition uses an explicitly selected, exact archive.
+The EnCodec mono record instead requires the exact user-supplied checkpoint,
+a genuine source-supply decision and the pinned local conversion tool. It has
+no model mirror and does not authorize redistribution.
 
 The installer accepts only argument arrays; it never invokes a shell. Managed
 Git content is fetched at an exact 40-character commit into a private staging
@@ -271,18 +274,35 @@ destination symlink is replaced rather than followed.
 
 The packaged `plebian.json` catalog ships at schema version 4, in canonical
 form — sorted keys, compact separators, UTF-8 — with four speech model records
-and the exact EnCodec 48 kHz stereo graph asset. The code-pinned digest covers the canonical bytes and is verified
+and the exact EnCodec mono/stereo graph assets. The code-pinned digest covers the canonical bytes and is verified
 before parsing. These review candidates retain their complete model and notice
 populations. Their archive URLs name the unpublished candidate namespace; this
 source change does not publish model payloads or claim hardware, listening or
 provider qualification. Each acquisition still requires the exact durable
-informational license receipt. The packaged release identity is `0.2.2`; all
-43 current application records and the shared package record are preserved.
-The EnCodec asset includes its unchanged four native files and four explicit
+license receipt: informational for the mirrored records, and user-supplied
+for mono conversion. The packaged release identity is `0.2.2`; all
+43 current application records and the shared package record are preserved,
+with one additional ordinary executable conversion-tool record.
+The stereo EnCodec asset includes its unchanged four native files and four explicit
 model-license/provenance notices. Its consumer schema is
-`kilix.encodec.graphs/v1`, version 1. The 24 kHz user-supplied checkpoint and
-locked local converter remain separate pending inputs; this stereo record
-does not admit the mono graphs.
+`kilix.encodec.graphs/v1`, version 1. The mono record uses that same schema
+with its separate exact nine graph/manifest files and no-model-grant notice.
+`encodec-24khz-stateful` accepts only the original checkpoint's exact size
+and digest through `Installer.ensure_user_supplied_asset`; an existing graph
+archive is not its acquisition input. The genuine user-supplied decision and
+receipt remain required before conversion or admission. Merely shipping this
+catalog creates neither one.
+
+`kilix-encodec-convert-24khz` is an ordinary `ContentSpec`, pinned to the native
+provider's exact source, build argv and relative executable. It is not a model
+`AssetSpec`. Its first build acquires only the pinned toolchain/dependencies;
+the resulting command verifies its sealed runtime and all converted outputs.
+The mono record reserves a conservative 4 GiB temporary allowance for the
+tool/build and conversion path, not a measured RAM or supported-device profile.
+Its model download count is zero; the separately supplied checkpoint is
+93,171,529 bytes and the verified installed graph/notice population is
+102,005,840 bytes. The new converter source pin remains a local review candidate
+until its independent reviews and publication checks complete.
 Readers accept
 schema versions 1 through 4; a catalog that declares assets below version 4 is
 rejected rather than reinterpreted. Schema version 2 added a top-level

@@ -114,7 +114,7 @@ class PackagedCatalogTests(unittest.TestCase):
         self.assertEqual(document["schema_version"], 4)
         self.assertEqual(
             [asset["id"] for asset in document["assets"]],
-            ["encodec-48khz-frame", "qwen3-tts-0.6b-base", "qwen3-tts-0.6b-customvoice",
+            ["encodec-24khz-stateful", "encodec-48khz-frame", "qwen3-tts-0.6b-base", "qwen3-tts-0.6b-customvoice",
              "qwen3-tts-1.7b-voicedesign", "whisper-tiny-ggml"],
         )
         self.assertTrue(document["content"], "content records must survive promotion")
@@ -803,7 +803,7 @@ class PackagedCatalogParsesTests(unittest.TestCase):
         catalog = verified_packaged_catalog()
         self.assertEqual(catalog.schema_version, 4)
         self.assertEqual(tuple(asset.asset_id for asset in catalog.assets),
-                         ('encodec-48khz-frame', 'qwen3-tts-0.6b-base', 'qwen3-tts-0.6b-customvoice', 'qwen3-tts-1.7b-voicedesign', 'whisper-tiny-ggml'))
+                         ('encodec-24khz-stateful', 'encodec-48khz-frame', 'qwen3-tts-0.6b-base', 'qwen3-tts-0.6b-customvoice', 'qwen3-tts-1.7b-voicedesign', 'whisper-tiny-ggml'))
         self.assertTrue(tuple(catalog))
 
 

@@ -214,6 +214,7 @@ class MergedCatalogProjectionTests(unittest.TestCase):
     # Both the original baseline and later catalog admissions must survive.
     BASELINE_ONLY_IDS = ("kilix-land", "kilix-tmux-manager", "kilix-graphs", "kilix-techno")
     BASELINE_CONTENT_COUNT = 43
+    CONVERSION_TOOL_IDS = ("kilix-encodec-convert-24khz",)
     BASELINE_PACKAGE_IDS = ("kilix-tui-utils",)
 
     def setUp(self) -> None:
@@ -222,11 +223,14 @@ class MergedCatalogProjectionTests(unittest.TestCase):
     def test_schema_is_v4_with_the_exact_model_asset_population(self) -> None:
         self.assertEqual(self.catalog.schema_version, 4)
         self.assertEqual(tuple(asset.asset_id for asset in self.catalog.assets),
-                         ('encodec-48khz-frame', 'qwen3-tts-0.6b-base', 'qwen3-tts-0.6b-customvoice', 'qwen3-tts-1.7b-voicedesign', 'whisper-tiny-ggml'))
+                         ('encodec-24khz-stateful', 'encodec-48khz-frame', 'qwen3-tts-0.6b-base', 'qwen3-tts-0.6b-customvoice', 'qwen3-tts-1.7b-voicedesign', 'whisper-tiny-ggml'))
 
     def test_every_published_baseline_record_survives(self) -> None:
         identifiers = [entry.content_id for entry in self.catalog]
-        self.assertEqual(len(identifiers), self.BASELINE_CONTENT_COUNT)
+        self.assertEqual(len(identifiers), self.BASELINE_CONTENT_COUNT + len(self.CONVERSION_TOOL_IDS))
+        for identifier in self.CONVERSION_TOOL_IDS:
+            self.assertIn(identifier, identifiers)
+            self.assertEqual(self.catalog.require(identifier).kind, "tool")
         self.assertEqual(len(set(identifiers)), len(identifiers))
         for identifier in self.BASELINE_ONLY_IDS:
             self.assertIn(identifier, identifiers)
