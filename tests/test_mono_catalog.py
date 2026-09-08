@@ -55,7 +55,7 @@ class MonoCatalogTests(unittest.TestCase):
         self.assertEqual(tool.kind, 'tool')
         self.assertEqual(tool.source_type, 'git')
         self.assertEqual(tool.repository, 'https://github.com/itsmygithubacct/kilix-encodec')
-        self.assertEqual(tool.ref, '3bc3cb002aa1c8ad0edfd819a6639b35858d7ea8')
+        self.assertEqual(tool.ref, '433a0201475583a17338003a14d8d9fdee5642b9')
         self.assertEqual(tool.binary, 'bin/kilix-encodec-convert-24khz')
         self.assertEqual(tool.build, ('python3', 'tools/build_converter.py', '--timeout', '900'))
         self.assertFalse(tool.command)

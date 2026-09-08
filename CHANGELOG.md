@@ -53,6 +53,11 @@ pre-1.0.
 
 ### Changed
 
+- Advance the provisional TUI package, Amp installed-admission build and
+  local EnCodec converter selections. Amp now selects both its new source
+  commit and `make all ENCODEC=1`; all asset records remain unchanged.
+  The catalog digest changes, so earlier package and receipt evidence does
+  not establish authority for this bundle.
 - Return a typed refusal for non-string license decision classes and outcomes,
   including arrays and objects supplied through JSON.
 - Integrate the packaged asset and license authority with the current catalog,

@@ -48,7 +48,7 @@ _ASSET_V2_SCHEMA_SHA256 = (
 # Nothing here consults host state, /etc/pleb/session.env, or a release lock.
 _CATALOG_RESOURCE = "catalog/plebian.json"
 _CATALOG_SHA256 = (
-    "ae6bab990f2b851408a72bae10b156207f082ac27da63f9f298dbf5188290842"
+    "f917be1f3a0ff36a2ba50caa14fd7d21f5498605cb79bedfb2dbbec2a172e53e"
 )
 _RELEASE_ID = "0.2.2"
 # Handed out only by ReleaseContext.packaged(), only after verification.

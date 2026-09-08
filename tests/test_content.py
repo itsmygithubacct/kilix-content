@@ -168,7 +168,7 @@ class ContentTests(unittest.TestCase):
         self.assertEqual(files.install_id, "kilix-tui-utils")
         self.assertEqual(system.install_id, "kilix-tui-utils")
         self.assertEqual(
-            files.ref, "dc462372aa7417fa9bfccd82b8312d62d1077f82"
+            files.ref, "af7e8481588c090fd703be51aa4dddf597b07ef8"
         )
         self.assertEqual(files.require_action("open").argv, ("--open",))
         self.assertIn("application/pdf", pdf_conversion.accepts)
@@ -196,7 +196,12 @@ class ContentTests(unittest.TestCase):
                     or entry.install_id == "kilix-tui-utils"
                     else "all"
                 )
-                self.assertEqual(entry.build, ("make", expected_target))
+                expected_build = (
+                    ("make", "all", "ENCODEC=1")
+                    if entry.content_id == "kilix-amp"
+                    else ("make", expected_target)
+                )
+                self.assertEqual(entry.build, expected_build)
         with self.assertRaises(TypeError):
             catalog._by_id["replacement"] = catalog.require("kilix-jpak")
 
