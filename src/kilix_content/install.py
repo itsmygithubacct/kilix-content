@@ -2197,7 +2197,7 @@ class Installer:
         path: str, *, maximum_bytes: int, timeout: float = 120.0,
         cancelled: Callable[[], bool] | None = None,
     ) -> tuple[str, ...]:
-        """Explicitly import an exact local tar without network or conversion.
+        """Explicitly import an exact local USTAR without network or conversion.
 
         The packaged catalog and existing license receipts remain mandatory.
         This installs only a new version; every existing selection is preserved.

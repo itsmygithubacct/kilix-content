@@ -38,7 +38,7 @@ def sha(data):
 
 
 @contextmanager
-def fixture(mode="mirrored", members=None, authorize=True):
+def fixture(mode="mirrored", members=None, authorize=True, prefix=b"", suffix=b""):
     with ExitStack() as stack:
         root = Path(stack.enter_context(tempfile.TemporaryDirectory()))
         payloads = {
@@ -61,7 +61,7 @@ def fixture(mode="mirrored", members=None, authorize=True):
                 archive.addfile(
                     member, io.BytesIO(data) if kind == tarfile.REGTYPE else None
                 )
-        blob = output.getvalue()
+        blob = prefix + output.getvalue() + suffix
         path = root / "input.tar"
         path.write_bytes(blob)
         path.chmod(0o600)
@@ -442,6 +442,72 @@ class LocalArchiveTests(unittest.TestCase):
                 "kilix_content.install._run_converter",
                 side_effect=AssertionError("converter"),
             ):
+                self.assert_refused_clean(value, lambda: self.import_file(value))
+
+    def test_extended_metadata_refuses_at_first_bounded_header(self):
+        metadata = tarfile.TarInfo("metadata")
+        metadata.type = tarfile.XGLTYPE
+        metadata.mode = 0o644
+        empty = metadata.tobuf(format=tarfile.USTAR_FORMAT)
+        metadata.size = 2 * 1024 * 1024
+        large = metadata.tobuf(format=tarfile.USTAR_FORMAT) + bytes(metadata.size)
+        for prefix in (empty * 1200, large):
+            with self.subTest(bytes=len(prefix)), fixture(prefix=prefix) as value:
+                actual_extract = local_archive._extract
+                actual_read = os.pread
+                reads = []
+
+                def extract(descriptor, *args):
+                    def read(fd, count, offset):
+                        if fd == descriptor:
+                            reads.append((count, offset))
+                        return actual_read(fd, count, offset)
+
+                    with patch.object(local_archive.os, "pread", read):
+                        return actual_extract(descriptor, *args)
+
+                with patch.object(local_archive, "_extract", extract):
+                    self.assert_refused_clean(value, lambda: self.import_file(value))
+                self.assertEqual(reads, [(512, 0)])
+
+    def test_cancellation_after_header_prevents_any_member_read(self):
+        with fixture() as value:
+            actual_extract = local_archive._extract
+            actual_read = os.pread
+            reads = []
+            cancelled = []
+
+            def extract(descriptor, *args):
+                def read(fd, count, offset):
+                    result = actual_read(fd, count, offset)
+                    if fd == descriptor:
+                        reads.append((count, offset))
+                        cancelled.append(True)
+                    return result
+
+                with patch.object(local_archive.os, "pread", read):
+                    return actual_extract(descriptor, *args)
+
+            with patch.object(local_archive, "_extract", extract):
+                self.assert_refused_clean(
+                    value, lambda: self.import_file(value, cancelled=lambda: bool(cancelled))
+                )
+            self.assertEqual(reads, [(512, 0)])
+
+    def test_ustar_directories_and_trailing_population_are_checked(self):
+        directory = tarfile.TarInfo("model/")
+        directory.type = tarfile.DIRTYPE
+        directory.mode = 0o755
+        header = directory.tobuf(format=tarfile.USTAR_FORMAT)
+        with fixture(prefix=header) as value:
+            paths = self.import_file(value)
+            self.assertEqual(len(paths), len(value.payloads))
+        invalid_checksum = bytearray(header)
+        invalid_checksum[0] ^= 1
+        for prefix, suffix in ((bytes(invalid_checksum), b""), (b"", b"x" * 512),
+                               (b"", b"\0")):
+            with self.subTest(prefix=len(prefix), suffix=len(suffix)), fixture(
+                    prefix=prefix, suffix=suffix) as value:
                 self.assert_refused_clean(value, lambda: self.import_file(value))
 
 

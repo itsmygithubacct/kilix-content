@@ -222,7 +222,7 @@ the input; archives are never expanded implicitly. Manifest files must also
 remain caller-owned, non-executable regular files with one link.
 
 `Installer.import_asset_archive(spec, store, release, path, maximum_bytes=...)`
-explicitly imports a locally supplied, uncompressed tar archive for a new asset
+explicitly imports a locally supplied, uncompressed USTAR archive for a new asset
 version. It uses the same packaged catalog and durable license receipts as
 network acquisition. Mirrored and multipart records require the exact complete
 archive size and digest; a user-supplied record requires its exact input identity
@@ -232,7 +232,11 @@ executes a converter, or changes the existing identity-copy method's behavior.
 The importer pins safe owned input and destination directory chains, copies one
 bounded regular input to a private unlinked file, and checks every extracted
 file against the declared path, size and digest population. Links, executable
-members, duplicates and undeclared members are refused. Selected files use mode
+members, duplicates and undeclared members are refused. Fixed 512-byte headers
+are checked before member reads; PAX/GNU extensions, recursive metadata and
+nonzero trailing data are refused. The complete header population is bounded by
+the declared files and directories, and cancellation is checked around each
+header and bounded data read. Selected files use mode
 0600 and directories mode0700. The available filesystem space must cover the
 declared archive-plus-extraction budget. Selection uses a no-replace atomic
 rename; every existing version entry, including an empty directory or dangling

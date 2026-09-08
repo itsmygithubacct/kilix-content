@@ -99,6 +99,50 @@ def _copy_archive(path: str, parent: int, expected_size: int, expected_hash: str
         directories.close()
 
 
+def _members(archive_fd: int, maximum: int, check: Callable[[], None]):
+    """Read fixed USTAR headers without recursive or variable-size metadata."""
+    size = os.fstat(archive_fd).st_size
+    if size % 512:
+        raise InstallError("local archive size is not a complete USTAR block population")
+    offset = count = 0
+    zero = bytes(512)
+    while offset + 512 <= size:
+        check()
+        header = os.pread(archive_fd, 512, offset)
+        if len(header) != 512:
+            raise InstallError("local archive header ended early")
+        offset += 512
+        check()
+        if header == zero:
+            if size - offset < 512:
+                raise InstallError("local archive needs two terminating zero blocks")
+            while offset < size:
+                check()
+                padding = os.pread(archive_fd, min(1024 * 1024, size - offset), offset)
+                if not padding or any(padding):
+                    raise InstallError("local archive has invalid trailing data")
+                offset += len(padding)
+            return
+        count += 1
+        if count > maximum:
+            raise InstallError("local archive header population exceeds its bound")
+        # Reject extension types before any stdlib processing. TarFile.next()
+        # recursively consumes PAX/GNU metadata, including variable-size reads,
+        # before yielding a member to its caller's cancellation checks.
+        if (header[156:157] not in (b"0", b"\0", b"5")
+                or header[257:265] != b"ustar\00000"):
+            raise InstallError("local archive requires plain USTAR files and directories")
+        member = tarfile.TarInfo.frombuf(header, encoding="utf-8", errors="strict")
+        if member.size < 0 or (member.isdir() and member.size != 0):
+            raise InstallError("local archive member size is invalid")
+        padded = ((member.size + 511) // 512) * 512
+        if padded > size - offset:
+            raise InstallError("local archive member exceeds its bounded snapshot")
+        yield member, offset
+        offset += padded
+    raise InstallError("local archive is missing its terminating zero blocks")
+
+
 def _extract(archive_fd: int, output: int, spec: AssetSpec,
              check: Callable[[], None]) -> dict[str, tuple[int, ...]]:
     """Materialize only exact declared members, with private modes and FD paths."""
@@ -122,51 +166,43 @@ def _extract(archive_fd: int, output: int, spec: AssetSpec,
             opened[name] = os.open(path.name, _DIRECTORY, dir_fd=opened[parent])
         seen: set[str] = set()
         seen_directories: set[str] = set()
-        with os.fdopen(os.dup(archive_fd), "rb") as source:
-            # Offline import intentionally supports uncompressed tar only.
-            # It does not auto-detect a converter or launch any archive program.
-            with tarfile.open(fileobj=source, mode="r:") as archive:
-                for member in archive:
+        for member, offset in _members(archive_fd, len(expected) + len(names), check):
+            check()
+            if member.isdir():
+                name = member.name.rstrip("/")
+                if name not in names or name in seen_directories:
+                    raise InstallError("local archive has an undeclared or duplicate directory")
+                seen_directories.add(name)
+                continue
+            if member.name not in expected or member.name in seen:
+                raise InstallError("local archive has an undeclared or duplicate member")
+            item = expected[member.name]
+            if member.size != item.bytes or member.mode & 0o111:
+                raise InstallError("local archive member size or executable mode is invalid")
+            path = PurePosixPath(item.path)
+            parent = "" if str(path.parent) == "." else str(path.parent)
+            descriptor = os.open(path.name, os.O_WRONLY | os.O_CREAT | os.O_EXCL
+                                 | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600,
+                                 dir_fd=opened[parent])
+            try:
+                digest = hashlib.sha256()
+                remaining = item.bytes
+                while remaining:
                     check()
-                    if member.isdir():
-                        name = member.name.rstrip("/")
-                        if name not in names or name in seen_directories:
-                            raise InstallError("local archive has an undeclared or duplicate directory")
-                        seen_directories.add(name)
-                        continue
-                    if (not member.isfile() or member.sparse is not None
-                            or member.name not in expected or member.name in seen):
-                        raise InstallError("local archive has an undeclared, duplicate or special member")
-                    item = expected[member.name]
-                    if member.size != item.bytes or member.mode & 0o111:
-                        raise InstallError("local archive member size or executable mode is invalid")
-                    path = PurePosixPath(item.path)
-                    parent = "" if str(path.parent) == "." else str(path.parent)
-                    descriptor = os.open(path.name, os.O_WRONLY | os.O_CREAT | os.O_EXCL
-                                         | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600,
-                                         dir_fd=opened[parent])
-                    try:
-                        digest = hashlib.sha256()
-                        remaining = item.bytes
-                        contents = archive.extractfile(member)
-                        if contents is None:
-                            raise InstallError("local archive member cannot be read")
-                        with contents:
-                            while remaining:
-                                check()
-                                block = contents.read(min(remaining, 1024 * 1024))
-                                if not block:
-                                    raise InstallError("local archive member ended early")
-                                remaining -= len(block)
-                                digest.update(block)
-                                _write(descriptor, block, check)
-                            if contents.read(1) or digest.hexdigest() != item.sha256:
-                                raise InstallError("local archive member digest does not match")
-                        os.fsync(descriptor)
-                        identities[item.path] = _identity(os.fstat(descriptor))
-                    finally:
-                        os.close(descriptor)
-                    seen.add(item.path)
+                    block = os.pread(archive_fd, min(remaining, 1024 * 1024), offset)
+                    if not block:
+                        raise InstallError("local archive member ended early")
+                    remaining -= len(block)
+                    offset += len(block)
+                    digest.update(block)
+                    _write(descriptor, block, check)
+                if digest.hexdigest() != item.sha256:
+                    raise InstallError("local archive member digest does not match")
+                os.fsync(descriptor)
+                identities[item.path] = _identity(os.fstat(descriptor))
+            finally:
+                os.close(descriptor)
+            seen.add(item.path)
         if seen != expected.keys():
             raise InstallError("local archive is missing a declared member")
         for descriptor in reversed(list(opened.values())):
