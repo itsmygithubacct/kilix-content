@@ -270,14 +270,19 @@ destination symlink is replaced rather than followed.
 ## Catalog contract
 
 The packaged `plebian.json` catalog ships at schema version 4, in canonical
-form — sorted keys, compact separators, UTF-8 — with four exact speech asset
-records. The code-pinned digest covers the canonical bytes and is verified
+form — sorted keys, compact separators, UTF-8 — with four speech model records
+and the exact EnCodec 48 kHz stereo graph asset. The code-pinned digest covers the canonical bytes and is verified
 before parsing. These review candidates retain their complete model and notice
 populations. Their archive URLs name the unpublished candidate namespace; this
 source change does not publish model payloads or claim hardware, listening or
 provider qualification. Each acquisition still requires the exact durable
 informational license receipt. The packaged release identity is `0.2.2`; all
 43 current application records and the shared package record are preserved.
+The EnCodec asset includes its unchanged four native files and four explicit
+model-license/provenance notices. Its consumer schema is
+`kilix.encodec.graphs/v1`, version 1. The 24 kHz user-supplied checkpoint and
+locked local converter remain separate pending inputs; this stereo record
+does not admit the mono graphs.
 Readers accept
 schema versions 1 through 4; a catalog that declares assets below version 4 is
 rejected rather than reinterpreted. Schema version 2 added a top-level

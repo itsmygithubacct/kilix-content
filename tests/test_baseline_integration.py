@@ -219,10 +219,10 @@ class MergedCatalogProjectionTests(unittest.TestCase):
     def setUp(self) -> None:
         self.catalog = default_catalog()
 
-    def test_schema_is_v4_with_the_exact_speech_asset_population(self) -> None:
+    def test_schema_is_v4_with_the_exact_model_asset_population(self) -> None:
         self.assertEqual(self.catalog.schema_version, 4)
         self.assertEqual(tuple(asset.asset_id for asset in self.catalog.assets),
-                         ('qwen3-tts-0.6b-base', 'qwen3-tts-0.6b-customvoice', 'qwen3-tts-1.7b-voicedesign', 'whisper-tiny-ggml'))
+                         ('encodec-48khz-frame', 'qwen3-tts-0.6b-base', 'qwen3-tts-0.6b-customvoice', 'qwen3-tts-1.7b-voicedesign', 'whisper-tiny-ggml'))
 
     def test_every_published_baseline_record_survives(self) -> None:
         identifiers = [entry.content_id for entry in self.catalog]
