@@ -40,6 +40,9 @@ _PUBLIC_SCHEMA_SHA256 = (
 _ASSET_SCHEMA_SHA256 = (
     "89d4865d11d6a537328965a8a903ac07d7dcf0ea14e1b360888f22af7ba5a1a8"
 )
+_ASSET_V2_SCHEMA_SHA256 = (
+    "51f59cfb4d8ebdcda65db0ecb68358cf12a0116b5c450374ee574c9053b3c883"
+)
 # The production trust root. These pin the packaged bytes this build shipped;
 # their provenance is the release closure's pin of this component's commit.
 # Nothing here consults host state, /etc/pleb/session.env, or a release lock.
@@ -336,8 +339,8 @@ class ArtifactBinding:
         return cls(
             spec.asset_id,
             spec.version,
-            _domain_digest(b"kilix.content.asset/v1 record\x00", record),
-            _domain_digest(b"kilix.content.asset/v1 manifest\x00", manifest),
+            _domain_digest((spec.asset_schema + " record\x00").encode("ascii"), record),
+            _domain_digest((spec.asset_schema + " manifest\x00").encode("ascii"), manifest),
         )
 
     @classmethod
@@ -385,10 +388,11 @@ def _packaged_bytes(relative: str, label: str) -> bytes:
 
 
 def _verify_frozen_schema() -> None:
-    """Refuse operation unless both packaged contracts are the frozen ones."""
+    """Refuse operation unless all packaged contracts match their pinned bytes."""
     for relative, expected, label in (
         ("contracts/kilix.install.license-v1.schema.json", _PUBLIC_SCHEMA_SHA256, "license schema"),
         ("contracts/kilix.content.asset-v1.schema.json", _ASSET_SCHEMA_SHA256, "asset schema"),
+        ("contracts/kilix.content.asset-v2.schema.json", _ASSET_V2_SCHEMA_SHA256, "multipart asset schema"),
     ):
         if hashlib.sha256(_packaged_bytes(relative, label)).hexdigest() != expected:
             raise ReceiptError(f"the packaged {label} does not match its frozen digest")

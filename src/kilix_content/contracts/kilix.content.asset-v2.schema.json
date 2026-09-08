@@ -1,0 +1,270 @@
+{
+  "$comment": "Asset v1 is unchanged. This version adds only ordered multipart-mirrored archive transport. Runtime validation additionally requires summed part sizes equal download_bytes, aggregate archive size at most 8 GiB, and temporary_bytes at least download_bytes plus installed_bytes.",
+  "$defs": {
+    "archivePart": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "maximum": 2147483647,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "mirrors": {
+          "items": {
+            "$ref": "#/$defs/uri"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "required": [
+        "bytes",
+        "sha256",
+        "mirrors"
+      ],
+      "type": "object"
+    },
+    "bytes": {
+      "maximum": 9223372036854775807,
+      "minimum": 0,
+      "type": "integer"
+    },
+    "compatibility": {
+      "additionalProperties": false,
+      "properties": {
+        "consumer_schema": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "maximum": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "minimum": {
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "consumer_schema",
+        "minimum",
+        "maximum"
+      ],
+      "type": "object"
+    },
+    "file": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "$ref": "#/$defs/bytes"
+        },
+        "path": {
+          "$ref": "#/$defs/relativePath"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "required": [
+        "path",
+        "bytes",
+        "sha256"
+      ],
+      "type": "object"
+    },
+    "license": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "enum": [
+            "informational",
+            "affirmative",
+            "user-supplied"
+          ]
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "text_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "required": [
+        "id",
+        "text_sha256",
+        "decision"
+      ],
+      "type": "object"
+    },
+    "multipartMirrored": {
+      "additionalProperties": false,
+      "properties": {
+        "archive_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "mode": {
+          "const": "multipart-mirrored"
+        },
+        "parts": {
+          "items": {
+            "$ref": "#/$defs/archivePart"
+          },
+          "maxItems": 64,
+          "minItems": 1,
+          "type": "array"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "mode",
+        "parts",
+        "archive_sha256",
+        "provenance"
+      ],
+      "type": "object"
+    },
+    "provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "original_url": {
+          "$ref": "#/$defs/uri"
+        },
+        "project": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "revision": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "project",
+        "revision",
+        "original_url"
+      ],
+      "type": "object"
+    },
+    "relativePath": {
+      "maxLength": 4096,
+      "minLength": 1,
+      "pattern": "^(?!/)(?!.*\\\\)(?!.*//)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*(?:^|/)\\.(?:/|$))[^\\u0000]+$",
+      "type": "string"
+    },
+    "sha256": {
+      "pattern": "^[a-f0-9]{64}$",
+      "type": "string"
+    },
+    "sizes": {
+      "additionalProperties": false,
+      "properties": {
+        "download_bytes": {
+          "maximum": 8589934592,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "installed_bytes": {
+          "$ref": "#/$defs/bytes"
+        },
+        "temporary_bytes": {
+          "$ref": "#/$defs/bytes"
+        }
+      },
+      "required": [
+        "download_bytes",
+        "installed_bytes",
+        "temporary_bytes"
+      ],
+      "type": "object"
+    },
+    "uri": {
+      "format": "uri",
+      "pattern": "^https://",
+      "type": "string"
+    }
+  },
+  "$id": "https://schemas.kilix.dev/kilix.content.asset/v2",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "compatibility": {
+      "$ref": "#/$defs/compatibility"
+    },
+    "files": {
+      "items": {
+        "$ref": "#/$defs/file"
+      },
+      "maxItems": 100000,
+      "minItems": 1,
+      "type": "array"
+    },
+    "id": {
+      "maxLength": 128,
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+      "type": "string"
+    },
+    "label": {
+      "maxLength": 256,
+      "minLength": 1,
+      "type": "string"
+    },
+    "licenses": {
+      "items": {
+        "$ref": "#/$defs/license"
+      },
+      "minItems": 1,
+      "type": "array",
+      "uniqueItems": true
+    },
+    "provider": {
+      "maxLength": 128,
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+      "type": "string"
+    },
+    "schema": {
+      "const": "kilix.content.asset/v2"
+    },
+    "sizes": {
+      "$ref": "#/$defs/sizes"
+    },
+    "source": {
+      "$ref": "#/$defs/multipartMirrored"
+    },
+    "stream": {
+      "pattern": "^F[0-9]{3}$",
+      "type": "string"
+    },
+    "version": {
+      "maxLength": 128,
+      "minLength": 1,
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema",
+    "id",
+    "label",
+    "provider",
+    "stream",
+    "version",
+    "files",
+    "source",
+    "sizes",
+    "licenses",
+    "compatibility"
+  ],
+  "title": "Kilix immutable content asset with multipart archive transport",
+  "type": "object"
+}

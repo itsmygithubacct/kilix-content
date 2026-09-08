@@ -13,6 +13,7 @@ import selectors
 import shutil
 import signal
 import stat
+import sys
 import unicodedata
 
 # Child processes always receive an argv array and never invoke a shell.
@@ -28,7 +29,15 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
-from .model import AssetSpec, Catalog, CatalogError, ContentSpec
+from .model import (
+    MAX_ASSET_PARTS,
+    MAX_MULTIPART_ARCHIVE_BYTES,
+    AssetPartSpec,
+    AssetSpec,
+    Catalog,
+    CatalogError,
+    ContentSpec,
+)
 from .receipt import (
     BindingMismatch,
     ReceiptError,
@@ -49,6 +58,8 @@ _CONVERTER_TIMEOUT_SECONDS = 15 * 60.0
 _CONVERTER_TERMINATE_GRACE_SECONDS = 2.0
 _CONVERTER_ATTESTATION_BYTES = 512
 _CONVERTER_ATTESTATION_SCHEMA = "kilix.content.converter-attestation/v1"
+_MULTIPART_DOWNLOAD_SECONDS = 3600.0
+_MULTIPART_PLAN_BYTES = 16 * 1024 * 1024
 
 
 class InstallError(RuntimeError):
@@ -317,6 +328,248 @@ def download(
     raise InstallError(
         f"all {len(candidates)} content download candidates failed ({error_type})"
     ) from None
+
+
+class _HTTPSPartRedirects(urllib.request.HTTPRedirectHandler):
+    """Keep public part downloads on HTTPS, including signed CDN redirects."""
+
+    def redirect_request(self, request, response, code, message, headers, newurl):
+        try:
+            target = urlsplit(newurl)
+            permitted = (
+                target.scheme == "https" and bool(target.hostname)
+                and target.username is None and target.password is None
+            )
+            target.port
+        except (TypeError, ValueError):
+            permitted = False
+        if not permitted:
+            raise InstallError("archive part redirect must stay on HTTPS")
+        return super().redirect_request(request, response, code, message, headers, newurl)
+
+
+def _assemble_multipart_asset(
+    parts: tuple[AssetPartSpec, ...],
+    expected_bytes: int,
+    expected_sha256: str,
+    destination: str,
+    report: Report,
+) -> None:
+    """Assemble one private archive, verifying each part and the complete bytes.
+
+    Failed mirrors are truncated back to their part boundary. Only the current
+    read block is held in memory; no separate on-disk part copy is needed.
+    Nothing replaces the destination until every byte identity has matched.
+    """
+    destination = os.path.abspath(destination)
+    opener = urllib.request.build_opener(_HTTPSPartRedirects())
+    deadline = time.monotonic() + _MULTIPART_DOWNLOAD_SECONDS
+    descriptor, temporary = tempfile.mkstemp(
+        prefix=".archive-parts-", dir=os.path.dirname(destination)
+    )
+    try:
+        output = os.fdopen(descriptor, "w+b")
+        descriptor = -1
+        with output:
+            archive_digest = hashlib.sha256()
+            for index, part in enumerate(parts):
+                report(f"downloading part {index + 1} of {len(parts)} …")
+                position = output.tell()
+                completed = False
+                for url in part.mirrors:
+                    output.seek(position)
+                    output.truncate()
+                    remaining_time = deadline - time.monotonic()
+                    if remaining_time <= 0:
+                        raise InstallError("archive download exceeded its time budget")
+                    trial_digest = archive_digest.copy()
+                    part_digest = hashlib.sha256()
+                    count = 0
+                    request = urllib.request.Request(url, headers={"User-Agent": "kilix-content/0.4"})
+                    try:
+                        with opener.open(request, timeout=min(60.0, remaining_time)) as response:
+                            while count < part.bytes:
+                                if time.monotonic() >= deadline:
+                                    raise InstallError("archive download exceeded its time budget")
+                                block = response.read(min(1024 * 1024, part.bytes - count))
+                                if not block or len(block) > part.bytes - count:
+                                    raise InstallError("archive part has an invalid byte count")
+                                if output.write(block) != len(block):
+                                    raise InstallError("archive part write was incomplete")
+                                count += len(block)
+                                part_digest.update(block)
+                                trial_digest.update(block)
+                            if response.read(1):
+                                raise InstallError("archive part exceeds its declared byte count")
+                        if time.monotonic() >= deadline:
+                            raise InstallError("archive download exceeded its time budget")
+                        if part_digest.hexdigest() != part.sha256:
+                            raise InstallError("archive part failed SHA-256 verification")
+                        archive_digest = trial_digest
+                        completed = True
+                        break
+                    except Exception:  # any failed mirror is rolled back before retry
+                        continue
+                if not completed:
+                    raise InstallError(f"archive part {index + 1} has no verified mirror") from None
+            output.flush()
+            if (
+                os.fstat(output.fileno()).st_size != expected_bytes
+                or archive_digest.hexdigest() != expected_sha256
+            ):
+                raise InstallError("assembled archive failed exact verification")
+        os.replace(temporary, destination)
+        temporary = ""
+    finally:
+        if descriptor >= 0:
+            os.close(descriptor)
+        if temporary:
+            try:
+                os.unlink(temporary)
+            except FileNotFoundError:
+                pass
+
+
+def _multipart_worker_main(plan_path: str, plan_digest: str, destination: str) -> int:
+    """Private worker entry; validate actual plan bytes before using any URL."""
+    try:
+        descriptor = os.open(
+            plan_path, os.O_RDONLY | os.O_CLOEXEC | os.O_NOFOLLOW | os.O_NONBLOCK
+        )
+        try:
+            info = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
+                or info.st_mode & 0o077 or not 0 < info.st_size <= _MULTIPART_PLAN_BYTES
+            ):
+                raise InstallError("invalid archive acquisition plan")
+            remaining = info.st_size
+            blocks = []
+            while remaining:
+                block = os.read(descriptor, min(1024 * 1024, remaining))
+                if not block:
+                    raise InstallError("incomplete archive acquisition plan")
+                blocks.append(block)
+                remaining -= len(block)
+            if os.read(descriptor, 1):
+                raise InstallError("archive acquisition plan grew")
+        finally:
+            os.close(descriptor)
+        payload = b"".join(blocks)
+        if hashlib.sha256(payload).hexdigest() != plan_digest:
+            raise InstallError("archive acquisition plan changed")
+        plan = json.loads(payload)
+        if not isinstance(plan, dict) or set(plan) != {"parts", "bytes", "sha256"}:
+            raise InstallError("invalid archive acquisition plan")
+        if not isinstance(plan["parts"], list) or not 1 <= len(plan["parts"]) <= MAX_ASSET_PARTS:
+            raise InstallError("invalid archive acquisition part count")
+        parts = tuple(AssetPartSpec.from_mapping(part, "archive part") for part in plan["parts"])
+        if (
+            type(plan["bytes"]) is not int
+            or not 0 < plan["bytes"] <= MAX_MULTIPART_ARCHIVE_BYTES
+            or sum(part.bytes for part in parts) != plan["bytes"]
+            or not isinstance(plan["sha256"], str)
+            or len(plan["sha256"]) != 64
+            or any(character not in "0123456789abcdef" for character in plan["sha256"])
+        ):
+            raise InstallError("invalid archive acquisition identity")
+        _assemble_multipart_asset(parts, plan["bytes"], plan["sha256"], destination, lambda _message: None)
+        return 0
+    except Exception:
+        # URL/CDN diagnostics can contain tokens. Never emit exception text.
+        return 1
+
+
+def _download_multipart_asset(spec: AssetSpec, destination: str, report: Report) -> None:
+    """Supervise the whole network operation, including DNS, TLS and headers.
+
+    Socket timeouts alone do not bound peers that continually trickle headers
+    or chunk framing. The existing owned-process runner enforces the outer
+    wall deadline and reaps its worker before selection or staging cleanup.
+    """
+    if not math.isfinite(_MULTIPART_DOWNLOAD_SECONDS) or _MULTIPART_DOWNLOAD_SECONDS <= 0:
+        raise InstallError("archive download exceeded its time budget")
+    destination = os.path.abspath(destination)
+    plan = json.dumps({
+        "parts": [{"bytes": part.bytes, "sha256": part.sha256, "mirrors": list(part.mirrors)} for part in spec.parts],
+        "bytes": spec.download_bytes,
+        "sha256": spec.archive_sha256,
+    }, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    if len(plan) > _MULTIPART_PLAN_BYTES:
+        raise InstallError("archive acquisition plan exceeds its byte budget")
+    stage = tempfile.mkdtemp(prefix=".archive-acquire-", dir=os.path.dirname(destination))
+    cleanup = True
+    try:
+        plan_path = os.path.join(stage, "plan.json")
+        descriptor = os.open(plan_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC, 0o600)
+        try:
+            remaining = memoryview(plan)
+            while remaining:
+                count = os.write(descriptor, remaining)
+                if count <= 0:
+                    raise InstallError("archive acquisition plan write failed")
+                remaining = remaining[count:]
+        finally:
+            os.close(descriptor)
+        assembled = os.path.join(stage, "archive")
+        # Only this installed package and the standard library are imported.
+        # Isolated Python and a small environment exclude ambient code hooks.
+        bootstrap = (
+            "import sys; sys.path.insert(0, sys.argv.pop(1)); "
+            "from kilix_content.install import _multipart_worker_main; "
+            "raise SystemExit(_multipart_worker_main(*sys.argv[1:]))"
+        )
+        environment = {"PATH": "/usr/bin:/bin", "LANG": "C.UTF-8", "HOME": stage}
+        for key in ("SSL_CERT_FILE", "SSL_CERT_DIR", "https_proxy", "HTTPS_PROXY", "all_proxy", "ALL_PROXY", "no_proxy", "NO_PROXY"):
+            if key in os.environ:
+                environment[key] = os.environ[key]
+        report(f"downloading {len(spec.parts)} verified archive parts …")
+        try:
+            status, _tail = _run_with_tail(
+                [sys.executable, "-I", "-S", "-c", bootstrap,
+                 os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                 plan_path, hashlib.sha256(plan).hexdigest(), assembled],
+                cwd=stage, env=environment, timeout=_MULTIPART_DOWNLOAD_SECONDS,
+            )
+        except _CleanupRefusal:
+            # Never remove a live worker's files if teardown could not finish.
+            cleanup = False
+            raise
+        except (OSError, InstallError):
+            raise InstallError("archive download failed or exceeded its time budget") from None
+        if status:
+            raise InstallError("archive download failed exact verification")
+        descriptor = os.open(assembled, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
+        try:
+            info = os.fstat(descriptor)
+            if (
+                not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid()
+                or info.st_mode & 0o077 or info.st_size != spec.download_bytes
+            ):
+                raise InstallError("assembled archive has invalid metadata")
+            remaining_bytes = info.st_size
+            digest = hashlib.sha256()
+            while remaining_bytes:
+                block = os.read(descriptor, min(1024 * 1024, remaining_bytes))
+                if not block:
+                    raise InstallError("assembled archive is incomplete")
+                digest.update(block)
+                remaining_bytes -= len(block)
+            if os.read(descriptor, 1) or digest.hexdigest() != spec.archive_sha256:
+                raise InstallError("assembled archive failed exact verification")
+            current = os.lstat(assembled)
+            if (current.st_dev, current.st_ino, current.st_size, current.st_mtime_ns, current.st_ctime_ns) != (
+                info.st_dev, info.st_ino, info.st_size, info.st_mtime_ns, info.st_ctime_ns
+            ):
+                raise InstallError("assembled archive changed before selection")
+            os.replace(assembled, destination)
+        finally:
+            os.close(descriptor)
+    except OSError:
+        raise InstallError("archive staging failed") from None
+    finally:
+        if cleanup:
+            shutil.rmtree(stage)
 
 
 _CHILD_COMMAND_LABEL = "child command"
@@ -1715,7 +1968,10 @@ class Installer:
         archive_path = os.path.join(stage, ".download")
         output = os.path.join(stage, "content")
         os.mkdir(output, 0o700)
-        download(spec.mirrors, archive_path, report, spec.archive_sha256)
+        if spec.source_mode == "multipart-mirrored":
+            _download_multipart_asset(spec, archive_path, report)
+        else:
+            download(spec.mirrors, archive_path, report, spec.archive_sha256)
         try:
             with tarfile.open(archive_path, "r:*") as archive:
                 safe_extract_tar(archive, output)
@@ -1825,7 +2081,7 @@ class Installer:
         ready = self._asset_integrity_ready(spec)
         if ready is not None:
             return ready
-        if spec.source_mode == "mirrored":
+        if spec.source_mode in ("mirrored", "multipart-mirrored"):
             if input_path is not None or catalog is not None:
                 raise InstallError("mirrored assets do not accept user input")
         elif spec.source_mode == "user-supplied":
@@ -1848,7 +2104,7 @@ class Installer:
                 )
             stage = tempfile.mkdtemp(prefix=".asset-install-", dir=parent)
             try:
-                if spec.source_mode == "mirrored":
+                if spec.source_mode in ("mirrored", "multipart-mirrored"):
                     output = self._populate_mirrored_asset(spec, stage, report)
                     return self._finalize_asset_stage(
                         spec, store, release, output, destination

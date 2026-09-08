@@ -7,6 +7,10 @@ pre-1.0.
 
 ### Added
 
+- Add versioned multipart archive transport with per-part byte/hash checks,
+  complete archive verification, bounded sequential assembly, HTTPS-only
+  redirects and exact license/selection binding. Existing asset-v1 and
+  license-v1 contracts remain unchanged.
 - Catalog Kilix Land, the cross-game conversation room and training range,
   at an immutable commit with the shared `make all` game build.
 - Catalog the Tmux Sessions manager as a system entry dispatched through

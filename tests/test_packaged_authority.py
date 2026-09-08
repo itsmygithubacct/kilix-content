@@ -33,6 +33,7 @@ from kilix_content import (
 from kilix_content import receipt as receipt_module
 from kilix_content.receipt import (
     _ASSET_SCHEMA_SHA256,
+    _ASSET_V2_SCHEMA_SHA256,
     _CATALOG_RESOURCE,
     _CATALOG_SHA256,
     _PUBLIC_SCHEMA_SHA256,
@@ -146,6 +147,7 @@ class PackagedCatalogTests(unittest.TestCase):
         for relative, expected in (
             ("contracts/kilix.install.license-v1.schema.json", _PUBLIC_SCHEMA_SHA256),
             ("contracts/kilix.content.asset-v1.schema.json", _ASSET_SCHEMA_SHA256),
+            ("contracts/kilix.content.asset-v2.schema.json", _ASSET_V2_SCHEMA_SHA256),
         ):
             with self.subTest(relative=relative):
                 payload = _packaged_bytes(relative, "schema")

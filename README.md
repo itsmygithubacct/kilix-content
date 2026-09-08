@@ -80,6 +80,23 @@ assert files.lifecycle.degrades_inplace
 ```
 
 Schema version 4 adds immutable non-executable assets alongside applications.
+Asset record `kilix.content.asset/v2` supports an ordered multipart archive
+when one download would exceed a mirror's object limit. It retains the exact
+original archive SHA-256 and installed file population. Each part has its own
+HTTPS mirrors, byte count and SHA-256. Parts download sequentially into one
+private archive; failed mirrors roll back only their part, and the complete
+archive must verify before extraction. No model conversion is involved.
+The existing asset-v1 and license-v1 contracts retain their exact bytes.
+
+Multipart records allow at most 64 parts, each smaller than 2 GiB, and at most
+8 GiB in the complete archive. Declared temporary space covers both assembly
+and extraction. A supervised worker enforces a one-hour wall deadline across
+DNS, TLS, headers and body reads, then is reaped before selection or cleanup.
+Each connection/read also has a timeout of at most 60 seconds. HTTPS redirects to
+signed CDN URLs work; redirects to plaintext or credential-bearing authorities
+refuse. A failure preserves any earlier selection and removes staging data.
+License receipts bind the full v2 record, including part order and identities.
+
 Assets have version-qualified manifests, per-file SHA-256 and size, mirrored or
 user-supplied acquisition, exact license decisions, compatibility bounds, and
 explicit stream/provider ownership. `Catalog.require_asset()` returns the typed

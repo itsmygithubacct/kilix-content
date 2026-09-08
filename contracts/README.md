@@ -63,3 +63,18 @@ timestamps fail rather than being treated as annotations. A valid fixture must
 pass exactly its named schema. Each invalid fixture pins its expected failing
 instance path and validator keyword so rejection for an unrelated reason does
 not conceal a schema regression.
+# Multipart asset successor
+
+`kilix.content.asset-v2.schema.json` adds ordered multipart archive transport.
+The frozen asset-v1 and license-v1 files are unchanged. V2 requires a
+`multipart-mirrored` source containing 1–64 ordered parts, each with exact size,
+SHA-256 and up to eight HTTPS mirrors, plus the original complete archive
+SHA-256. Each part is smaller than 2 GiB; the assembled archive is at most 8 GiB.
+Runtime checks require the part sizes to sum to `sizes.download_bytes` and
+`temporary_bytes` to cover download plus installed bytes. Existing file,
+license, provenance and compatibility validation still applies.
+
+Readers that implement only v1 must refuse v2. It is never reinterpreted as a
+single mirrored archive. The installed file population and model bytes do not
+change when an archive is split for transport. Receipts bind the complete new
+record; a receipt for a different part population or order cannot authorize it.

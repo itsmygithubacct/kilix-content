@@ -67,6 +67,9 @@ _MAX_ACTIONS = 64
 _MAX_ACCEPTED_INPUTS = 64
 _MAX_ASSETS = 4096
 _MAX_ASSET_FILES = 100000
+MAX_ASSET_PARTS = 64
+MAX_ASSET_PART_BYTES = 2 * 1024**3 - 1
+MAX_MULTIPART_ARCHIVE_BYTES = 8 * 1024**3
 _MAX_SEQUENCE_ITEMS = 256
 _MAX_TEXT_LENGTH = 4096
 _MAX_CATALOG_DEPTH = 64
@@ -337,6 +340,31 @@ class AssetLicenseSpec:
 
 
 @dataclass(frozen=True)
+class AssetPartSpec:
+    """One ordered, exactly sized and hashed archive transport part."""
+
+    bytes: int
+    sha256: str
+    mirrors: tuple[str, ...]
+
+    @classmethod
+    def from_mapping(cls, raw: Mapping[str, Any], label: str) -> AssetPartSpec:
+        raw = _mapping(raw, label)
+        _known_keys(raw, frozenset(("bytes", "sha256", "mirrors")), label)
+        size = _byte_count(raw.get("bytes"), f"{label}.bytes")
+        if not 0 < size <= MAX_ASSET_PART_BYTES:
+            raise CatalogError(f"{label}.bytes is outside the part budget")
+        digest = raw.get("sha256")
+        if not isinstance(digest, str):
+            raise CatalogError(f"{label}.sha256 must be a string")
+        digest = _exact_hex(digest, 64, f"{label}.sha256")
+        mirrors = _string_tuple(raw.get("mirrors"), f"{label}.mirrors", unique=True, maximum=8)
+        if not mirrors:
+            raise CatalogError(f"{label}.mirrors must not be empty")
+        return cls(size, digest, tuple(_https_url(url, f"{label}.mirrors") for url in mirrors))
+
+
+@dataclass(frozen=True)
 class AssetSpec:
     """A validated immutable non-executable asset record."""
 
@@ -365,6 +393,8 @@ class AssetSpec:
     consumer_schema: str
     compatibility_minimum: int
     compatibility_maximum: int
+    asset_schema: str = "kilix.content.asset/v1"
+    parts: tuple[AssetPartSpec, ...] = ()
 
     def to_mapping(self) -> dict[str, Any]:
         """Return the canonical language-neutral asset record mapping."""
@@ -378,6 +408,16 @@ class AssetSpec:
                 "archive_sha256": self.archive_sha256,
                 "mirrors": list(self.mirrors),
                 "mode": "mirrored",
+                "provenance": provenance,
+            }
+        elif self.source_mode == "multipart-mirrored":
+            source = {
+                "archive_sha256": self.archive_sha256,
+                "mode": "multipart-mirrored",
+                "parts": [
+                    {"bytes": part.bytes, "sha256": part.sha256, "mirrors": list(part.mirrors)}
+                    for part in self.parts
+                ],
                 "provenance": provenance,
             }
         else:
@@ -415,7 +455,7 @@ class AssetSpec:
                 for item in self.licenses
             ],
             "provider": self.provider,
-            "schema": "kilix.content.asset/v1",
+            "schema": self.asset_schema,
             "sizes": {
                 "download_bytes": self.download_bytes,
                 "installed_bytes": self.installed_bytes,
@@ -457,7 +497,7 @@ class AssetSpec:
         missing = next((key for key in required if key not in raw), None)
         if missing is not None:
             raise CatalogError(f"asset entry is missing {missing!r}")
-        if raw["schema"] != "kilix.content.asset/v1":
+        if raw["schema"] not in ("kilix.content.asset/v1", "kilix.content.asset/v2"):
             raise CatalogError("asset entry has unsupported schema")
         asset_id = _content_id(raw["id"], "asset id")
         label = _nonempty_text(raw["label"], f"{asset_id}.label", maximum=256)
@@ -535,11 +575,30 @@ class AssetSpec:
         source = _mapping(raw["source"], f"{asset_id}.source")
         source_mode = source.get("mode")
         mirrors: tuple[str, ...] = ()
+        parts: tuple[AssetPartSpec, ...] = ()
         official_url = archive_sha256 = input_sha256 = reason = ""
         input_bytes = 0
         conversion_tool_asset_id = ""
         conversion_argv: tuple[str, ...] = ()
-        if source_mode == "mirrored":
+        if raw["schema"] == "kilix.content.asset/v2" and source_mode != "multipart-mirrored":
+            raise CatalogError(f"{asset_id}: asset v2 requires multipart-mirrored source")
+        if source_mode == "multipart-mirrored":
+            if raw["schema"] != "kilix.content.asset/v2":
+                raise CatalogError(f"{asset_id}: multipart source requires asset v2")
+            _known_keys(source, frozenset(("mode", "parts", "archive_sha256", "provenance")), f"{asset_id}.source")
+            raw_parts = source.get("parts")
+            if not isinstance(raw_parts, list) or not 1 <= len(raw_parts) <= MAX_ASSET_PARTS:
+                raise CatalogError(f"{asset_id}.source.parts is outside the part count budget")
+            parts = tuple(AssetPartSpec.from_mapping(part, f"{asset_id}.source.parts[{index}]") for index, part in enumerate(raw_parts))
+            if sum(part.bytes for part in parts) != download_bytes or download_bytes > MAX_MULTIPART_ARCHIVE_BYTES:
+                raise CatalogError(f"{asset_id}.source.parts does not match the bounded archive size")
+            if temporary_bytes < download_bytes + installed_bytes:
+                raise CatalogError(f"{asset_id}.sizes.temporary_bytes omits assembly or extraction space")
+            digest = source.get("archive_sha256")
+            if not isinstance(digest, str):
+                raise CatalogError(f"{asset_id}.source.archive_sha256 must be a string")
+            archive_sha256 = _exact_hex(digest, 64, f"{asset_id}.source.archive_sha256")
+        elif source_mode == "mirrored":
             _known_keys(source, frozenset(("mode", "mirrors", "archive_sha256", "provenance")), f"{asset_id}.source")
             mirrors = _string_tuple(
                 source.get("mirrors"),
@@ -600,6 +659,7 @@ class AssetSpec:
             provenance_project, provenance_revision, provenance_url,
             download_bytes, installed_bytes, temporary_bytes, licenses,
             consumer_schema, compatibility_minimum, compatibility_maximum,
+            raw["schema"], parts,
         )
 
 
