@@ -1919,6 +1919,25 @@ class Installer:
         store.require_asset(spec, release)
         return self._asset_integrity_ready(spec)
 
+    def open_asset(
+        self, spec: AssetSpec, store: ReceiptStore, release: ReleaseContext, *,
+        maximum_bytes: int, timeout: float = 120.0,
+        cancelled: Callable[[], bool] | None = None,
+    ):
+        """Open authorized installed bytes as owned immutable member snapshots.
+
+        The caller must supply its total snapshot memory budget. Use the result
+        as a context manager and close each descriptor returned by duplicate().
+        Cancellation and timeout are checked between bounded local file reads.
+        """
+        from .installed import _open_installed_asset
+
+        spec = self._validated_asset_spec(spec)
+        return _open_installed_asset(
+            self.asset_destination(spec), spec, store, release,
+            maximum_bytes=maximum_bytes, timeout=timeout, cancelled=cancelled,
+        )
+
     def _asset_integrity_ready(self, spec: AssetSpec) -> tuple[str, ...] | None:
         """Probe exact bytes without creating a usable, authorization-bypassing API."""
         selected = self.asset_destination(spec)

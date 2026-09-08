@@ -24,6 +24,7 @@ from .model import (
     LifecycleSpec,
     PackageSpec,
 )
+from .installed import InstalledAsset, InstalledAssetError
 from .receipt import (
     BindingMismatch,
     DecisionDeclined,
@@ -68,6 +69,8 @@ __all__ = [
     "DecisionInvalid",
     "DurabilityUnknown",
     "InstallError",
+    "InstalledAsset",
+    "InstalledAssetError",
     "Installer",
     "LicenseDecision",
     "LifecycleSpec",

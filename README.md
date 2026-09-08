@@ -109,6 +109,25 @@ the exact release-catalog and asset binding. `Installer.ensure_asset()` has the
 same mandatory store/context parameters and repeats authorization immediately
 before atomic selection; informational licenses are not a bypass.
 
+`Installer.open_asset(spec, store, release, maximum_bytes=...)` gives providers
+immutable installed model bytes. Use its `InstalledAsset` result as a context
+manager; `duplicate(member_path)` returns a caller-owned, read-only, sealed,
+close-on-exec descriptor with an independent read offset. Close every returned
+descriptor. The result carries the exact packaged release/catalog, asset record
+and manifest binding, plus the durable receipt identities checked before and
+after copying. It creates no receipt and performs no download or installation.
+
+Opening checks the entire declared population through pinned, no-follow
+directory descriptors and copies only the exact declared size and SHA-256 of
+each owned regular non-executable file. Unexpected entries, links, shared
+writable paths, mutation, FIFO replacement and changed authorization refuse;
+partial snapshots are closed. The caller supplies the total snapshot memory
+budget, at most 8 GiB, with ceilings of 256 files, 256 asset directories and 32
+member path components. Optional cancellation and a bounded timeout are checked
+between local reads. These bounds do not establish available RAM or an F106
+fit. Providers must retain their own actual-byte validation. This packaged
+authority result is not the separate install-transaction/U1 lineage contract.
+
 The frozen public `kilix.install.license/v1` decision/receipt contract is
 packaged with the library and verified against its pinned SHA-256 at runtime.
 `LicenseDecision.loads()` provides bounded UTF-8 JSON parsing with duplicate-key
