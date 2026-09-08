@@ -85,7 +85,7 @@ class ContentTests(unittest.TestCase):
         self.assertEqual(files.install_id, "kilix-tui-utils")
         self.assertEqual(system.install_id, "kilix-tui-utils")
         self.assertEqual(
-            files.ref, "dc462372aa7417fa9bfccd82b8312d62d1077f82"
+            files.ref, "b53c2595c38daeb048ce9bcc17afc9aad982c670"
         )
         self.assertEqual(files.require_action("open").argv, ("--open",))
         self.assertIn("application/pdf", pdf_conversion.accepts)
