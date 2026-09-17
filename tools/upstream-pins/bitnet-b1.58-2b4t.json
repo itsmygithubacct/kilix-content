@@ -1,0 +1,65 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "bitnet-b1.58-2b4t",
+  "mode": "upstream-files",
+  "license_record_id": "bitnet-b1.58-2b4t",
+  "provider": "kilix-bonsai",
+  "consumer_schema": "kilix.bonsai.runtime",
+  "version": "a1f2f1c765812aa8af3f6eda4a313707064bba15",
+  "destination": "$KILIX_BONSAI_MODELS_DIR/bitnet-b1.58-2b4t",
+  "provenance": {
+    "project": "microsoft/bitnet-b1.58-2B-4T-gguf",
+    "revision": "a1f2f1c765812aa8af3f6eda4a313707064bba15",
+    "original_url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T-gguf/resolve/a1f2f1c765812aa8af3f6eda4a313707064bba15/ggml-model-i2_s.gguf"
+  },
+  "members": [
+    {
+      "path": "ggml-model-i2_s.gguf",
+      "url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T-gguf/resolve/a1f2f1c765812aa8af3f6eda4a313707064bba15/ggml-model-i2_s.gguf",
+      "bytes": 1187801280,
+      "sha256": "4221b252fdd5fd25e15847adfeb5ee88886506ba50b8a34548374492884c2162"
+    },
+    {
+      "path": "README.md",
+      "url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T-gguf/resolve/a1f2f1c765812aa8af3f6eda4a313707064bba15/README.md",
+      "bytes": 8935,
+      "sha256": "e1349711c3be1e2f72719ea01ae03639caa008818e1fb4740c2f344ad5c0cd2c"
+    },
+    {
+      "path": "tokenizer.json",
+      "url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T/resolve/04c3b9ad9361b824064a1f25ea60a8be9599b127/tokenizer.json",
+      "bytes": 9085698,
+      "sha256": "e134af98b985517b4f068e3755ae90d4e9cd2d45d328325dc503f1c6b2d06cc7"
+    },
+    {
+      "path": "tokenizer_config.json",
+      "url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T/resolve/04c3b9ad9361b824064a1f25ea60a8be9599b127/tokenizer_config.json",
+      "bytes": 50834,
+      "sha256": "d27b698683435b0b0dd544a591a30196b2b63f5fd4c8c64b9060a84dc185386f"
+    },
+    {
+      "path": "special_tokens_map.json",
+      "url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T/resolve/04c3b9ad9361b824064a1f25ea60a8be9599b127/special_tokens_map.json",
+      "bytes": 73,
+      "sha256": "462d91939dbc37178aa5a3eae7068d1990ccc92e09f288cc71f42cdf139d69cc"
+    },
+    {
+      "path": "config.json",
+      "url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T/resolve/04c3b9ad9361b824064a1f25ea60a8be9599b127/config.json",
+      "bytes": 844,
+      "sha256": "2b43e80788972e6d53967b01ac3609d7df23cf0aabb0c866e51be694a59c1149"
+    },
+    {
+      "path": "generation_config.json",
+      "url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T/resolve/04c3b9ad9361b824064a1f25ea60a8be9599b127/generation_config.json",
+      "bytes": 199,
+      "sha256": "af34a37cd006fd230106fcefc6bfdc1f775503aee05a80c174ccc5c6594f7054"
+    },
+    {
+      "path": "LICENSE",
+      "url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T/resolve/04c3b9ad9361b824064a1f25ea60a8be9599b127/LICENSE",
+      "bytes": 1073,
+      "sha256": "646f8936b8ddcd14e13e578ff6857e368780b0d1a4f6066bee89211923a373e2"
+    }
+  ]
+}

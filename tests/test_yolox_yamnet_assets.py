@@ -170,8 +170,16 @@ class YoloxYamnetAssetTests(unittest.TestCase):
                 parsed = urlsplit(item.url)
                 self.assertEqual(parsed.scheme, "https")
                 self.assertFalse(_is_kilix_hosted(item.url), item.url)
+            for item in spec.blobs:
+                parsed = urlsplit(item.url)
+                self.assertEqual(parsed.scheme, "https")
+                self.assertFalse(_is_kilix_hosted(item.url), item.url)
             if spec.source_mode == "upstream-archive":
                 self.assertFalse(_is_kilix_hosted(spec.url), spec.url)
+            if spec.source_mode == "upstream-convert":
+                self.assertFalse(_is_kilix_hosted(spec.convert_url), spec.convert_url)
+            if spec.source_mode == "registry-manifest":
+                self.assertFalse(_is_kilix_hosted(spec.manifest_url), spec.manifest_url)
 
     def test_planted_kilix_host_url_is_refused(self) -> None:
         record = self.records.by_id("yamnet")

@@ -2683,6 +2683,751 @@
       },
       "stream": "F104",
       "version": "float32/1"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.bonsai.runtime",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 1158654496,
+          "path": "Bonsai-8B-Q1_0.gguf",
+          "sha256": "284a335aa3fb2ced3b1b01fcb40b08aa783e3b70832767f0dd2e3fdfa134bd54"
+        },
+        {
+          "bytes": 10174,
+          "path": "LICENSE",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b"
+        },
+        {
+          "bytes": 412,
+          "path": "NOTICE.txt",
+          "sha256": "7334e66ce48a4ee267ee936c7d2a4f16bd865c766c60ba56b9e04526fae33e0b"
+        },
+        {
+          "bytes": 11676,
+          "path": "README.md",
+          "sha256": "14c8f3000f2d58544ca7355ff6edc0d9873bf592a057d64ed298648ada82ae88"
+        },
+        {
+          "bytes": 10174,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b"
+        }
+      ],
+      "id": "bonsai-8b",
+      "label": "bonsai-8b",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "Prism ML, Inc."
+          ],
+          "record_digest": "801f79b86d3296224ff8ec2d839bb936144bca0fce05a82ae1d13041cb0b4eb7",
+          "text_sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b"
+        }
+      ],
+      "provider": "kilix-bonsai",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 1158676758,
+        "installed_bytes": 1158686932,
+        "temporary_bytes": 1158686932
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "Bonsai-8B-Q1_0.gguf",
+            "url": "https://huggingface.co/prism-ml/Bonsai-8B-gguf/resolve/48516770dd04643643e9f9019a2a349cf26c5dbd/Bonsai-8B-Q1_0.gguf"
+          },
+          {
+            "path": "LICENSE",
+            "url": "https://huggingface.co/prism-ml/Bonsai-8B-gguf/resolve/48516770dd04643643e9f9019a2a349cf26c5dbd/LICENSE"
+          },
+          {
+            "path": "NOTICE.txt",
+            "url": "https://huggingface.co/prism-ml/Bonsai-8B-gguf/resolve/48516770dd04643643e9f9019a2a349cf26c5dbd/NOTICE.txt"
+          },
+          {
+            "path": "README.md",
+            "url": "https://huggingface.co/prism-ml/Bonsai-8B-gguf/resolve/48516770dd04643643e9f9019a2a349cf26c5dbd/README.md"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "prism-ml/Bonsai-8B-gguf",
+          "revision": "48516770dd04643643e9f9019a2a349cf26c5dbd",
+          "original_url": "https://huggingface.co/prism-ml/Bonsai-8B-gguf/resolve/48516770dd04643643e9f9019a2a349cf26c5dbd/Bonsai-8B-Q1_0.gguf"
+        }
+      },
+      "stream": "F104",
+      "version": "48516770dd04643643e9f9019a2a349cf26c5dbd"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.bonsai.runtime",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 3803452480,
+          "path": "Bonsai-27B-Q1_0.gguf",
+          "sha256": "17ef842e47450caeb8eaa3ebfbbab5d2f2278b62b79be107985fb69a2f819aa0"
+        },
+        {
+          "bytes": 10174,
+          "path": "LICENSE.txt",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b"
+        },
+        {
+          "bytes": 411,
+          "path": "NOTICE.txt",
+          "sha256": "cef33f95425f9802de78b7b22db0faca84d2216661432a9afcf9620949c21f7e"
+        },
+        {
+          "bytes": 21877,
+          "path": "README.md",
+          "sha256": "11d03fc8a0b969fa6df837e23b613bfe34fef2283649b8e4d0aea496040a549c"
+        },
+        {
+          "bytes": 10174,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b"
+        }
+      ],
+      "id": "bonsai-27b",
+      "label": "bonsai-27b",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "Prism ML, Inc."
+          ],
+          "record_digest": "809eeb59f779f07ea733f6a4e06674a71e27ae319dde5cf368da05e7342ca520",
+          "text_sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b"
+        }
+      ],
+      "provider": "kilix-bonsai",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 3803484942,
+        "installed_bytes": 3803495116,
+        "temporary_bytes": 3803495116
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "Bonsai-27B-Q1_0.gguf",
+            "url": "https://huggingface.co/prism-ml/Bonsai-27B-gguf/resolve/f10afb355f104535e3e3e98cf7ab7795c72bd292/Bonsai-27B-Q1_0.gguf"
+          },
+          {
+            "path": "LICENSE.txt",
+            "url": "https://huggingface.co/prism-ml/Bonsai-27B-gguf/resolve/f10afb355f104535e3e3e98cf7ab7795c72bd292/LICENSE.txt"
+          },
+          {
+            "path": "NOTICE.txt",
+            "url": "https://huggingface.co/prism-ml/Bonsai-27B-gguf/resolve/f10afb355f104535e3e3e98cf7ab7795c72bd292/NOTICE.txt"
+          },
+          {
+            "path": "README.md",
+            "url": "https://huggingface.co/prism-ml/Bonsai-27B-gguf/resolve/f10afb355f104535e3e3e98cf7ab7795c72bd292/README.md"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "prism-ml/Bonsai-27B-gguf",
+          "revision": "f10afb355f104535e3e3e98cf7ab7795c72bd292",
+          "original_url": "https://huggingface.co/prism-ml/Bonsai-27B-gguf/resolve/f10afb355f104535e3e3e98cf7ab7795c72bd292/Bonsai-27B-Q1_0.gguf"
+        }
+      },
+      "stream": "F104",
+      "version": "f10afb355f104535e3e3e98cf7ab7795c72bd292"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.bonsai.runtime",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 1073,
+          "path": "LICENSE",
+          "sha256": "646f8936b8ddcd14e13e578ff6857e368780b0d1a4f6066bee89211923a373e2"
+        },
+        {
+          "bytes": 8935,
+          "path": "README.md",
+          "sha256": "e1349711c3be1e2f72719ea01ae03639caa008818e1fb4740c2f344ad5c0cd2c"
+        },
+        {
+          "bytes": 844,
+          "path": "config.json",
+          "sha256": "2b43e80788972e6d53967b01ac3609d7df23cf0aabb0c866e51be694a59c1149"
+        },
+        {
+          "bytes": 199,
+          "path": "generation_config.json",
+          "sha256": "af34a37cd006fd230106fcefc6bfdc1f775503aee05a80c174ccc5c6594f7054"
+        },
+        {
+          "bytes": 1187801280,
+          "path": "ggml-model-i2_s.gguf",
+          "sha256": "4221b252fdd5fd25e15847adfeb5ee88886506ba50b8a34548374492884c2162"
+        },
+        {
+          "bytes": 12403,
+          "path": "notices/LICENSE-llama-3-community.txt",
+          "sha256": "4fa551d4f938f68b8c1e6afa9d28befb70e3f33f75d0753248d530364aeea40f"
+        },
+        {
+          "bytes": 1073,
+          "path": "notices/LICENSE-mit.txt",
+          "sha256": "646f8936b8ddcd14e13e578ff6857e368780b0d1a4f6066bee89211923a373e2"
+        },
+        {
+          "bytes": 73,
+          "path": "special_tokens_map.json",
+          "sha256": "462d91939dbc37178aa5a3eae7068d1990ccc92e09f288cc71f42cdf139d69cc"
+        },
+        {
+          "bytes": 9085698,
+          "path": "tokenizer.json",
+          "sha256": "e134af98b985517b4f068e3755ae90d4e9cd2d45d328325dc503f1c6b2d06cc7"
+        },
+        {
+          "bytes": 50834,
+          "path": "tokenizer_config.json",
+          "sha256": "d27b698683435b0b0dd544a591a30196b2b63f5fd4c8c64b9060a84dc185386f"
+        }
+      ],
+      "id": "bitnet-b1.58-2b4t",
+      "label": "bitnet-b1.58-2b4t",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "mit",
+          "licensors": [
+            "Microsoft Corporation"
+          ],
+          "record_digest": "a9612727c3fc23e5f74989d1b775196236c36739d19a0d5d9a36e531d424f62a",
+          "text_sha256": "646f8936b8ddcd14e13e578ff6857e368780b0d1a4f6066bee89211923a373e2"
+        },
+        {
+          "decision": "affirmative",
+          "id": "llama-3-community",
+          "licensors": [
+            "Meta Platforms, Inc."
+          ],
+          "record_digest": "a9612727c3fc23e5f74989d1b775196236c36739d19a0d5d9a36e531d424f62a",
+          "text_sha256": "4fa551d4f938f68b8c1e6afa9d28befb70e3f33f75d0753248d530364aeea40f"
+        }
+      ],
+      "provider": "kilix-bonsai",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 1196948936,
+        "installed_bytes": 1196962412,
+        "temporary_bytes": 1196962412
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "LICENSE",
+            "url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T/resolve/04c3b9ad9361b824064a1f25ea60a8be9599b127/LICENSE"
+          },
+          {
+            "path": "README.md",
+            "url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T-gguf/resolve/a1f2f1c765812aa8af3f6eda4a313707064bba15/README.md"
+          },
+          {
+            "path": "config.json",
+            "url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T/resolve/04c3b9ad9361b824064a1f25ea60a8be9599b127/config.json"
+          },
+          {
+            "path": "generation_config.json",
+            "url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T/resolve/04c3b9ad9361b824064a1f25ea60a8be9599b127/generation_config.json"
+          },
+          {
+            "path": "ggml-model-i2_s.gguf",
+            "url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T-gguf/resolve/a1f2f1c765812aa8af3f6eda4a313707064bba15/ggml-model-i2_s.gguf"
+          },
+          {
+            "path": "special_tokens_map.json",
+            "url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T/resolve/04c3b9ad9361b824064a1f25ea60a8be9599b127/special_tokens_map.json"
+          },
+          {
+            "path": "tokenizer.json",
+            "url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T/resolve/04c3b9ad9361b824064a1f25ea60a8be9599b127/tokenizer.json"
+          },
+          {
+            "path": "tokenizer_config.json",
+            "url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T/resolve/04c3b9ad9361b824064a1f25ea60a8be9599b127/tokenizer_config.json"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "microsoft/bitnet-b1.58-2B-4T-gguf",
+          "revision": "a1f2f1c765812aa8af3f6eda4a313707064bba15",
+          "original_url": "https://huggingface.co/microsoft/bitnet-b1.58-2B-4T-gguf/resolve/a1f2f1c765812aa8af3f6eda4a313707064bba15/ggml-model-i2_s.gguf"
+        }
+      },
+      "stream": "F104",
+      "version": "a1f2f1c765812aa8af3f6eda4a313707064bba15"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.ollama.runtime",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 11357,
+          "path": "blobs/58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+          "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+        },
+        {
+          "bytes": 2099501664,
+          "path": "blobs/662b0626cd58f443baea23559b469df6576a81d349649c59413b36a9fb32eb29",
+          "sha256": "662b0626cd58f443baea23559b469df6576a81d349649c59413b36a9fb32eb29"
+        },
+        {
+          "bytes": 417,
+          "path": "blobs/87d22d127f1607ac55c112473325a856df6e809244a96f5d91607db459185e0f",
+          "sha256": "87d22d127f1607ac55c112473325a856df6e809244a96f5d91607db459185e0f"
+        },
+        {
+          "bytes": 6843,
+          "path": "blobs/89a0ab46e638b17149f5a596060e815cb019117e9c7f745aa8861a02d63d66ef",
+          "sha256": "89a0ab46e638b17149f5a596060e815cb019117e9c7f745aa8861a02d63d66ef"
+        },
+        {
+          "bytes": 11357,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+        }
+      ],
+      "id": "granite4.1-3b",
+      "label": "granite4.1:3b",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "IBM"
+          ],
+          "record_digest": "d08453cb09434d9fe5b0d3c9f399017dfa4a11adfce4bb2f20e3953843b10d09",
+          "text_sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+        }
+      ],
+      "provider": "kilix-ollama",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 829,
+        "installed_bytes": 2099531638,
+        "temporary_bytes": 2099532467
+      },
+      "source": {
+        "blobs": [
+          {
+            "path": "blobs/58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+            "url": "https://registry.ollama.ai/v2/library/granite4.1/blobs/sha256:58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+          },
+          {
+            "path": "blobs/662b0626cd58f443baea23559b469df6576a81d349649c59413b36a9fb32eb29",
+            "url": "https://registry.ollama.ai/v2/library/granite4.1/blobs/sha256:662b0626cd58f443baea23559b469df6576a81d349649c59413b36a9fb32eb29"
+          },
+          {
+            "path": "blobs/87d22d127f1607ac55c112473325a856df6e809244a96f5d91607db459185e0f",
+            "url": "https://registry.ollama.ai/v2/library/granite4.1/blobs/sha256:87d22d127f1607ac55c112473325a856df6e809244a96f5d91607db459185e0f"
+          },
+          {
+            "path": "blobs/89a0ab46e638b17149f5a596060e815cb019117e9c7f745aa8861a02d63d66ef",
+            "url": "https://registry.ollama.ai/v2/library/granite4.1/blobs/sha256:89a0ab46e638b17149f5a596060e815cb019117e9c7f745aa8861a02d63d66ef"
+          }
+        ],
+        "manifest_sha256": "6fd349357287c7ffc9e38189a93b48ea175d24fc566b38f09cfc564fb7f303eb",
+        "manifest_url": "https://registry.ollama.ai/v2/library/granite4.1/manifests/3b",
+        "mode": "registry-manifest",
+        "provenance": {
+          "project": "ibm-granite/granite-4.1-3b",
+          "revision": "c0650403e44e78ec0262dab1c90914c65b196c4e",
+          "original_url": "https://registry.ollama.ai/v2/library/granite4.1/manifests/3b"
+        }
+      },
+      "stream": "F104",
+      "version": "6fd349357287c7ffc9e38189a93b48ea175d24fc566b38f09cfc564fb7f303eb"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.ollama.runtime",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 420,
+          "path": "blobs/31df23ea7daa448f9ccdbbcecce6c14689c8552222b80defd3830707c0139d4f",
+          "sha256": "31df23ea7daa448f9ccdbbcecce6c14689c8552222b80defd3830707c0139d4f"
+        },
+        {
+          "bytes": 274290656,
+          "path": "blobs/970aa74c0a90ef7482477cf803618e776e173c007bf957f635f1015bfcfef0e6",
+          "sha256": "970aa74c0a90ef7482477cf803618e776e173c007bf957f635f1015bfcfef0e6"
+        },
+        {
+          "bytes": 11357,
+          "path": "blobs/c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        },
+        {
+          "bytes": 17,
+          "path": "blobs/ce4a164fc04605703b485251fe9f1a181688ba0eb6badb80cc6335c0de17ca0d",
+          "sha256": "ce4a164fc04605703b485251fe9f1a181688ba0eb6badb80cc6335c0de17ca0d"
+        },
+        {
+          "bytes": 11357,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        }
+      ],
+      "id": "nomic-embed-text-v1.5",
+      "label": "nomic-embed-text:v1.5",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "Nomic AI"
+          ],
+          "record_digest": "b1a6b8abb6225f18f6202f38c6edde9cb26053b3fdcab472dcb12205510355d0",
+          "text_sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+        }
+      ],
+      "provider": "kilix-ollama",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 708,
+        "installed_bytes": 274313807,
+        "temporary_bytes": 274314515
+      },
+      "source": {
+        "blobs": [
+          {
+            "path": "blobs/31df23ea7daa448f9ccdbbcecce6c14689c8552222b80defd3830707c0139d4f",
+            "url": "https://registry.ollama.ai/v2/library/nomic-embed-text/blobs/sha256:31df23ea7daa448f9ccdbbcecce6c14689c8552222b80defd3830707c0139d4f"
+          },
+          {
+            "path": "blobs/970aa74c0a90ef7482477cf803618e776e173c007bf957f635f1015bfcfef0e6",
+            "url": "https://registry.ollama.ai/v2/library/nomic-embed-text/blobs/sha256:970aa74c0a90ef7482477cf803618e776e173c007bf957f635f1015bfcfef0e6"
+          },
+          {
+            "path": "blobs/c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+            "url": "https://registry.ollama.ai/v2/library/nomic-embed-text/blobs/sha256:c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+          },
+          {
+            "path": "blobs/ce4a164fc04605703b485251fe9f1a181688ba0eb6badb80cc6335c0de17ca0d",
+            "url": "https://registry.ollama.ai/v2/library/nomic-embed-text/blobs/sha256:ce4a164fc04605703b485251fe9f1a181688ba0eb6badb80cc6335c0de17ca0d"
+          }
+        ],
+        "manifest_sha256": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
+        "manifest_url": "https://registry.ollama.ai/v2/library/nomic-embed-text/manifests/v1.5",
+        "mode": "registry-manifest",
+        "provenance": {
+          "project": "nomic-ai/nomic-embed-text-v1.5",
+          "revision": "e9b6763023c676ca8431644204f50c2b100d9aab",
+          "original_url": "https://registry.ollama.ai/v2/library/nomic-embed-text/manifests/v1.5"
+        }
+      },
+      "stream": "F104",
+      "version": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.ollama.runtime",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 1545294400,
+          "path": "blobs/1aefcd9a8a15091b670951963b5f8a7e6653bb1350345e9621e179685ac9bc5f",
+          "sha256": "1aefcd9a8a15091b670951963b5f8a7e6653bb1350345e9621e179685ac9bc5f"
+        },
+        {
+          "bytes": 154,
+          "path": "blobs/1fa69e2371b762d1882b0bd98d284f312a36c27add732016e12e52586f98a9f5",
+          "sha256": "1fa69e2371b762d1882b0bd98d284f312a36c27add732016e12e52586f98a9f5"
+        },
+        {
+          "bytes": 646,
+          "path": "blobs/2798fc1748ec3315edab073957d4633930958dc6ac5f39cf95f5a58fb7282917",
+          "sha256": "2798fc1748ec3315edab073957d4633930958dc6ac5f39cf95f5a58fb7282917"
+        },
+        {
+          "bytes": 11331,
+          "path": "blobs/2e68075caee4c571d43cb9d8d636415d8fe0fe59f695370cf56bc9f872f1ff3f",
+          "sha256": "2e68075caee4c571d43cb9d8d636415d8fe0fe59f695370cf56bc9f872f1ff3f"
+        },
+        {
+          "bytes": 892544608,
+          "path": "blobs/4d464be24899cf8dc1862945432e0cef4366c4181fa38b14754cc9279b727608",
+          "sha256": "4d464be24899cf8dc1862945432e0cef4366c4181fa38b14754cc9279b727608"
+        },
+        {
+          "bytes": 1292,
+          "path": "blobs/579046ba1157b1e0ca06822a555a158c000333b240cdbe91479328d211448fbf",
+          "sha256": "579046ba1157b1e0ca06822a555a158c000333b240cdbe91479328d211448fbf"
+        },
+        {
+          "bytes": 34,
+          "path": "blobs/e371ed40cc78751b132fe4430cfb298e63b67f81d70c74ec4e8edc8a8e29b979",
+          "sha256": "e371ed40cc78751b132fe4430cfb298e63b67f81d70c74ec4e8edc8a8e29b979"
+        },
+        {
+          "bytes": 11331,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "2e68075caee4c571d43cb9d8d636415d8fe0fe59f695370cf56bc9f872f1ff3f"
+        }
+      ],
+      "id": "granite3.2-vision-2b",
+      "label": "granite3.2-vision:2b",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "IBM"
+          ],
+          "record_digest": "c87406ead10d5ff88246f454d9e6fe93be01945de50e8a92581f4d0273db1e5f",
+          "text_sha256": "2e68075caee4c571d43cb9d8d636415d8fe0fe59f695370cf56bc9f872f1ff3f"
+        }
+      ],
+      "provider": "kilix-ollama",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 1405,
+        "installed_bytes": 2437863796,
+        "temporary_bytes": 2437865201
+      },
+      "source": {
+        "blobs": [
+          {
+            "path": "blobs/1aefcd9a8a15091b670951963b5f8a7e6653bb1350345e9621e179685ac9bc5f",
+            "url": "https://registry.ollama.ai/v2/library/granite3.2-vision/blobs/sha256:1aefcd9a8a15091b670951963b5f8a7e6653bb1350345e9621e179685ac9bc5f"
+          },
+          {
+            "path": "blobs/1fa69e2371b762d1882b0bd98d284f312a36c27add732016e12e52586f98a9f5",
+            "url": "https://registry.ollama.ai/v2/library/granite3.2-vision/blobs/sha256:1fa69e2371b762d1882b0bd98d284f312a36c27add732016e12e52586f98a9f5"
+          },
+          {
+            "path": "blobs/2798fc1748ec3315edab073957d4633930958dc6ac5f39cf95f5a58fb7282917",
+            "url": "https://registry.ollama.ai/v2/library/granite3.2-vision/blobs/sha256:2798fc1748ec3315edab073957d4633930958dc6ac5f39cf95f5a58fb7282917"
+          },
+          {
+            "path": "blobs/2e68075caee4c571d43cb9d8d636415d8fe0fe59f695370cf56bc9f872f1ff3f",
+            "url": "https://registry.ollama.ai/v2/library/granite3.2-vision/blobs/sha256:2e68075caee4c571d43cb9d8d636415d8fe0fe59f695370cf56bc9f872f1ff3f"
+          },
+          {
+            "path": "blobs/4d464be24899cf8dc1862945432e0cef4366c4181fa38b14754cc9279b727608",
+            "url": "https://registry.ollama.ai/v2/library/granite3.2-vision/blobs/sha256:4d464be24899cf8dc1862945432e0cef4366c4181fa38b14754cc9279b727608"
+          },
+          {
+            "path": "blobs/579046ba1157b1e0ca06822a555a158c000333b240cdbe91479328d211448fbf",
+            "url": "https://registry.ollama.ai/v2/library/granite3.2-vision/blobs/sha256:579046ba1157b1e0ca06822a555a158c000333b240cdbe91479328d211448fbf"
+          },
+          {
+            "path": "blobs/e371ed40cc78751b132fe4430cfb298e63b67f81d70c74ec4e8edc8a8e29b979",
+            "url": "https://registry.ollama.ai/v2/library/granite3.2-vision/blobs/sha256:e371ed40cc78751b132fe4430cfb298e63b67f81d70c74ec4e8edc8a8e29b979"
+          }
+        ],
+        "manifest_sha256": "3be41a661804ad72cd08269816c5a145f1df6479ad07e2b3a7e29dba575d2669",
+        "manifest_url": "https://registry.ollama.ai/v2/library/granite3.2-vision/manifests/2b",
+        "mode": "registry-manifest",
+        "provenance": {
+          "project": "ibm-granite/granite-vision-3.2-2b",
+          "revision": "ec894191",
+          "original_url": "https://registry.ollama.ai/v2/library/granite3.2-vision/manifests/2b"
+        }
+      },
+      "stream": "F104",
+      "version": "3be41a661804ad72cd08269816c5a145f1df6479ad07e2b3a7e29dba575d2669"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.ollama.runtime",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 11355,
+          "path": "blobs/7339fa418c9ad3e8e12e74ad0fd26a9cc4be8703f9c110728a992b193be85cb2",
+          "sha256": "7339fa418c9ad3e8e12e74ad0fd26a9cc4be8703f9c110728a992b193be85cb2"
+        },
+        {
+          "bytes": 3389971840,
+          "path": "blobs/81fb60c7daa80fc1123380b98970b320ae233409f0f71a72ed7b9b0d62f40490",
+          "sha256": "81fb60c7daa80fc1123380b98970b320ae233409f0f71a72ed7b9b0d62f40490"
+        },
+        {
+          "bytes": 65,
+          "path": "blobs/9371364b27a52acac9d87f88bd93c9db1174d8d6ec57f6888925cdc1788871ff",
+          "sha256": "9371364b27a52acac9d87f88bd93c9db1174d8d6ec57f6888925cdc1788871ff"
+        },
+        {
+          "bytes": 475,
+          "path": "blobs/de9fed2251b37295b763727a59ca35cf5cfe5c7379bc3e2104b2ce3c145aa887",
+          "sha256": "de9fed2251b37295b763727a59ca35cf5cfe5c7379bc3e2104b2ce3c145aa887"
+        },
+        {
+          "bytes": 11355,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "7339fa418c9ad3e8e12e74ad0fd26a9cc4be8703f9c110728a992b193be85cb2"
+        }
+      ],
+      "id": "qwen3.5-4b",
+      "label": "qwen3.5:4b. **The owner accepts on record** that the link from the Ollama artefact to the upstream publisher is name-inferred",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "Alibaba Cloud / Qwen"
+          ],
+          "record_digest": "70a4d2c66f6264ef038262afc25bb23387de10e72e918c99b3109384d35e205f",
+          "text_sha256": "7339fa418c9ad3e8e12e74ad0fd26a9cc4be8703f9c110728a992b193be85cb2"
+        }
+      ],
+      "provider": "kilix-ollama",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 709,
+        "installed_bytes": 3389995090,
+        "temporary_bytes": 3389995799
+      },
+      "source": {
+        "blobs": [
+          {
+            "path": "blobs/7339fa418c9ad3e8e12e74ad0fd26a9cc4be8703f9c110728a992b193be85cb2",
+            "url": "https://registry.ollama.ai/v2/library/qwen3.5/blobs/sha256:7339fa418c9ad3e8e12e74ad0fd26a9cc4be8703f9c110728a992b193be85cb2"
+          },
+          {
+            "path": "blobs/81fb60c7daa80fc1123380b98970b320ae233409f0f71a72ed7b9b0d62f40490",
+            "url": "https://registry.ollama.ai/v2/library/qwen3.5/blobs/sha256:81fb60c7daa80fc1123380b98970b320ae233409f0f71a72ed7b9b0d62f40490"
+          },
+          {
+            "path": "blobs/9371364b27a52acac9d87f88bd93c9db1174d8d6ec57f6888925cdc1788871ff",
+            "url": "https://registry.ollama.ai/v2/library/qwen3.5/blobs/sha256:9371364b27a52acac9d87f88bd93c9db1174d8d6ec57f6888925cdc1788871ff"
+          },
+          {
+            "path": "blobs/de9fed2251b37295b763727a59ca35cf5cfe5c7379bc3e2104b2ce3c145aa887",
+            "url": "https://registry.ollama.ai/v2/library/qwen3.5/blobs/sha256:de9fed2251b37295b763727a59ca35cf5cfe5c7379bc3e2104b2ce3c145aa887"
+          }
+        ],
+        "manifest_sha256": "2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd",
+        "manifest_url": "https://registry.ollama.ai/v2/library/qwen3.5/manifests/4b",
+        "mode": "registry-manifest",
+        "provenance": {
+          "project": "Qwen/Qwen3.5-4B. **The owner accepts on record** that the link from the Ollama artefact to the upstream publisher is name-inferred",
+          "revision": "name-inferred",
+          "original_url": "https://registry.ollama.ai/v2/library/qwen3.5/manifests/4b"
+        }
+      },
+      "stream": "F104",
+      "version": "2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.ollama.optional-tts",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 11187,
+          "path": "README.md",
+          "sha256": "ae2ebac6f8039d761ca90e2b742136dce9d7872ec8dd2105e3b2de1e3021e3aa"
+        },
+        {
+          "bytes": 219029196,
+          "path": "languages/english/model.safetensors",
+          "sha256": "be9c6b4876d3f30740a8225dfcaa2e43dc4aeb753c15272735bee16bbb4abb0a"
+        },
+        {
+          "bytes": 59339,
+          "path": "languages/english/tokenizer.model",
+          "sha256": "d461765ae179566678c93091c5fa6f2984c31bbe990bf1aa62d92c64d91bc3f6"
+        },
+        {
+          "bytes": 18657,
+          "path": "notices/LICENSE-cc-by-4.0.txt",
+          "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+        }
+      ],
+      "id": "pocket-tts-english-q8_0",
+      "label": "pocket-tts-english",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "cc-by-4.0",
+          "licensors": [
+            "Kyutai"
+          ],
+          "record_digest": "1dd24fd142b32de1353d6913f09a19d3bbd81990040b70a47986b8a3e10f1fab",
+          "text_sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+        }
+      ],
+      "provider": "kilix-ollama",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 219099722,
+        "installed_bytes": 219118379,
+        "temporary_bytes": 438218101
+      },
+      "source": {
+        "conversion": {
+          "argv": [
+            "/usr/lib/plebian-os/ollama/pocket-tts-convert-hf-to-gguf",
+            "{sources}",
+            "--outtype",
+            "q8_0",
+            "--outfile",
+            "{output}/pocket-tts-english-q8_0.gguf"
+          ],
+          "tool_asset_id": "pocket-tts-convert-hf-to-gguf"
+        },
+        "input": {
+          "bytes": 219029196,
+          "path": "languages/english/model.safetensors",
+          "sha256": "be9c6b4876d3f30740a8225dfcaa2e43dc4aeb753c15272735bee16bbb4abb0a",
+          "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/languages/english/model.safetensors"
+        },
+        "mode": "upstream-convert",
+        "provenance": {
+          "project": "kyutai/pocket-tts-without-voice-cloning",
+          "revision": "d29db7978e464fb90cb3359ee0c69a273b9142cc",
+          "original_url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/languages/english/model.safetensors"
+        },
+        "fetch": [
+          {
+            "path": "README.md",
+            "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/README.md"
+          },
+          {
+            "path": "languages/english/tokenizer.model",
+            "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/languages/english/tokenizer.model"
+          }
+        ]
+      },
+      "stream": "F104",
+      "version": "d29db7978e464fb90cb3359ee0c69a273b9142cc"
     }
   ]
 }

@@ -1,0 +1,52 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "pocket-tts-english-q8_0",
+  "label": "pocket-tts-english",
+  "mode": "upstream-convert",
+  "license_record_id": "pocket-tts-english-q8_0",
+  "provider": "kilix-ollama",
+  "consumer_schema": "kilix.ollama.optional-tts",
+  "version": "d29db7978e464fb90cb3359ee0c69a273b9142cc",
+  "provenance": {
+    "project": "kyutai/pocket-tts-without-voice-cloning",
+    "revision": "d29db7978e464fb90cb3359ee0c69a273b9142cc",
+    "original_url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/languages/english/model.safetensors"
+  },
+  "input": {
+    "path": "languages/english/model.safetensors",
+    "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/languages/english/model.safetensors",
+    "bytes": 219029196,
+    "sha256": "be9c6b4876d3f30740a8225dfcaa2e43dc4aeb753c15272735bee16bbb4abb0a"
+  },
+  "members": [
+    {
+      "path": "languages/english/model.safetensors",
+      "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/languages/english/model.safetensors",
+      "bytes": 219029196,
+      "sha256": "be9c6b4876d3f30740a8225dfcaa2e43dc4aeb753c15272735bee16bbb4abb0a"
+    },
+    {
+      "path": "languages/english/tokenizer.model",
+      "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/languages/english/tokenizer.model",
+      "bytes": 59339,
+      "sha256": "d461765ae179566678c93091c5fa6f2984c31bbe990bf1aa62d92c64d91bc3f6"
+    },
+    {
+      "path": "README.md",
+      "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/README.md",
+      "bytes": 11187,
+      "sha256": "ae2ebac6f8039d761ca90e2b742136dce9d7872ec8dd2105e3b2de1e3021e3aa"
+    }
+  ],
+  "conversion": {
+    "tool_asset_id": "pocket-tts-convert-hf-to-gguf",
+    "argv": [
+      "/usr/lib/plebian-os/ollama/pocket-tts-convert-hf-to-gguf",
+      "{sources}",
+      "--outtype",
+      "q8_0",
+      "--outfile",
+      "{output}/pocket-tts-english-q8_0.gguf"
+    ]
+  }
+}

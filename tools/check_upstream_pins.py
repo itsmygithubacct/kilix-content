@@ -50,6 +50,34 @@ def main() -> int:
                 )
                 if length != listed["bytes"]:
                     status = 1
+            continue
+        if mode == "upstream-convert":
+            convert = source.get("input") or {}
+            url = convert.get("url")
+            expected = convert.get("bytes")
+            if url and expected is not None:
+                length = _head_length(opener, url)
+                print(f"{asset['id']} input Content-Length={length} pin={expected}")
+                if length != expected:
+                    status = 1
+            by_path = {item["path"]: item for item in asset.get("files") or []}
+            for item in source.get("fetch") or []:
+                listed = by_path[item["path"]]
+                length = _head_length(opener, item["url"])
+                print(
+                    f"{asset['id']} {item['path']} Content-Length={length} pin={listed['bytes']}"
+                )
+                if length != listed["bytes"]:
+                    status = 1
+            continue
+        if mode == "registry-manifest":
+            url = source.get("manifest_url")
+            expected = asset.get("sizes", {}).get("download_bytes")
+            if url and expected is not None:
+                length = _head_length(opener, url)
+                print(f"{asset['id']} manifest Content-Length={length} pin={expected}")
+                if length != expected:
+                    status = 1
     return status
 
 

@@ -1,0 +1,62 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "granite3.2-vision-2b",
+  "label": "granite3.2-vision:2b",
+  "mode": "registry-manifest",
+  "license_record_id": "granite3.2-vision:2b",
+  "provider": "kilix-ollama",
+  "consumer_schema": "kilix.ollama.runtime",
+  "version": "3be41a661804ad72cd08269816c5a145f1df6479ad07e2b3a7e29dba575d2669",
+  "provenance": {
+    "project": "ibm-granite/granite-vision-3.2-2b",
+    "revision": "ec894191",
+    "original_url": "https://registry.ollama.ai/v2/library/granite3.2-vision/manifests/2b"
+  },
+  "manifest_url": "https://registry.ollama.ai/v2/library/granite3.2-vision/manifests/2b",
+  "manifest_sha256": "3be41a661804ad72cd08269816c5a145f1df6479ad07e2b3a7e29dba575d2669",
+  "manifest_bytes": 1405,
+  "blobs": [
+    {
+      "path": "blobs/2798fc1748ec3315edab073957d4633930958dc6ac5f39cf95f5a58fb7282917",
+      "url": "https://registry.ollama.ai/v2/library/granite3.2-vision/blobs/sha256:2798fc1748ec3315edab073957d4633930958dc6ac5f39cf95f5a58fb7282917",
+      "bytes": 646,
+      "sha256": "2798fc1748ec3315edab073957d4633930958dc6ac5f39cf95f5a58fb7282917"
+    },
+    {
+      "path": "blobs/1aefcd9a8a15091b670951963b5f8a7e6653bb1350345e9621e179685ac9bc5f",
+      "url": "https://registry.ollama.ai/v2/library/granite3.2-vision/blobs/sha256:1aefcd9a8a15091b670951963b5f8a7e6653bb1350345e9621e179685ac9bc5f",
+      "bytes": 1545294400,
+      "sha256": "1aefcd9a8a15091b670951963b5f8a7e6653bb1350345e9621e179685ac9bc5f"
+    },
+    {
+      "path": "blobs/4d464be24899cf8dc1862945432e0cef4366c4181fa38b14754cc9279b727608",
+      "url": "https://registry.ollama.ai/v2/library/granite3.2-vision/blobs/sha256:4d464be24899cf8dc1862945432e0cef4366c4181fa38b14754cc9279b727608",
+      "bytes": 892544608,
+      "sha256": "4d464be24899cf8dc1862945432e0cef4366c4181fa38b14754cc9279b727608"
+    },
+    {
+      "path": "blobs/579046ba1157b1e0ca06822a555a158c000333b240cdbe91479328d211448fbf",
+      "url": "https://registry.ollama.ai/v2/library/granite3.2-vision/blobs/sha256:579046ba1157b1e0ca06822a555a158c000333b240cdbe91479328d211448fbf",
+      "bytes": 1292,
+      "sha256": "579046ba1157b1e0ca06822a555a158c000333b240cdbe91479328d211448fbf"
+    },
+    {
+      "path": "blobs/1fa69e2371b762d1882b0bd98d284f312a36c27add732016e12e52586f98a9f5",
+      "url": "https://registry.ollama.ai/v2/library/granite3.2-vision/blobs/sha256:1fa69e2371b762d1882b0bd98d284f312a36c27add732016e12e52586f98a9f5",
+      "bytes": 154,
+      "sha256": "1fa69e2371b762d1882b0bd98d284f312a36c27add732016e12e52586f98a9f5"
+    },
+    {
+      "path": "blobs/2e68075caee4c571d43cb9d8d636415d8fe0fe59f695370cf56bc9f872f1ff3f",
+      "url": "https://registry.ollama.ai/v2/library/granite3.2-vision/blobs/sha256:2e68075caee4c571d43cb9d8d636415d8fe0fe59f695370cf56bc9f872f1ff3f",
+      "bytes": 11331,
+      "sha256": "2e68075caee4c571d43cb9d8d636415d8fe0fe59f695370cf56bc9f872f1ff3f"
+    },
+    {
+      "path": "blobs/e371ed40cc78751b132fe4430cfb298e63b67f81d70c74ec4e8edc8a8e29b979",
+      "url": "https://registry.ollama.ai/v2/library/granite3.2-vision/blobs/sha256:e371ed40cc78751b132fe4430cfb298e63b67f81d70c74ec4e8edc8a8e29b979",
+      "bytes": 34,
+      "sha256": "e371ed40cc78751b132fe4430cfb298e63b67f81d70c74ec4e8edc8a8e29b979"
+    }
+  ]
+}

@@ -393,6 +393,92 @@ def make_files_asset(
     }
 
 
+def make_convert_asset(
+    *,
+    asset_id: str,
+    input_path: str,
+    files: dict[str, tuple[str, bytes]],
+    license_record,
+    notice: bytes,
+    licensors: list[str],
+    argv: list[str],
+    provider: str = "kilix-ollama",
+    consumer_schema: str = "kilix.ollama.optional-tts",
+    notice_path: str = "notices/LICENSE-cc-by-4.0.txt",
+    license_id: str = "cc-by-4.0",
+    extra_licenses: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    listed = [
+        {"bytes": len(payload), "path": path, "sha256": sha256_bytes(payload)}
+        for path, (_url, payload) in files.items()
+    ]
+    listed.append(
+        {"bytes": len(notice), "path": notice_path, "sha256": sha256_bytes(notice)}
+    )
+    listed.sort(key=lambda item: item["path"])
+    input_url, input_payload = files[input_path]
+    extra = [
+        {"path": path, "url": url}
+        for path, (url, _payload) in files.items()
+        if path != input_path
+    ]
+    extra.sort(key=lambda item: item["path"])
+    download = sum(len(payload) for _url, payload in files.values())
+    installed = sum(item["bytes"] for item in listed)
+    licenses = [
+        {
+            "decision": license_record.decision_class,
+            "id": license_id,
+            "licensors": list(licensors),
+            "record_digest": license_record.digest,
+            "text_sha256": license_record.text_sha256,
+        }
+    ]
+    if extra_licenses:
+        licenses.extend(extra_licenses)
+    source = {
+        "conversion": {
+            "argv": list(argv),
+            "tool_asset_id": "pocket-tts-convert-hf-to-gguf",
+        },
+        "input": {
+            "bytes": len(input_payload),
+            "path": input_path,
+            "sha256": sha256_bytes(input_payload),
+            "url": input_url,
+        },
+        "mode": "upstream-convert",
+        "provenance": {
+            "original_url": input_url,
+            "project": "example/convert",
+            "revision": "1",
+        },
+    }
+    if extra:
+        source["fetch"] = extra
+    return {
+        "compatibility": {
+            "consumer_schema": consumer_schema,
+            "maximum": 1,
+            "minimum": 1,
+        },
+        "files": listed,
+        "id": asset_id,
+        "label": asset_id,
+        "licenses": licenses,
+        "provider": provider,
+        "schema": "kilix.content.asset/v3",
+        "sizes": {
+            "download_bytes": download,
+            "installed_bytes": installed,
+            "temporary_bytes": download + installed,
+        },
+        "source": source,
+        "stream": "F104",
+        "version": "fixture",
+    }
+
+
 def make_archive_asset(
     *,
     asset_id: str,

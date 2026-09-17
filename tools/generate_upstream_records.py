@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate packaged asset/v3 records from verified upstream pins (R4-050, R4-052, R4-056, R4-057, R4-059, R4-060, R4-061)."""
+"""Generate packaged asset/v3 records from verified upstream pins (R4-050..R4-064)."""
 
 from __future__ import annotations
 
@@ -31,6 +31,14 @@ PIN_NAMES = (
     "yolox_tiny.json",
     "yolox_nano.json",
     "yamnet.json",
+    "bonsai-8b.json",
+    "bonsai-27b.json",
+    "bitnet-b1.58-2b4t.json",
+    "granite4.1-3b.json",
+    "nomic-embed-text-v1.5.json",
+    "granite3.2-vision-2b.json",
+    "qwen3.5-4b.json",
+    "pocket-tts-english-q8_0.json",
 )
 
 LICENSORS = {
@@ -46,18 +54,29 @@ LICENSORS = {
     "yolox_tiny": ["Megvii (Base Detection / Megvii Inc.)"],
     "yolox_nano": ["Megvii (Base Detection / Megvii Inc.)"],
     "yamnet": ["Google"],
+    "bonsai-8b": ["Prism ML, Inc."],
+    "bonsai-27b": ["Prism ML, Inc."],
+    "bitnet-b1.58-2b4t": ["Microsoft Corporation"],
+    "granite4.1:3b": ["IBM"],
+    "nomic-embed-text:v1.5": ["Nomic AI"],
+    "granite3.2-vision:2b": ["IBM"],
+    "qwen3.5:4b": ["Alibaba Cloud / Qwen"],
+    "pocket-tts-english-q8_0": ["Kyutai"],
 }
 
 LICENSE_ROW_IDS = {
     "Apache-2.0": "apache-2.0",
     "MIT": "mit",
     "Public domain, per the trainer's statement": "public-domain",
+    "CC-BY-4.0": "cc-by-4.0",
 }
 
 NOTICE_PATHS = {
     "apache-2.0": "notices/LICENSE-apache-2.0.txt",
     "mit": "notices/LICENSE-mit.txt",
     "public-domain": "notices/public-domain.txt",
+    "cc-by-4.0": "notices/LICENSE-cc-by-4.0.txt",
+    "llama-3-community": "notices/LICENSE-llama-3-community.txt",
 }
 
 # Component exceptions that are shown as a second licence row (OD-AB).
@@ -67,7 +86,13 @@ COMPONENT_LICENSE_ROWS = {
         "license_id": "apache-2.0",
         "licensors": ["Alibaba Cloud"],
         "notice_path": "notices/LICENSE-apache-2.0.txt",
-    }
+    },
+    "tokenizer-derived-from-llama-3": {
+        "decision": "affirmative",
+        "license_id": "llama-3-community",
+        "licensors": ["Meta Platforms, Inc."],
+        "notice_path": "notices/LICENSE-llama-3-community.txt",
+    },
 }
 
 
@@ -216,7 +241,7 @@ def build_files_asset(pin: dict) -> dict:
         },
         "files": files,
         "id": pin["id"],
-        "label": pin["id"],
+        "label": pin.get("label", pin["id"]),
         "licenses": license_rows(pin, record),
         "provider": pin["provider"],
         "schema": "kilix.content.asset/v3",
@@ -235,12 +260,110 @@ def build_files_asset(pin: dict) -> dict:
     }
 
 
+def build_convert_asset(pin: dict) -> dict:
+    record = load_license(pin["license_record_id"])
+    files = member_files(pin)
+    files.extend(notice_files(record))
+    files.sort(key=lambda item: item["path"])
+    primary = pin["input"]
+    extra = [
+        {"path": item["path"], "url": item["url"]}
+        for item in pin["members"]
+        if item["path"] != primary["path"]
+    ]
+    extra.sort(key=lambda item: item["path"])
+    download = sum(int(item["bytes"]) for item in pin["members"])
+    installed = sum(int(item["bytes"]) for item in files)
+    source = {
+        "conversion": {
+            "argv": list(pin["conversion"]["argv"]),
+            "tool_asset_id": pin["conversion"]["tool_asset_id"],
+        },
+        "input": {
+            "bytes": primary["bytes"],
+            "path": primary["path"],
+            "sha256": primary["sha256"],
+            "url": primary["url"],
+        },
+        "mode": "upstream-convert",
+        "provenance": dict(pin["provenance"]),
+    }
+    if extra:
+        source["fetch"] = extra
+    return {
+        "compatibility": {
+            "consumer_schema": pin["consumer_schema"],
+            "maximum": 1,
+            "minimum": 1,
+        },
+        "files": files,
+        "id": pin["id"],
+        "label": pin.get("label", pin["id"]),
+        "licenses": license_rows(pin, record),
+        "provider": pin["provider"],
+        "schema": "kilix.content.asset/v3",
+        "sizes": {
+            "download_bytes": download,
+            "installed_bytes": installed,
+            "temporary_bytes": download + installed,
+        },
+        "source": source,
+        "stream": "F104",
+        "version": pin["version"],
+    }
+
+
+def build_registry_asset(pin: dict) -> dict:
+    record = load_license(pin["license_record_id"])
+    files = [
+        {"bytes": item["bytes"], "path": item["path"], "sha256": item["sha256"]}
+        for item in pin["blobs"]
+    ]
+    files.extend(notice_files(record))
+    files.sort(key=lambda item: item["path"])
+    blobs = [{"path": item["path"], "url": item["url"]} for item in pin["blobs"]]
+    blobs.sort(key=lambda item: item["path"])
+    download = int(pin["manifest_bytes"])
+    installed = sum(int(item["bytes"]) for item in files)
+    return {
+        "compatibility": {
+            "consumer_schema": pin["consumer_schema"],
+            "maximum": 1,
+            "minimum": 1,
+        },
+        "files": files,
+        "id": pin["id"],
+        "label": pin.get("label", pin["id"]),
+        "licenses": license_rows(pin, record),
+        "provider": pin["provider"],
+        "schema": "kilix.content.asset/v3",
+        "sizes": {
+            "download_bytes": download,
+            "installed_bytes": installed,
+            "temporary_bytes": download + installed,
+        },
+        "source": {
+            "blobs": blobs,
+            "manifest_sha256": pin["manifest_sha256"],
+            "manifest_url": pin["manifest_url"],
+            "mode": "registry-manifest",
+            "provenance": dict(pin["provenance"]),
+        },
+        "stream": "F104",
+        "version": pin["version"],
+    }
+
+
 def build_from_pin(pin: dict) -> dict:
     mode = pin.get("mode", "upstream-archive")
     if mode == "upstream-files":
         return build_files_asset(pin)
     if mode == "upstream-archive":
         return build_archive_asset(pin)
+    if mode == "upstream-convert":
+        return build_convert_asset(pin)
+    if mode == "registry-manifest":
+        return build_registry_asset(pin)
     raise SystemExit(f"unsupported pin mode {mode!r} for {pin.get('id')}")
 
 

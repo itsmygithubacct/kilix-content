@@ -689,6 +689,7 @@ class AssetSpec:
     convert_url: str
     convert_bytes: int
     convert_sha256: str
+    convert_input_path: str
     convert_tool_asset_id: str
     convert_argv: tuple[str, ...]
     manifest_url: str
@@ -728,19 +729,24 @@ class AssetSpec:
                 "provenance": provenance,
             }
         elif self.source_mode == "upstream-convert":
+            convert_input: dict[str, Any] = {
+                "bytes": self.convert_bytes,
+                "sha256": self.convert_sha256,
+                "url": self.convert_url,
+            }
+            if self.convert_input_path:
+                convert_input["path"] = self.convert_input_path
             source = {
                 "conversion": {
                     "argv": list(self.convert_argv),
                     "tool_asset_id": self.convert_tool_asset_id,
                 },
-                "input": {
-                    "bytes": self.convert_bytes,
-                    "sha256": self.convert_sha256,
-                    "url": self.convert_url,
-                },
+                "input": convert_input,
                 "mode": self.source_mode,
                 "provenance": provenance,
             }
+            if self.fetch:
+                source["fetch"] = [{"path": item.path, "url": item.url} for item in self.fetch]
         else:
             source = {
                 "blobs": [{"path": item.path, "url": item.url} for item in self.blobs],
@@ -943,7 +949,7 @@ class AssetSpec:
                 f"{asset_id}.source.provenance is missing {exc.args[0]!r}"
             ) from exc
         url = archive_sha256 = archive_format = root = convert_url = convert_sha256 = ""
-        convert_tool_asset_id = manifest_url = manifest_sha256 = ""
+        convert_input_path = convert_tool_asset_id = manifest_url = manifest_sha256 = ""
         archive_bytes = convert_bytes = 0
         fetch: tuple[AssetFetchSpec, ...] = ()
         convert_argv: tuple[str, ...] = ()
@@ -1018,13 +1024,13 @@ class AssetSpec:
         elif source_mode == "upstream-convert":
             _known_keys(
                 source,
-                frozenset(("mode", "input", "conversion", "provenance")),
+                frozenset(("mode", "input", "conversion", "provenance", "fetch")),
                 f"{asset_id}.source",
             )
             raw_input = _mapping(source.get("input"), f"{asset_id}.source.input")
             _known_keys(
                 raw_input,
-                frozenset(("url", "bytes", "sha256")),
+                frozenset(("url", "bytes", "sha256", "path")),
                 f"{asset_id}.source.input",
             )
             convert_url = _https_url(
@@ -1041,6 +1047,10 @@ class AssetSpec:
             _require_provenance_host(
                 convert_url, provenance_url, f"{asset_id}.source.input.url"
             )
+            if "path" in raw_input:
+                convert_input_path = _relative_path(
+                    raw_input.get("path", ""), f"{asset_id}.source.input.path"
+                )
             conversion = _mapping(source.get("conversion"), f"{asset_id}.source.conversion")
             _known_keys(
                 conversion,
@@ -1055,6 +1065,45 @@ class AssetSpec:
             )
             if not convert_argv:
                 raise CatalogError(f"{asset_id}.source.conversion.argv is required")
+            raw_fetch = source.get("fetch")
+            if raw_fetch is not None:
+                if not isinstance(raw_fetch, list) or not raw_fetch:
+                    raise CatalogError(f"{asset_id}.source.fetch must be a non-empty array")
+                items = []
+                for index, item in enumerate(raw_fetch):
+                    mapping = _mapping(item, f"{asset_id}.source.fetch[{index}]")
+                    _known_keys(
+                        mapping, frozenset(("path", "url")), f"{asset_id}.source.fetch[{index}]"
+                    )
+                    path = _relative_path(
+                        mapping.get("path", ""), f"{asset_id}.source.fetch[{index}].path"
+                    )
+                    item_url = _https_url(
+                        mapping.get("url"),
+                        f"{asset_id}.source.fetch[{index}].url",
+                        allow_file=allow_file_urls,
+                    )
+                    _require_provenance_host(
+                        item_url, provenance_url, f"{asset_id}.source.fetch[{index}].url"
+                    )
+                    items.append(AssetFetchSpec(path, item_url))
+                fetch = tuple(items)
+            if convert_input_path or fetch:
+                extra_paths = {item.path for item in fetch}
+                if convert_input_path in extra_paths:
+                    raise CatalogError(f"{asset_id}.source.input.path duplicates fetch")
+                expected = extra_paths | ({convert_input_path} if convert_input_path else set())
+                file_paths = {item.path for item in files if not item.path.startswith("notices/")}
+                if expected != file_paths:
+                    raise CatalogError(
+                        f"{asset_id}.source input/fetch paths must match files"
+                    )
+                if convert_input_path:
+                    listed = next(item for item in files if item.path == convert_input_path)
+                    if listed.bytes != convert_bytes or listed.sha256 != convert_sha256:
+                        raise CatalogError(
+                            f"{asset_id}.source.input must match the listed input file"
+                        )
         else:
             _known_keys(
                 source,
@@ -1093,6 +1142,10 @@ class AssetSpec:
                     )
                 )
             blobs = tuple(blob_items)
+            blob_paths = {item.path for item in blobs}
+            file_paths = {item.path for item in files if not item.path.startswith("notices/")}
+            if blob_paths != file_paths:
+                raise CatalogError(f"{asset_id}.source.blobs paths must match files")
         return cls(
             asset_id=asset_id,
             label=label,
@@ -1110,6 +1163,7 @@ class AssetSpec:
             convert_url=convert_url,
             convert_bytes=convert_bytes,
             convert_sha256=convert_sha256,
+            convert_input_path=convert_input_path,
             convert_tool_asset_id=convert_tool_asset_id,
             convert_argv=convert_argv,
             manifest_url=manifest_url,
@@ -1144,9 +1198,19 @@ def source_objects_sha256(spec: AssetSpec) -> str:
     elif spec.source_mode == "upstream-convert":
         payload = {
             "bytes": spec.convert_bytes,
+            "path": spec.convert_input_path,
             "sha256": spec.convert_sha256,
             "url": spec.convert_url,
         }
+        if spec.fetch:
+            payload["fetch"] = [
+                {
+                    "path": item.path,
+                    "sha256": next(f.sha256 for f in spec.files if f.path == item.path),
+                    "url": item.url,
+                }
+                for item in spec.fetch
+            ]
     else:
         payload = {
             "blobs": [{"path": item.path, "url": item.url} for item in spec.blobs],

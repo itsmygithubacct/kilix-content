@@ -1,0 +1,44 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "granite4.1-3b",
+  "label": "granite4.1:3b",
+  "mode": "registry-manifest",
+  "license_record_id": "granite4.1:3b",
+  "provider": "kilix-ollama",
+  "consumer_schema": "kilix.ollama.runtime",
+  "version": "6fd349357287c7ffc9e38189a93b48ea175d24fc566b38f09cfc564fb7f303eb",
+  "provenance": {
+    "project": "ibm-granite/granite-4.1-3b",
+    "revision": "c0650403e44e78ec0262dab1c90914c65b196c4e",
+    "original_url": "https://registry.ollama.ai/v2/library/granite4.1/manifests/3b"
+  },
+  "manifest_url": "https://registry.ollama.ai/v2/library/granite4.1/manifests/3b",
+  "manifest_sha256": "6fd349357287c7ffc9e38189a93b48ea175d24fc566b38f09cfc564fb7f303eb",
+  "manifest_bytes": 829,
+  "blobs": [
+    {
+      "path": "blobs/87d22d127f1607ac55c112473325a856df6e809244a96f5d91607db459185e0f",
+      "url": "https://registry.ollama.ai/v2/library/granite4.1/blobs/sha256:87d22d127f1607ac55c112473325a856df6e809244a96f5d91607db459185e0f",
+      "bytes": 417,
+      "sha256": "87d22d127f1607ac55c112473325a856df6e809244a96f5d91607db459185e0f"
+    },
+    {
+      "path": "blobs/662b0626cd58f443baea23559b469df6576a81d349649c59413b36a9fb32eb29",
+      "url": "https://registry.ollama.ai/v2/library/granite4.1/blobs/sha256:662b0626cd58f443baea23559b469df6576a81d349649c59413b36a9fb32eb29",
+      "bytes": 2099501664,
+      "sha256": "662b0626cd58f443baea23559b469df6576a81d349649c59413b36a9fb32eb29"
+    },
+    {
+      "path": "blobs/89a0ab46e638b17149f5a596060e815cb019117e9c7f745aa8861a02d63d66ef",
+      "url": "https://registry.ollama.ai/v2/library/granite4.1/blobs/sha256:89a0ab46e638b17149f5a596060e815cb019117e9c7f745aa8861a02d63d66ef",
+      "bytes": 6843,
+      "sha256": "89a0ab46e638b17149f5a596060e815cb019117e9c7f745aa8861a02d63d66ef"
+    },
+    {
+      "path": "blobs/58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+      "url": "https://registry.ollama.ai/v2/library/granite4.1/blobs/sha256:58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+      "bytes": 11357,
+      "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+    }
+  ]
+}

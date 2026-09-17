@@ -1,0 +1,44 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "qwen3.5-4b",
+  "label": "qwen3.5:4b. **The owner accepts on record** that the link from the Ollama artefact to the upstream publisher is name-inferred",
+  "mode": "registry-manifest",
+  "license_record_id": "qwen3.5:4b",
+  "provider": "kilix-ollama",
+  "consumer_schema": "kilix.ollama.runtime",
+  "version": "2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd",
+  "provenance": {
+    "project": "Qwen/Qwen3.5-4B. **The owner accepts on record** that the link from the Ollama artefact to the upstream publisher is name-inferred",
+    "revision": "name-inferred",
+    "original_url": "https://registry.ollama.ai/v2/library/qwen3.5/manifests/4b"
+  },
+  "manifest_url": "https://registry.ollama.ai/v2/library/qwen3.5/manifests/4b",
+  "manifest_sha256": "2a654d98e6fba55d452b7043684e9b57a947e393bbffa62485a7aac05ee4eefd",
+  "manifest_bytes": 709,
+  "blobs": [
+    {
+      "path": "blobs/de9fed2251b37295b763727a59ca35cf5cfe5c7379bc3e2104b2ce3c145aa887",
+      "url": "https://registry.ollama.ai/v2/library/qwen3.5/blobs/sha256:de9fed2251b37295b763727a59ca35cf5cfe5c7379bc3e2104b2ce3c145aa887",
+      "bytes": 475,
+      "sha256": "de9fed2251b37295b763727a59ca35cf5cfe5c7379bc3e2104b2ce3c145aa887"
+    },
+    {
+      "path": "blobs/81fb60c7daa80fc1123380b98970b320ae233409f0f71a72ed7b9b0d62f40490",
+      "url": "https://registry.ollama.ai/v2/library/qwen3.5/blobs/sha256:81fb60c7daa80fc1123380b98970b320ae233409f0f71a72ed7b9b0d62f40490",
+      "bytes": 3389971840,
+      "sha256": "81fb60c7daa80fc1123380b98970b320ae233409f0f71a72ed7b9b0d62f40490"
+    },
+    {
+      "path": "blobs/7339fa418c9ad3e8e12e74ad0fd26a9cc4be8703f9c110728a992b193be85cb2",
+      "url": "https://registry.ollama.ai/v2/library/qwen3.5/blobs/sha256:7339fa418c9ad3e8e12e74ad0fd26a9cc4be8703f9c110728a992b193be85cb2",
+      "bytes": 11355,
+      "sha256": "7339fa418c9ad3e8e12e74ad0fd26a9cc4be8703f9c110728a992b193be85cb2"
+    },
+    {
+      "path": "blobs/9371364b27a52acac9d87f88bd93c9db1174d8d6ec57f6888925cdc1788871ff",
+      "url": "https://registry.ollama.ai/v2/library/qwen3.5/blobs/sha256:9371364b27a52acac9d87f88bd93c9db1174d8d6ec57f6888925cdc1788871ff",
+      "bytes": 65,
+      "sha256": "9371364b27a52acac9d87f88bd93c9db1174d8d6ec57f6888925cdc1788871ff"
+    }
+  ]
+}

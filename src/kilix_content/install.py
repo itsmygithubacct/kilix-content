@@ -1094,7 +1094,12 @@ class Installer:
         elif spec.source_mode == "upstream-convert":
             output = os.path.join(stage, "content")
             os.makedirs(output, mode=0o700, exist_ok=True)
-            staged_input = os.path.join(stage, "input")
+            source_layout = bool(spec.convert_input_path)
+            if source_layout:
+                staged_input = os.path.join(output, spec.convert_input_path)
+                os.makedirs(os.path.dirname(staged_input), mode=0o700, exist_ok=True)
+            else:
+                staged_input = os.path.join(stage, "input")
             fetch_exact(
                 spec.convert_url,
                 staged_input,
@@ -1105,8 +1110,27 @@ class Installer:
                 progress=progress,
                 partial_dir=partial_dir,
             )
+            by_path = {item.path: item for item in spec.files}
+            for index, item in enumerate(spec.fetch):
+                listed = by_path[item.path]
+                target = os.path.join(output, item.path)
+                os.makedirs(os.path.dirname(target), mode=0o700, exist_ok=True)
+                fetch_exact(
+                    item.url,
+                    target,
+                    expected_bytes=listed.bytes,
+                    expected_sha256=listed.sha256,
+                    deadline=deadline,
+                    cancelled=cancelled,
+                    progress=progress,
+                    partial_dir=os.path.join(partial_dir, f"convert-{index}"),
+                )
+            derived = os.path.join(stage, "derived") if source_layout else output
+            os.makedirs(derived, mode=0o700, exist_ok=True)
             argv = [
-                argument.replace("{input}", staged_input).replace("{output}", output)
+                argument.replace("{input}", staged_input)
+                .replace("{output}", derived)
+                .replace("{sources}", output)
                 for argument in spec.convert_argv
             ]
             report(f"converting {spec.label} …")

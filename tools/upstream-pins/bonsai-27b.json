@@ -1,0 +1,41 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "bonsai-27b",
+  "mode": "upstream-files",
+  "license_record_id": "bonsai-27b",
+  "provider": "kilix-bonsai",
+  "consumer_schema": "kilix.bonsai.runtime",
+  "version": "f10afb355f104535e3e3e98cf7ab7795c72bd292",
+  "destination": "$KILIX_BONSAI_MODELS_DIR/bonsai-27b",
+  "provenance": {
+    "project": "prism-ml/Bonsai-27B-gguf",
+    "revision": "f10afb355f104535e3e3e98cf7ab7795c72bd292",
+    "original_url": "https://huggingface.co/prism-ml/Bonsai-27B-gguf/resolve/f10afb355f104535e3e3e98cf7ab7795c72bd292/Bonsai-27B-Q1_0.gguf"
+  },
+  "members": [
+    {
+      "path": "Bonsai-27B-Q1_0.gguf",
+      "url": "https://huggingface.co/prism-ml/Bonsai-27B-gguf/resolve/f10afb355f104535e3e3e98cf7ab7795c72bd292/Bonsai-27B-Q1_0.gguf",
+      "bytes": 3803452480,
+      "sha256": "17ef842e47450caeb8eaa3ebfbbab5d2f2278b62b79be107985fb69a2f819aa0"
+    },
+    {
+      "path": "LICENSE.txt",
+      "url": "https://huggingface.co/prism-ml/Bonsai-27B-gguf/resolve/f10afb355f104535e3e3e98cf7ab7795c72bd292/LICENSE.txt",
+      "bytes": 10174,
+      "sha256": "69849221bfb90053de2134ef5e6d540287b4b98062326492f1f96f5da685524b"
+    },
+    {
+      "path": "NOTICE.txt",
+      "url": "https://huggingface.co/prism-ml/Bonsai-27B-gguf/resolve/f10afb355f104535e3e3e98cf7ab7795c72bd292/NOTICE.txt",
+      "bytes": 411,
+      "sha256": "cef33f95425f9802de78b7b22db0faca84d2216661432a9afcf9620949c21f7e"
+    },
+    {
+      "path": "README.md",
+      "url": "https://huggingface.co/prism-ml/Bonsai-27B-gguf/resolve/f10afb355f104535e3e3e98cf7ab7795c72bd292/README.md",
+      "bytes": 21877,
+      "sha256": "11d03fc8a0b969fa6df837e23b613bfe34fef2283649b8e4d0aea496040a549c"
+    }
+  ]
+}
