@@ -139,6 +139,12 @@ def catalog_matches_generator(root: Path, catalog_digest_path: Path) -> bool:
     return catalog_digest_path.read_text(encoding="utf-8") == generated_catalog_text(root)
 
 
+def _skip_catalog_digest_path(rel: str) -> bool:
+    """Licence text store is not a weight blob (C1-VERIFY F-01)."""
+    normalized = rel.replace("\\", "/")
+    return "kilix-license" in normalized and "/data/texts/" in f"/{normalized}"
+
+
 def scan_tree(root: Path, catalog_digest_path: Path) -> list[WeightFinding]:
     _text, catalog = load_catalog_digests(catalog_digest_path)
     findings: list[WeightFinding] = []
@@ -154,6 +160,8 @@ def scan_tree(root: Path, catalog_digest_path: Path) -> list[WeightFinding]:
         magic = _magic_hit(head)
         if magic:
             findings.append(WeightFinding(rel, magic))
+        if _skip_catalog_digest_path(rel):
+            continue
         digest = sha256_file(path)
         if digest in catalog:
             findings.append(WeightFinding(rel, f"catalog-digest:{digest}"))

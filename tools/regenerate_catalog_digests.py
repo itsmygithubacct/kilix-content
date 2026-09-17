@@ -20,15 +20,29 @@ def sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _is_notice_or_licence_path(path: str) -> bool:
+    """Notices and licence texts are not model weights (C1-VERIFY F-01)."""
+    normalized = path.replace("\\", "/").lower()
+    name = normalized.rsplit("/", 1)[-1]
+    if normalized.startswith("notices/") or "/notices/" in f"/{normalized}":
+        return True
+    return name.startswith(("license", "licence", "copying", "notice"))
+
+
 def members_from_catalog(catalog: dict) -> list[str]:
+    """Archive and weight-blob digests only; skip notices/licence text files."""
     digests: list[str] = []
     for asset in catalog.get("assets", []):
         source = asset.get("source") or {}
         if source.get("archive_sha256"):
             digests.append(source["archive_sha256"])
+        convert_input = source.get("input") or {}
+        if convert_input.get("sha256"):
+            digests.append(convert_input["sha256"])
         for item in asset.get("files") or []:
+            path = item.get("path") or ""
             digest = item.get("sha256")
-            if digest:
+            if digest and not _is_notice_or_licence_path(path):
                 digests.append(digest)
     return sorted(set(digests))
 

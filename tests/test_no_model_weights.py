@@ -10,6 +10,7 @@ import unittest
 from weight_scan import (
     SIZE_GATE_BYTES,
     catalog_matches_generator,
+    load_catalog_digests,
     scan_tree,
     sha256_file,
 )
@@ -100,19 +101,29 @@ class WeightGuardTests(unittest.TestCase):
         from kilix_content import default_catalog
 
         spec = default_catalog().require_asset("vosk-model-small-en-us-0.15")
-        member = spec.files[0]
+        member = next(item for item in spec.files if item.path == "am/final.mdl")
+        notice = next(item for item in spec.files if item.path.startswith("notices/"))
+        _text, catalog = load_catalog_digests(CATALOG)
+        self.assertIn(member.sha256, catalog)
+        self.assertIn(spec.archive_sha256, catalog)
+        self.assertNotIn(notice.sha256, catalog)
+        self.assertEqual([], scan_tree(ROOT, CATALOG))
         tree = Path(tempfile.mkdtemp(prefix="kilix-content-weight-member-"))
-        (tree / "planted-member.bin").write_bytes(b"not-the-bytes")
-        catalog = tree / "catalog_digests.txt"
-        catalog.write_text(member.sha256 + "\n", encoding="utf-8")
-        # The planted file's digest is not the member digest; copy the digest
-        # into a blob so the scan hits catalog-digest.
-        blob = tree / "copy.bin"
-        # Cannot materialise upstream bytes. Plant the digest string as the
-        # catalog list and a file whose sha256 equals that digest by writing
-        # a unique blob then putting THAT digest in the list (same as
-        # test_planted_catalog_digest_blob_fails). This names the member
-        # digest as a required absence.
-        findings_clean = scan_tree(ROOT, CATALOG)
-        self.assertEqual([], findings_clean)
-        self.assertTrue(any(item.sha256 == member.sha256 for item in spec.files))
+        blob = tree / "planted-member.bin"
+        blob.write_bytes(b"planted-archive-member-control")
+        digest = sha256_file(blob)
+        planted_list = tree / "catalog_digests.txt"
+        planted_list.write_text(
+            CATALOG.read_text(encoding="utf-8") + digest + "\n",
+            encoding="utf-8",
+        )
+        _git_init(tree)
+        findings = scan_tree(tree, planted_list)
+        self.assertTrue(any(item.reason == f"catalog-digest:{digest}" for item in findings))
+
+    def test_notice_text_is_not_a_catalog_digest_hit(self) -> None:
+        apache = "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        _text, catalog = load_catalog_digests(CATALOG)
+        self.assertNotIn(apache, catalog)
+        findings = scan_tree(ROOT, CATALOG)
+        self.assertFalse(any(item.reason.startswith("catalog-digest:") for item in findings))
