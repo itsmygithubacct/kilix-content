@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate packaged asset/v3 records from verified upstream pins (R4-050, R4-052)."""
+"""Generate packaged asset/v3 records from verified upstream pins (R4-050, R4-052, R4-056)."""
 
 from __future__ import annotations
 
@@ -16,12 +16,34 @@ CATALOG = ROOT / "src" / "kilix_content" / "catalog" / "plebian.json"
 RECEIPT = ROOT / "src" / "kilix_content" / "receipt.py"
 SCHEMA = ROOT / "src" / "kilix_content" / "contracts" / "kilix.content.asset-v3.schema.json"
 LICENSE_SRC = ROOT / "third_party" / "kilix-license" / "src"
-NOTICE_NAME = "notices/LICENSE-apache-2.0.txt"
-APACHE = "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+TEXTS = LICENSE_SRC / "kilix_license" / "data" / "texts"
+
+PIN_NAMES = (
+    "vosk-model-small-en-us-0.15.json",
+    "vosk-model-en-us-0.22-lgraph.json",
+    "qwen3-tts-0.6b-base.json",
+    "qwen3-tts-0.6b-customvoice.json",
+    "qwen3-tts-1.7b-voicedesign.json",
+    "whisper-tiny-ggml.json",
+)
 
 LICENSORS = {
     "small-en-us": ["Alpha Cephei Inc."],
     "lgraph-en-us": ["Appen", "Alpha Cephei"],
+    "qwen3-tts-0.6b-base": ["Alibaba Cloud"],
+    "qwen3-tts-0.6b-customvoice": ["Alibaba Cloud"],
+    "qwen3-tts-1.7b-voicedesign": ["Alibaba Cloud"],
+    "whisper-tiny-ggml": ["OpenAI"],
+}
+
+LICENSE_ROW_IDS = {
+    "Apache-2.0": "apache-2.0",
+    "MIT": "mit",
+}
+
+NOTICE_PATHS = {
+    "apache-2.0": "notices/LICENSE-apache-2.0.txt",
+    "mit": "notices/LICENSE-mit.txt",
 }
 
 
@@ -38,24 +60,43 @@ def load_license(record_id: str):
     return load_determined_records().by_id(record_id)
 
 
-def notice_bytes() -> int:
-    path = LICENSE_SRC / "kilix_license" / "data" / "texts" / APACHE
+def license_row_id(record) -> str:
+    if not record.licence_ids:
+        raise SystemExit(f"{record.id} has no licence_ids")
+    try:
+        return LICENSE_ROW_IDS[record.licence_ids[0]]
+    except KeyError as exc:
+        raise SystemExit(f"{record.id} has unsupported licence {record.licence_ids[0]!r}") from exc
+
+
+def notice_file(record) -> dict[str, object]:
+    digest = record.text_sha256
+    path = TEXTS / digest
     data = path.read_bytes()
-    if hashlib.sha256(data).hexdigest() != APACHE:
-        raise SystemExit("Apache-2.0 text digest mismatch")
-    return len(data)
+    if hashlib.sha256(data).hexdigest() != digest:
+        raise SystemExit(f"notice text digest mismatch for {record.id}")
+    return {
+        "bytes": len(data),
+        "path": NOTICE_PATHS[license_row_id(record)],
+        "sha256": digest,
+    }
 
 
-def build_asset(pin: dict, notice_size: int) -> dict:
+def member_files(pin: dict) -> list[dict[str, object]]:
+    files = []
+    for item in pin["members"]:
+        files.append(
+            {"bytes": item["bytes"], "path": item["path"], "sha256": item["sha256"]}
+        )
+    return files
+
+
+def build_archive_asset(pin: dict) -> dict:
     record = load_license(pin["license_record_id"])
-    members = list(pin["members"])
-    files = [
-        {"bytes": item["bytes"], "path": item["path"], "sha256": item["sha256"]}
-        for item in members
-    ]
-    files.append({"bytes": notice_size, "path": NOTICE_NAME, "sha256": APACHE})
+    files = member_files(pin)
+    files.append(notice_file(record))
     files.sort(key=lambda item: item["path"])
-    installed = sum(item["bytes"] for item in files)
+    installed = sum(int(item["bytes"]) for item in files)
     download = pin["archive_bytes"]
     return {
         "compatibility": {
@@ -69,7 +110,7 @@ def build_asset(pin: dict, notice_size: int) -> dict:
         "licenses": [
             {
                 "decision": record.decision_class,
-                "id": "apache-2.0",
+                "id": license_row_id(record),
                 "licensors": list(LICENSORS[pin["license_record_id"]]),
                 "record_digest": record.digest,
                 "text_sha256": record.text_sha256,
@@ -94,6 +135,59 @@ def build_asset(pin: dict, notice_size: int) -> dict:
         "stream": "F104",
         "version": pin["version"],
     }
+
+
+def build_files_asset(pin: dict) -> dict:
+    record = load_license(pin["license_record_id"])
+    files = member_files(pin)
+    files.append(notice_file(record))
+    files.sort(key=lambda item: item["path"])
+    fetch = [{"path": item["path"], "url": item["url"]} for item in pin["members"]]
+    fetch.sort(key=lambda item: item["path"])
+    download = sum(int(item["bytes"]) for item in pin["members"])
+    installed = sum(int(item["bytes"]) for item in files)
+    return {
+        "compatibility": {
+            "consumer_schema": pin["consumer_schema"],
+            "maximum": 1,
+            "minimum": 1,
+        },
+        "files": files,
+        "id": pin["id"],
+        "label": pin["id"],
+        "licenses": [
+            {
+                "decision": record.decision_class,
+                "id": license_row_id(record),
+                "licensors": list(LICENSORS[pin["license_record_id"]]),
+                "record_digest": record.digest,
+                "text_sha256": record.text_sha256,
+            }
+        ],
+        "provider": pin["provider"],
+        "schema": "kilix.content.asset/v3",
+        "sizes": {
+            "download_bytes": download,
+            "installed_bytes": installed,
+            "temporary_bytes": installed,
+        },
+        "source": {
+            "fetch": fetch,
+            "mode": "upstream-files",
+            "provenance": dict(pin["provenance"]),
+        },
+        "stream": "F104",
+        "version": pin["version"],
+    }
+
+
+def build_from_pin(pin: dict) -> dict:
+    mode = pin.get("mode", "upstream-archive")
+    if mode == "upstream-files":
+        return build_files_asset(pin)
+    if mode == "upstream-archive":
+        return build_archive_asset(pin)
+    raise SystemExit(f"unsupported pin mode {mode!r} for {pin.get('id')}")
 
 
 def replace_pin(path: Path, name: str, new_sha: str, old_sha: str | None) -> None:
@@ -124,11 +218,9 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--old", dest="old_sha", default=None)
     args = parser.parse_args(argv[1:])
     pins = [
-        json.loads((PIN_DIR / "vosk-model-small-en-us-0.15.json").read_text(encoding="utf-8")),
-        json.loads((PIN_DIR / "vosk-model-en-us-0.22-lgraph.json").read_text(encoding="utf-8")),
+        json.loads((PIN_DIR / name).read_text(encoding="utf-8")) for name in PIN_NAMES
     ]
-    notice_size = notice_bytes()
-    assets = [build_asset(pin, notice_size) for pin in pins]
+    assets = [build_from_pin(pin) for pin in pins]
     catalog = json.loads(CATALOG.read_text(encoding="utf-8"))
     catalog["schema_version"] = 4
     catalog["assets"] = assets

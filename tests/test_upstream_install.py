@@ -19,6 +19,7 @@ from first_use_fixture import (
     hostile_symlink_zip,
     hostile_two_roots_zip,
     make_archive_asset,
+    make_files_asset,
     vosk_fixture_zip,
 )
 from kilix_content.install import InstallError, Installer
@@ -184,55 +185,85 @@ class UpstreamInstallTests(unittest.TestCase):
                 spec, store=self.store, records=self.records, notices=self.texts
             )
 
+    def _files_payloads(self) -> dict[str, bytes]:
+        return {
+            "model/config.json": b'{"ok":true}',
+            "model.bin": b"tiny-weights",
+        }
+
+    def test_files_mode_verifies_each_file(self) -> None:
+        payloads = self._files_payloads()
+        files = {
+            path: (self.upstream.add(f"/{path}", body), body)
+            for path, body in payloads.items()
+        }
+        mapping = make_files_asset(
+            asset_id="fixture-files-ok",
+            files=files,
+            license_record=self.record,
+            notice=self.notice,
+            licensors=["Alpha Cephei Inc."],
+        )
+        spec = AssetSpec.from_mapping(mapping)
+        self._authorize(spec)
+        installed = self.installer.ensure_upstream_asset(
+            spec, store=self.store, records=self.records, notices=self.texts
+        )
+        root = Path(installed[0])
+        for path, body in payloads.items():
+            self.assertEqual((root / path).read_bytes(), body)
+        self.assertEqual((root / "notices/LICENSE-apache-2.0.txt").read_bytes(), self.notice)
+        gotten = {
+            item.get("path")
+            for item in self.upstream.requests()
+            if item.get("command") == "GET"
+        }
+        self.assertEqual(gotten, {f"/{path}" for path in payloads})
+
     def test_files_mode_wrong_sha_refused(self) -> None:
         payload = b"hello-files"
         url = self.upstream.add("/file.bin", payload + b"x")
-        mapping = {
-            "compatibility": {"consumer_schema": "kilix.speech.models/v1", "maximum": 1, "minimum": 1},
-            "files": [
-                {"bytes": len(payload), "path": "model.bin", "sha256": _sha(payload)},
-                {
-                    "bytes": len(self.notice),
-                    "path": "notices/LICENSE-apache-2.0.txt",
-                    "sha256": _sha(self.notice),
-                },
-            ],
-            "id": "fixture-files",
-            "label": "files",
-            "licenses": [
-                {
-                    "decision": "affirmative",
-                    "id": "apache-2.0",
-                    "licensors": ["Alpha Cephei Inc."],
-                    "record_digest": self.record.digest,
-                    "text_sha256": self.record.text_sha256,
-                }
-            ],
-            "provider": "kilix-voice",
-            "schema": "kilix.content.asset/v3",
-            "sizes": {
-                "download_bytes": len(payload),
-                "installed_bytes": len(payload) + len(self.notice),
-                "temporary_bytes": len(payload) + len(self.notice),
-            },
-            "source": {
-                "fetch": [{"path": "model.bin", "url": url}],
-                "mode": "upstream-files",
-                "provenance": {
-                    "original_url": url,
-                    "project": "example/files",
-                    "revision": "1",
-                },
-            },
-            "stream": "F104",
-            "version": "1",
-        }
+        mapping = make_files_asset(
+            asset_id="fixture-files",
+            files={"model.bin": (url, payload)},
+            license_record=self.record,
+            notice=self.notice,
+            licensors=["Alpha Cephei Inc."],
+        )
         spec = AssetSpec.from_mapping(mapping)
         self._authorize(spec)
         with self.assertRaises(Exception):
             self.installer.ensure_upstream_asset(
                 spec, store=self.store, records=self.records, notices=self.texts
             )
+        self.assertFalse(Path(self.installer.asset_destination(spec)).exists())
+
+    def test_files_mode_one_byte_changed_refused(self) -> None:
+        honest = self._files_payloads()
+        files = {
+            "model/config.json": (
+                self.upstream.add("/model/config.json", honest["model/config.json"]),
+                honest["model/config.json"],
+            ),
+            "model.bin": (
+                self.upstream.add("/model.bin", honest["model.bin"] + b"X"),
+                honest["model.bin"],
+            ),
+        }
+        mapping = make_files_asset(
+            asset_id="fixture-files-flip",
+            files=files,
+            license_record=self.record,
+            notice=self.notice,
+            licensors=["Alpha Cephei Inc."],
+        )
+        spec = AssetSpec.from_mapping(mapping)
+        self._authorize(spec)
+        with self.assertRaises(Exception):
+            self.installer.ensure_upstream_asset(
+                spec, store=self.store, records=self.records, notices=self.texts
+            )
+        self.assertFalse(Path(self.installer.asset_destination(spec)).exists())
 
     def test_record_digest_covers_url_bytes_sha_root_and_licensor(self) -> None:
         archive = vosk_fixture_zip()

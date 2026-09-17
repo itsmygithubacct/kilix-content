@@ -1,0 +1,22 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "whisper-tiny-ggml",
+  "mode": "upstream-files",
+  "license_record_id": "whisper-tiny-ggml",
+  "provider": "kilix-transcribe",
+  "consumer_schema": "kilix.transcribe.runtime",
+  "version": "5359861c739e955e79d9a303bcbc70fb988958b1",
+  "provenance": {
+    "project": "ggerganov/whisper.cpp",
+    "revision": "5359861c739e955e79d9a303bcbc70fb988958b1",
+    "original_url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-tiny.bin"
+  },
+  "members": [
+    {
+      "path": "model.bin",
+      "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-tiny.bin",
+      "bytes": 77691713,
+      "sha256": "be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21"
+    }
+  ]
+}

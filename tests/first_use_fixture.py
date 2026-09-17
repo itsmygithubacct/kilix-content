@@ -329,6 +329,70 @@ def archive_members(payload: bytes, root: str) -> list[dict[str, Any]]:
     return files
 
 
+def make_files_asset(
+    *,
+    asset_id: str,
+    files: dict[str, tuple[str, bytes]],
+    license_record,
+    notice: bytes,
+    licensors: list[str],
+    provider: str = "kilix-voice",
+    consumer_schema: str = "kilix.speech.models/v1",
+    notice_path: str = "notices/LICENSE-apache-2.0.txt",
+    license_id: str = "apache-2.0",
+) -> dict[str, Any]:
+    listed = [
+        {"bytes": len(payload), "path": path, "sha256": sha256_bytes(payload)}
+        for path, (_url, payload) in files.items()
+    ]
+    listed.append(
+        {"bytes": len(notice), "path": notice_path, "sha256": sha256_bytes(notice)}
+    )
+    listed.sort(key=lambda item: item["path"])
+    fetch = [{"path": path, "url": url} for path, (url, _payload) in files.items()]
+    fetch.sort(key=lambda item: item["path"])
+    download = sum(len(payload) for _url, payload in files.values())
+    installed = sum(item["bytes"] for item in listed)
+    first_url = fetch[0]["url"]
+    return {
+        "compatibility": {
+            "consumer_schema": consumer_schema,
+            "maximum": 1,
+            "minimum": 1,
+        },
+        "files": listed,
+        "id": asset_id,
+        "label": asset_id,
+        "licenses": [
+            {
+                "decision": license_record.decision_class,
+                "id": license_id,
+                "licensors": list(licensors),
+                "record_digest": license_record.digest,
+                "text_sha256": license_record.text_sha256,
+            }
+        ],
+        "provider": provider,
+        "schema": "kilix.content.asset/v3",
+        "sizes": {
+            "download_bytes": download,
+            "installed_bytes": installed,
+            "temporary_bytes": installed,
+        },
+        "source": {
+            "fetch": fetch,
+            "mode": "upstream-files",
+            "provenance": {
+                "original_url": first_url,
+                "project": "example/files",
+                "revision": "1",
+            },
+        },
+        "stream": "F104",
+        "version": "fixture",
+    }
+
+
 def make_archive_asset(
     *,
     asset_id: str,
