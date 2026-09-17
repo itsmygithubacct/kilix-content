@@ -1,0 +1,22 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "yolox_nano",
+  "mode": "upstream-files",
+  "license_record_id": "yolox_nano",
+  "provider": "kilix-object-detect",
+  "consumer_schema": "kilix.object-detect.runtime",
+  "version": "0.1.1rc0",
+  "provenance": {
+    "project": "Megvii-BaseDetection/YOLOX",
+    "revision": "e1052df71842031413f6030723c3607b839c80ce",
+    "original_url": "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_nano.onnx"
+  },
+  "members": [
+    {
+      "path": "yolox_nano.onnx",
+      "url": "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_nano.onnx",
+      "bytes": 3659407,
+      "sha256": "c789161ed43c8269fcd4e67c67eeeb4e80c622da2eb296a20bc6007bd18a0b7d"
+    }
+  ]
+}

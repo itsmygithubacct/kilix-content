@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate packaged asset/v3 records from verified upstream pins (R4-050, R4-052, R4-056, R4-057, R4-059)."""
+"""Generate packaged asset/v3 records from verified upstream pins (R4-050, R4-052, R4-056, R4-057, R4-059, R4-060, R4-061)."""
 
 from __future__ import annotations
 
@@ -27,6 +27,10 @@ PIN_NAMES = (
     "whisper-tiny-ggml.json",
     "piper-en-us-kristin-medium.json",
     "vibevoice-asr-bitnet.json",
+    "yolox_s.json",
+    "yolox_tiny.json",
+    "yolox_nano.json",
+    "yamnet.json",
 )
 
 LICENSORS = {
@@ -38,6 +42,10 @@ LICENSORS = {
     "whisper-tiny-ggml": ["OpenAI"],
     "piper-en-us-kristin-medium": ["Bryce Beattie"],
     "vibevoice-asr-bitnet": ["Microsoft Corporation"],
+    "yolox_s": ["Megvii (Base Detection / Megvii Inc.)"],
+    "yolox_tiny": ["Megvii (Base Detection / Megvii Inc.)"],
+    "yolox_nano": ["Megvii (Base Detection / Megvii Inc.)"],
+    "yamnet": ["Google"],
 }
 
 LICENSE_ROW_IDS = {

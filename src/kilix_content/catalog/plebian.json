@@ -2463,6 +2463,226 @@
       },
       "stream": "F104",
       "version": "66e78021ab8f5f06133d1ab421ba4d348bda97c9"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.object-detect.runtime",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 11352,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "577c03d505ec80f667ebf96ebd0cc4f6825c817ca1088ee348c48aaabd51bd92"
+        },
+        {
+          "bytes": 35858002,
+          "path": "yolox_s.onnx",
+          "sha256": "c5c2d13e59ae883e6af3b45daea64af4833a4951c92d116ec270d9ddbe998063"
+        }
+      ],
+      "id": "yolox_s",
+      "label": "yolox_s",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "Megvii (Base Detection / Megvii Inc.)"
+          ],
+          "record_digest": "26b02e8745be5d8ba4c8a434b781a4a4ab06a88ef5869e9d47fcb72ce69b5c4a",
+          "text_sha256": "577c03d505ec80f667ebf96ebd0cc4f6825c817ca1088ee348c48aaabd51bd92"
+        }
+      ],
+      "provider": "kilix-object-detect",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 35858002,
+        "installed_bytes": 35869354,
+        "temporary_bytes": 35869354
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "yolox_s.onnx",
+            "url": "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_s.onnx"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "Megvii-BaseDetection/YOLOX",
+          "revision": "e1052df71842031413f6030723c3607b839c80ce",
+          "original_url": "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_s.onnx"
+        }
+      },
+      "stream": "F104",
+      "version": "0.1.1rc0"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.object-detect.runtime",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 11352,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "577c03d505ec80f667ebf96ebd0cc4f6825c817ca1088ee348c48aaabd51bd92"
+        },
+        {
+          "bytes": 20219662,
+          "path": "yolox_tiny.onnx",
+          "sha256": "427cc366d34e27ff7a03e2899b5e3671425c262ea2291f88bb942bc1cc70b0f7"
+        }
+      ],
+      "id": "yolox_tiny",
+      "label": "yolox_tiny",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "Megvii (Base Detection / Megvii Inc.)"
+          ],
+          "record_digest": "2007f75c34633a8546dbdb8991d94b58dba160536d322659600b55decb1220aa",
+          "text_sha256": "577c03d505ec80f667ebf96ebd0cc4f6825c817ca1088ee348c48aaabd51bd92"
+        }
+      ],
+      "provider": "kilix-object-detect",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 20219662,
+        "installed_bytes": 20231014,
+        "temporary_bytes": 20231014
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "yolox_tiny.onnx",
+            "url": "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_tiny.onnx"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "Megvii-BaseDetection/YOLOX",
+          "revision": "e1052df71842031413f6030723c3607b839c80ce",
+          "original_url": "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_tiny.onnx"
+        }
+      },
+      "stream": "F104",
+      "version": "0.1.1rc0"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.object-detect.runtime",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 11352,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "577c03d505ec80f667ebf96ebd0cc4f6825c817ca1088ee348c48aaabd51bd92"
+        },
+        {
+          "bytes": 3659407,
+          "path": "yolox_nano.onnx",
+          "sha256": "c789161ed43c8269fcd4e67c67eeeb4e80c622da2eb296a20bc6007bd18a0b7d"
+        }
+      ],
+      "id": "yolox_nano",
+      "label": "yolox_nano",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "Megvii (Base Detection / Megvii Inc.)"
+          ],
+          "record_digest": "4ce0099506a8e727bea5f4b5eb10f8b2dc88c3b454e76663c3fb5d4ebff1f859",
+          "text_sha256": "577c03d505ec80f667ebf96ebd0cc4f6825c817ca1088ee348c48aaabd51bd92"
+        }
+      ],
+      "provider": "kilix-object-detect",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 3659407,
+        "installed_bytes": 3670759,
+        "temporary_bytes": 3670759
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "yolox_nano.onnx",
+            "url": "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_nano.onnx"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "Megvii-BaseDetection/YOLOX",
+          "revision": "e1052df71842031413f6030723c3607b839c80ce",
+          "original_url": "https://github.com/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_nano.onnx"
+        }
+      },
+      "stream": "F104",
+      "version": "0.1.1rc0"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.sound-detect.runtime",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 11512,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "5b17814bf0de8cf65069bc6d7cc38cff19fcaa864d243423ad3ef3db01b52385"
+        },
+        {
+          "bytes": 4126810,
+          "path": "yamnet.tflite",
+          "sha256": "4d8b4a53282dc83ef04e3e7dbc4fbc98082e34e44ed798e16c3a0cdd4c584faf"
+        }
+      ],
+      "id": "yamnet",
+      "label": "yamnet",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "Google"
+          ],
+          "record_digest": "d70501a80d834b3cb32d456c5516fcc4ab454ac68eb4cf45201844c08790113f",
+          "text_sha256": "5b17814bf0de8cf65069bc6d7cc38cff19fcaa864d243423ad3ef3db01b52385"
+        }
+      ],
+      "provider": "kilix-sound-detect",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 4126810,
+        "installed_bytes": 4138322,
+        "temporary_bytes": 4138322
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "yamnet.tflite",
+            "url": "https://storage.googleapis.com/mediapipe-models/audio_classifier/yamnet/float32/1/yamnet.tflite"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "google/yamnet",
+          "revision": "float32/1",
+          "original_url": "https://storage.googleapis.com/mediapipe-models/audio_classifier/yamnet/float32/1/yamnet.tflite"
+        }
+      },
+      "stream": "F104",
+      "version": "float32/1"
     }
   ]
 }

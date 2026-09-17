@@ -18,7 +18,7 @@ from first_use_fixture import FakeUpstream, make_files_asset
 from kilix_content import default_catalog
 from kilix_content.first_use import install_with_agreement, present_asset
 from kilix_content.install import Installer
-from kilix_content.model import AssetSpec
+from kilix_content.model import AssetSpec, _is_kilix_hosted
 from kilix_content.receipt import _CATALOG_SHA256, catalog_sha256
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -197,7 +197,9 @@ class KristinVibeVoiceAssetTests(unittest.TestCase):
             for item in spec.fetch:
                 parsed = urlsplit(item.url)
                 self.assertEqual(parsed.scheme, "https")
-                self.assertNotEqual(parsed.hostname, "github.com")
+                self.assertFalse(_is_kilix_hosted(item.url), item.url)
+            if spec.source_mode == "upstream-archive":
+                self.assertFalse(_is_kilix_hosted(spec.url), spec.url)
 
     def test_catalog_sha_matches_packaged_bytes(self) -> None:
         self.assertEqual(catalog_sha256(), _CATALOG_SHA256)
