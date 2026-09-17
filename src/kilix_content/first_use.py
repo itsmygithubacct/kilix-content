@@ -26,7 +26,12 @@ def license_record_for(spec: AssetSpec, records: RecordIndex) -> LicenseRecord:
 
 def present_asset(spec: AssetSpec, record: LicenseRecord, texts: TextStore) -> bytes:
     """Identity, source, size, licence and the verbatim stored text."""
-    license_row = spec.licenses[0]
+    licence_ids = ", ".join(row.license_id for row in spec.licenses)
+    licensors = ", ".join(
+        dict.fromkeys(
+            licensor for row in spec.licenses for licensor in row.licensors
+        )
+    )
     header = (
         f"model: {spec.label}\n"
         f"id: {spec.asset_id}\n"
@@ -34,9 +39,9 @@ def present_asset(spec: AssetSpec, record: LicenseRecord, texts: TextStore) -> b
         f"source: {spec.source_url}\n"
         f"host: {spec.source_host}\n"
         f"bytes: {spec.download_bytes}\n"
-        f"licence: {license_row.license_id}\n"
-        f"licensors: {', '.join(license_row.licensors)}\n"
-        f"decision: {license_row.decision}\n"
+        f"licence: {licence_ids}\n"
+        f"licensors: {licensors}\n"
+        f"decision: {spec.licenses[0].decision}\n"
     ).encode("utf-8")
     return header + b"\n" + render_screen(record, texts)
 

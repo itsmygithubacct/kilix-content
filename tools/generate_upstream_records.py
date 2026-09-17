@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate packaged asset/v3 records from verified upstream pins (R4-050, R4-052, R4-056)."""
+"""Generate packaged asset/v3 records from verified upstream pins (R4-050, R4-052, R4-056, R4-057, R4-059)."""
 
 from __future__ import annotations
 
@@ -25,6 +25,8 @@ PIN_NAMES = (
     "qwen3-tts-0.6b-customvoice.json",
     "qwen3-tts-1.7b-voicedesign.json",
     "whisper-tiny-ggml.json",
+    "piper-en-us-kristin-medium.json",
+    "vibevoice-asr-bitnet.json",
 )
 
 LICENSORS = {
@@ -34,16 +36,30 @@ LICENSORS = {
     "qwen3-tts-0.6b-customvoice": ["Alibaba Cloud"],
     "qwen3-tts-1.7b-voicedesign": ["Alibaba Cloud"],
     "whisper-tiny-ggml": ["OpenAI"],
+    "piper-en-us-kristin-medium": ["Bryce Beattie"],
+    "vibevoice-asr-bitnet": ["Microsoft Corporation"],
 }
 
 LICENSE_ROW_IDS = {
     "Apache-2.0": "apache-2.0",
     "MIT": "mit",
+    "Public domain, per the trainer's statement": "public-domain",
 }
 
 NOTICE_PATHS = {
     "apache-2.0": "notices/LICENSE-apache-2.0.txt",
     "mit": "notices/LICENSE-mit.txt",
+    "public-domain": "notices/public-domain.txt",
+}
+
+# Component exceptions that are shown as a second licence row (OD-AB).
+COMPONENT_LICENSE_ROWS = {
+    "qwen2.5-1.5b-decoder-lineage": {
+        "decision": "affirmative",
+        "license_id": "apache-2.0",
+        "licensors": ["Alibaba Cloud"],
+        "notice_path": "notices/LICENSE-apache-2.0.txt",
+    }
 }
 
 
@@ -69,17 +85,63 @@ def license_row_id(record) -> str:
         raise SystemExit(f"{record.id} has unsupported licence {record.licence_ids[0]!r}") from exc
 
 
-def notice_file(record) -> dict[str, object]:
-    digest = record.text_sha256
-    path = TEXTS / digest
-    data = path.read_bytes()
+def notice_blob(digest: str, path: str, label: str) -> dict[str, object]:
+    data = (TEXTS / digest).read_bytes()
     if hashlib.sha256(data).hexdigest() != digest:
-        raise SystemExit(f"notice text digest mismatch for {record.id}")
-    return {
-        "bytes": len(data),
-        "path": NOTICE_PATHS[license_row_id(record)],
-        "sha256": digest,
-    }
+        raise SystemExit(f"notice text digest mismatch for {label}")
+    return {"bytes": len(data), "path": path, "sha256": digest}
+
+
+def notice_file(record) -> dict[str, object]:
+    return notice_blob(
+        record.text_sha256, NOTICE_PATHS[license_row_id(record)], record.id
+    )
+
+
+def notice_files(record) -> list[dict[str, object]]:
+    files = [notice_file(record)]
+    for component in record.components:
+        extra = COMPONENT_LICENSE_ROWS.get(component.id)
+        if extra is None:
+            continue
+        if component.exception_text_sha256 is None:
+            raise SystemExit(f"{record.id} component {component.id} has no text")
+        files.append(
+            notice_blob(
+                component.exception_text_sha256,
+                extra["notice_path"],
+                f"{record.id}:{component.id}",
+            )
+        )
+    return files
+
+
+def license_rows(pin: dict, record) -> list[dict[str, object]]:
+    rows = [
+        {
+            "decision": record.decision_class,
+            "id": license_row_id(record),
+            "licensors": list(LICENSORS[pin["license_record_id"]]),
+            "record_digest": record.digest,
+            "text_sha256": record.text_sha256,
+        }
+    ]
+    for component in record.components:
+        extra = COMPONENT_LICENSE_ROWS.get(component.id)
+        if extra is None:
+            continue
+        if component.exception_text_sha256 is None:
+            raise SystemExit(f"{record.id} component {component.id} has no text")
+        rows.append(
+            {
+                "decision": extra["decision"],
+                "id": extra["license_id"],
+                "licensors": list(extra["licensors"]),
+                "record_digest": record.digest,
+                "text_sha256": component.exception_text_sha256,
+            }
+        )
+    return rows
 
 
 def member_files(pin: dict) -> list[dict[str, object]]:
@@ -94,7 +156,7 @@ def member_files(pin: dict) -> list[dict[str, object]]:
 def build_archive_asset(pin: dict) -> dict:
     record = load_license(pin["license_record_id"])
     files = member_files(pin)
-    files.append(notice_file(record))
+    files.extend(notice_files(record))
     files.sort(key=lambda item: item["path"])
     installed = sum(int(item["bytes"]) for item in files)
     download = pin["archive_bytes"]
@@ -107,15 +169,7 @@ def build_archive_asset(pin: dict) -> dict:
         "files": files,
         "id": pin["id"],
         "label": pin["id"],
-        "licenses": [
-            {
-                "decision": record.decision_class,
-                "id": license_row_id(record),
-                "licensors": list(LICENSORS[pin["license_record_id"]]),
-                "record_digest": record.digest,
-                "text_sha256": record.text_sha256,
-            }
-        ],
+        "licenses": license_rows(pin, record),
         "provider": "kilix-voice",
         "schema": "kilix.content.asset/v3",
         "sizes": {
@@ -140,7 +194,7 @@ def build_archive_asset(pin: dict) -> dict:
 def build_files_asset(pin: dict) -> dict:
     record = load_license(pin["license_record_id"])
     files = member_files(pin)
-    files.append(notice_file(record))
+    files.extend(notice_files(record))
     files.sort(key=lambda item: item["path"])
     fetch = [{"path": item["path"], "url": item["url"]} for item in pin["members"]]
     fetch.sort(key=lambda item: item["path"])
@@ -155,15 +209,7 @@ def build_files_asset(pin: dict) -> dict:
         "files": files,
         "id": pin["id"],
         "label": pin["id"],
-        "licenses": [
-            {
-                "decision": record.decision_class,
-                "id": license_row_id(record),
-                "licensors": list(LICENSORS[pin["license_record_id"]]),
-                "record_digest": record.digest,
-                "text_sha256": record.text_sha256,
-            }
-        ],
+        "licenses": license_rows(pin, record),
         "provider": pin["provider"],
         "schema": "kilix.content.asset/v3",
         "sizes": {

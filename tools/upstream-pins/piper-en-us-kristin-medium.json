@@ -1,0 +1,34 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "piper-en-us-kristin-medium",
+  "mode": "upstream-files",
+  "license_record_id": "piper-en-us-kristin-medium",
+  "provider": "kilix-piper-tts",
+  "consumer_schema": "kilix.piper.models/v1",
+  "version": "39ab474be869e9181350af6a65e4953eef67aaa0",
+  "provenance": {
+    "project": "rhasspy/piper-voices",
+    "revision": "39ab474be869e9181350af6a65e4953eef67aaa0",
+    "original_url": "https://huggingface.co/rhasspy/piper-voices/resolve/39ab474be869e9181350af6a65e4953eef67aaa0/en/en_US/kristin/medium/en_US-kristin-medium.onnx"
+  },
+  "members": [
+    {
+      "path": "en_US-kristin-medium.onnx",
+      "url": "https://huggingface.co/rhasspy/piper-voices/resolve/39ab474be869e9181350af6a65e4953eef67aaa0/en/en_US/kristin/medium/en_US-kristin-medium.onnx",
+      "bytes": 63531379,
+      "sha256": "5849957f929cbf720c258f8458692d6103fff2f0e3d3b19c8259474bb06a18d4"
+    },
+    {
+      "path": "en_US-kristin-medium.onnx.json",
+      "url": "https://huggingface.co/rhasspy/piper-voices/resolve/39ab474be869e9181350af6a65e4953eef67aaa0/en/en_US/kristin/medium/en_US-kristin-medium.onnx.json",
+      "bytes": 4968,
+      "sha256": "5681426d4aead22195de70531eeeeddb46493cfaffc5764b2ea3db73428b651c"
+    },
+    {
+      "path": "MODEL_CARD",
+      "url": "https://huggingface.co/rhasspy/piper-voices/resolve/39ab474be869e9181350af6a65e4953eef67aaa0/en/en_US/kristin/medium/MODEL_CARD",
+      "bytes": 479,
+      "sha256": "8c181b1d5f7d8152b914faab941fcbe6b8f0495e63e5189d6f27b8c68c8393fc"
+    }
+  ]
+}

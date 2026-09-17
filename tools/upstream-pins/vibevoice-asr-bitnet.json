@@ -1,0 +1,65 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "vibevoice-asr-bitnet",
+  "mode": "upstream-files",
+  "license_record_id": "vibevoice-asr-bitnet",
+  "provider": "kilix-bonsai",
+  "consumer_schema": "kilix.bonsai.runtime",
+  "version": "66e78021ab8f5f06133d1ab421ba4d348bda97c9",
+  "destination": "$KILIX_DATA_HOME/voice/models/vibevoice-asr-bitnet",
+  "provenance": {
+    "project": "microsoft/VibeVoice-ASR-BitNet",
+    "revision": "66e78021ab8f5f06133d1ab421ba4d348bda97c9",
+    "original_url": "https://huggingface.co/microsoft/VibeVoice-ASR-BitNet/resolve/66e78021ab8f5f06133d1ab421ba4d348bda97c9/config.json"
+  },
+  "members": [
+    {
+      "path": "vibeasr-lm-i2_s-embed-q6_k.gguf",
+      "url": "https://huggingface.co/microsoft/VibeVoice-ASR-BitNet/resolve/66e78021ab8f5f06133d1ab421ba4d348bda97c9/vibeasr-lm-i2_s-embed-q6_k.gguf",
+      "bytes": 992877600,
+      "sha256": "fbe273d8dc2f2433bb25f849e19d77ea65aaa2188d12c20cee987ab6f321e002"
+    },
+    {
+      "path": "vibeasr-vae-encoder-i8_s.gguf",
+      "url": "https://huggingface.co/microsoft/VibeVoice-ASR-BitNet/resolve/66e78021ab8f5f06133d1ab421ba4d348bda97c9/vibeasr-vae-encoder-i8_s.gguf",
+      "bytes": 703080064,
+      "sha256": "4941c82608c253ec066b5cc74d3dd11a5c8fef96cccbc5b87359ef0fe4338df6"
+    },
+    {
+      "path": "config.json",
+      "url": "https://huggingface.co/microsoft/VibeVoice-ASR-BitNet/resolve/66e78021ab8f5f06133d1ab421ba4d348bda97c9/config.json",
+      "bytes": 3527,
+      "sha256": "4873cb753c97f042886a93adfef478978662c21169755670de20f2ff73fa4ca1"
+    },
+    {
+      "path": "generation_config.json",
+      "url": "https://huggingface.co/microsoft/VibeVoice-ASR-BitNet/resolve/66e78021ab8f5f06133d1ab421ba4d348bda97c9/generation_config.json",
+      "bytes": 138,
+      "sha256": "8c970692323e3ea0e9b8b0a4dca79388d31226e41f83c9fd6014804280ebf6e8"
+    },
+    {
+      "path": "tokenizer.json",
+      "url": "https://huggingface.co/microsoft/VibeVoice-ASR-BitNet/resolve/66e78021ab8f5f06133d1ab421ba4d348bda97c9/tokenizer.json",
+      "bytes": 7028015,
+      "sha256": "f7c9b2dba4a296b1aa76c16a34b8225c0c118978400d4bb66bff0902d702f5b8"
+    },
+    {
+      "path": "tokenizer_config.json",
+      "url": "https://huggingface.co/microsoft/VibeVoice-ASR-BitNet/resolve/66e78021ab8f5f06133d1ab421ba4d348bda97c9/tokenizer_config.json",
+      "bytes": 1289,
+      "sha256": "80d64fccf954f022eb43b7425eb45a133cbb92c76a5f24d4cea6dbe3d45548d9"
+    },
+    {
+      "path": "vocab.json",
+      "url": "https://huggingface.co/microsoft/VibeVoice-ASR-BitNet/resolve/66e78021ab8f5f06133d1ab421ba4d348bda97c9/vocab.json",
+      "bytes": 2776833,
+      "sha256": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+    },
+    {
+      "path": "README.md",
+      "url": "https://huggingface.co/microsoft/VibeVoice-ASR-BitNet/resolve/66e78021ab8f5f06133d1ab421ba4d348bda97c9/README.md",
+      "bytes": 4124,
+      "sha256": "ec5efef050b03bc294ba21db1913a4ebbb842f258c82fd5bcef762d0abe42aa3"
+    }
+  ]
+}
