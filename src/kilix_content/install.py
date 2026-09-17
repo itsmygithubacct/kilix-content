@@ -21,10 +21,24 @@ import threading
 import time
 import urllib.request
 import zipfile
+import json
 from collections.abc import Callable, Iterable, Iterator
 from contextlib import contextmanager
+from datetime import datetime, timezone
 
-from .model import ContentSpec
+from kilix_license.coverage import AssetRef, require as require_license
+from kilix_license.records import RecordIndex
+from kilix_license.store import ReceiptStore
+from kilix_license.texts import TextStore
+
+from .fetch import (
+    DownloadError,
+    Progress,
+    _HTTPSPartRedirects,
+    _RESUME_MIN_BYTES,
+    fetch_exact,
+)
+from .model import AssetSpec, Catalog, ContentSpec, source_objects_sha256
 
 Report = Callable[[str], None]
 
@@ -947,3 +961,371 @@ class Installer:
             raise InstallError(
                 f"build produced no runnable {spec.binary}{detail_suffix}"
             )
+
+    def asset_destination(self, spec: AssetSpec) -> str:
+        asset_id = spec.asset_id
+        parent = os.path.join(self.root, "assets")
+        destination = os.path.abspath(os.path.join(parent, asset_id))
+        if os.path.dirname(destination) != os.path.abspath(parent):
+            raise InstallError(f"asset id is not a safe path component: {asset_id!r}")
+        return destination
+
+    def _ensure_asset_parent(self, spec: AssetSpec) -> str:
+        parent = os.path.dirname(self.asset_destination(spec))
+        os.makedirs(parent, mode=0o700, exist_ok=True)
+        return parent
+
+    def _verify_asset_directory(self, spec: AssetSpec, directory: str) -> str | None:
+        root = os.path.realpath(directory)
+        if not os.path.isdir(root):
+            return None
+        seen: set[str] = set()
+        for item in spec.files:
+            target = os.path.join(root, item.path)
+            if not os.path.isfile(target):
+                return None
+            try:
+                info = os.stat(target, follow_symlinks=False)
+            except OSError:
+                return None
+            if info.st_size != item.bytes or sha256_file(target) != item.sha256:
+                return None
+            seen.add(item.path)
+        for dirpath, dirnames, filenames in os.walk(root):
+            for name in filenames:
+                rel = os.path.relpath(os.path.join(dirpath, name), root)
+                if rel not in seen:
+                    return None
+        return directory
+
+    def _asset_integrity_ready(self, spec: AssetSpec) -> tuple[str, ...] | None:
+        destination = self.asset_destination(spec)
+        if os.path.islink(destination):
+            return None
+        verified = self._verify_asset_directory(spec, destination)
+        if verified is None:
+            return None
+        return (verified,)
+
+    def _write_notices(self, spec: AssetSpec, output: str, notices: TextStore) -> None:
+        for item in spec.files:
+            if not item.path.startswith("notices/"):
+                continue
+            payload = notices.get(item.sha256, label=item.path)
+            if len(payload) != item.bytes:
+                raise InstallError("notice text does not match the manifest size")
+            target = os.path.join(output, item.path)
+            os.makedirs(os.path.dirname(target), mode=0o700, exist_ok=True)
+            fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC, 0o600)
+            try:
+                os.write(fd, payload)
+            finally:
+                os.close(fd)
+
+    def _strip_archive_root(self, extracted: str, root: str) -> str:
+        entries = [name for name in os.listdir(extracted) if name not in {".", ".."}]
+        if entries != [root]:
+            raise InstallError("archive root does not match the declared directory")
+        source = os.path.join(extracted, root)
+        if not os.path.isdir(source):
+            raise InstallError("archive root is not a directory")
+        content = os.path.join(os.path.dirname(extracted), "content")
+        os.rename(source, content)
+        shutil.rmtree(extracted, ignore_errors=True)
+        return content
+
+    def _populate_upstream_asset(
+        self,
+        spec: AssetSpec,
+        stage: str,
+        report: Report,
+        notices: TextStore,
+        *,
+        cancelled: Callable[[], bool] | None = None,
+        deadline: float | None = None,
+        progress: Callable[[Progress], None] | None = None,
+    ) -> str:
+        extract = os.path.join(stage, "x")
+        os.makedirs(extract, mode=0o700, exist_ok=True)
+        partial_dir = os.path.join(os.path.dirname(self.asset_destination(spec)), ".partial", spec.digest)
+        if spec.source_mode == "upstream-archive":
+            archive_path = os.path.join(stage, ".download")
+            report(f"fetching {spec.asset_id} …")
+            fetch_exact(
+                spec.url,
+                archive_path,
+                expected_bytes=spec.archive_bytes,
+                expected_sha256=spec.archive_sha256,
+                deadline=deadline,
+                cancelled=cancelled,
+                progress=progress,
+                partial_dir=partial_dir,
+                installed_bytes=spec.installed_bytes,
+            )
+            if spec.archive_format == "zip":
+                with zipfile.ZipFile(archive_path) as archive:
+                    safe_extract_zip(archive, extract)
+            else:
+                with tarfile.open(archive_path, "r:*") as archive:
+                    safe_extract_tar(archive, extract)
+            try:
+                os.unlink(archive_path)
+            except OSError as exc:
+                raise InstallError("could not remove verified archive staging file") from exc
+            output = self._strip_archive_root(extract, spec.root)
+        elif spec.source_mode == "upstream-files":
+            output = os.path.join(stage, "content")
+            os.makedirs(output, mode=0o700, exist_ok=True)
+            by_path = {item.path: item for item in spec.files}
+            for index, item in enumerate(spec.fetch):
+                listed = by_path[item.path]
+                target = os.path.join(output, item.path)
+                os.makedirs(os.path.dirname(target), mode=0o700, exist_ok=True)
+                fetch_exact(
+                    item.url,
+                    target,
+                    expected_bytes=listed.bytes,
+                    expected_sha256=listed.sha256,
+                    deadline=deadline,
+                    cancelled=cancelled,
+                    progress=progress,
+                    partial_dir=os.path.join(partial_dir, str(index)),
+                )
+        elif spec.source_mode == "upstream-convert":
+            output = os.path.join(stage, "content")
+            os.makedirs(output, mode=0o700, exist_ok=True)
+            staged_input = os.path.join(stage, "input")
+            fetch_exact(
+                spec.convert_url,
+                staged_input,
+                expected_bytes=spec.convert_bytes,
+                expected_sha256=spec.convert_sha256,
+                deadline=deadline,
+                cancelled=cancelled,
+                progress=progress,
+                partial_dir=partial_dir,
+            )
+            argv = [
+                argument.replace("{input}", staged_input).replace("{output}", output)
+                for argument in spec.convert_argv
+            ]
+            report(f"converting {spec.label} …")
+            returncode, detail = _run_with_tail(
+                argv, cwd=stage, env=self.env, timeout=self.command_timeout
+            )
+            if returncode != 0:
+                raise InstallError(f"asset conversion failed with status {returncode}: {detail}")
+        elif spec.source_mode == "registry-manifest":
+            output = os.path.join(stage, "content")
+            os.makedirs(output, mode=0o700, exist_ok=True)
+            manifest_path = os.path.join(stage, "manifest.json")
+            fetch_exact(
+                spec.manifest_url,
+                manifest_path,
+                expected_bytes=spec.download_bytes,
+                expected_sha256=spec.manifest_sha256,
+                deadline=deadline,
+                cancelled=cancelled,
+                progress=progress,
+                partial_dir=partial_dir,
+            )
+            # download_bytes for registry-manifest is the manifest size; blobs follow.
+            by_path = {item.path: item for item in spec.files if not item.path.startswith("notices/")}
+            for index, item in enumerate(spec.blobs):
+                listed = by_path[item.path]
+                target = os.path.join(output, item.path)
+                os.makedirs(os.path.dirname(target), mode=0o700, exist_ok=True)
+                fetch_exact(
+                    item.url,
+                    target,
+                    expected_bytes=listed.bytes,
+                    expected_sha256=listed.sha256,
+                    deadline=deadline,
+                    cancelled=cancelled,
+                    progress=progress,
+                    partial_dir=os.path.join(partial_dir, f"blob-{index}"),
+                )
+        else:
+            raise InstallError("asset source mode is unsupported")
+        self._write_notices(spec, output, notices)
+        return output
+
+    @contextmanager
+    def _asset_lock(
+        self,
+        spec: AssetSpec,
+        parent: str,
+        *,
+        cancelled: Callable[[], bool] | None = None,
+        deadline: float | None = None,
+        progress: Callable[[Progress], None] | None = None,
+    ) -> Iterator[None]:
+        lock_path = os.path.join(parent, f".{spec.asset_id}.lock")
+        owner_path = os.path.join(parent, f".install-{spec.asset_id}.owner")
+        last_wait = 0.0
+        while True:
+            if cancelled is not None and cancelled():
+                raise DownloadError("cancelled")
+            if deadline is not None and time.monotonic() >= deadline:
+                raise DownloadError("deadline")
+            descriptor = os.open(
+                lock_path,
+                os.O_RDWR | os.O_CREAT | os.O_CLOEXEC | os.O_NOFOLLOW,
+                0o600,
+            )
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError:
+                os.close(descriptor)
+                now = time.monotonic()
+                if progress is not None and now - last_wait >= 1.0:
+                    last_wait = now
+                    progress(
+                        Progress(
+                            phase="waiting",
+                            host="",
+                            owner_pid=os.getpid(),
+                            started=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                        )
+                    )
+                time.sleep(0.1)
+                continue
+            try:
+                payload = json.dumps(
+                    {
+                        "host": "",
+                        "pid": os.getpid(),
+                        "started_utc": datetime.now(timezone.utc).strftime(
+                            "%Y-%m-%dT%H:%M:%SZ"
+                        ),
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+                tmp = owner_path + ".tmp"
+                fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC, 0o600)
+                try:
+                    os.write(fd, payload)
+                finally:
+                    os.close(fd)
+                os.replace(tmp, owner_path)
+                yield
+            finally:
+                try:
+                    os.unlink(owner_path)
+                except OSError:
+                    pass
+                try:
+                    os.unlink(lock_path)
+                except OSError:
+                    pass
+                os.close(descriptor)
+            return  # pragma: no cover
+
+    def ensure_upstream_asset(
+        self,
+        spec: AssetSpec,
+        *,
+        store: ReceiptStore,
+        records: RecordIndex,
+        notices: TextStore,
+        report: Report = lambda _message: None,
+        cancelled: Callable[[], bool] | None = None,
+        deadline: float | None = None,
+        progress: Callable[[Progress], None] | None = None,
+        installed_by_other: list[bool] | None = None,
+    ) -> tuple[str, ...]:
+        """Install one exact upstream asset after a covering licence receipt exists."""
+        self._ensure_root()
+        require_license(
+            AssetRef(
+                id=spec.asset_id,
+                record_digest=spec.licenses[0].record_digest,
+                manifest_digest=spec.manifest_digest,
+            ),
+            records=records,
+            store=store,
+        )
+        ready = self._asset_integrity_ready(spec)
+        if ready is not None:
+            if installed_by_other is not None:
+                installed_by_other.append(True)
+            return ready
+        destination = self.asset_destination(spec)
+        parent = self._ensure_asset_parent(spec)
+        with self._asset_lock(
+            spec, parent, cancelled=cancelled, deadline=deadline, progress=progress
+        ):
+            require_license(
+                AssetRef(
+                    id=spec.asset_id,
+                    record_digest=spec.licenses[0].record_digest,
+                    manifest_digest=spec.manifest_digest,
+                ),
+                records=records,
+                store=store,
+            )
+            ready = self._asset_integrity_ready(spec)
+            if ready is not None:
+                if installed_by_other is not None:
+                    installed_by_other.append(True)
+                report("Installed by another process; nothing downloaded")
+                return ready
+            if os.path.lexists(destination):
+                raise InstallError("refusing to replace an unverified asset selection")
+            stage = tempfile.mkdtemp(prefix=".asset-install-", dir=parent)
+            try:
+                output = self._populate_upstream_asset(
+                    spec,
+                    stage,
+                    report,
+                    notices,
+                    cancelled=cancelled,
+                    deadline=deadline,
+                    progress=progress,
+                )
+                if self._verify_asset_directory(spec, output) is None:
+                    raise InstallError("staged asset tree does not match its manifest")
+                require_license(
+                    AssetRef(
+                        id=spec.asset_id,
+                        record_digest=spec.licenses[0].record_digest,
+                        manifest_digest=spec.manifest_digest,
+                    ),
+                    records=records,
+                    store=store,
+                )
+                self._replace_stage(output, destination)
+            except (InstallError, DownloadError):
+                raise
+            except (OSError, tarfile.TarError, zipfile.BadZipFile, RuntimeError) as exc:
+                raise InstallError("asset installation failed") from exc
+            finally:
+                shutil.rmtree(stage, ignore_errors=True)
+        selected = self._asset_integrity_ready(spec)
+        if selected is None:
+            raise InstallError("installed asset failed final verification")
+        return selected
+
+    def ensure_asset(
+        self,
+        spec: AssetSpec,
+        store: ReceiptStore,
+        records: RecordIndex,
+        notices: TextStore,
+        report: Report = lambda _message: None,
+        *,
+        cancelled: Callable[[], bool] | None = None,
+        deadline: float | None = None,
+        progress: Callable[[Progress], None] | None = None,
+    ) -> tuple[str, ...]:
+        return self.ensure_upstream_asset(
+            spec,
+            store=store,
+            records=records,
+            notices=notices,
+            report=report,
+            cancelled=cancelled,
+            deadline=deadline,
+            progress=progress,
+        )

@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "packages": [
     {
       "id": "kilix-tui-utils",
@@ -1458,6 +1458,262 @@
         "mode": "terminal",
         "preferred_size": "1100x720"
       }
+    }
+  ],
+  "assets": [
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.speech.models/v1",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 199,
+          "path": "README",
+          "sha256": "c0cf286e4f7783306c5f6469b37db69228fb16803b03cae661edb2d7bba64ebb"
+        },
+        {
+          "bytes": 15962575,
+          "path": "am/final.mdl",
+          "sha256": "75370a0137f9daf8f469dedd7daa4513ae7a621f03240c6e512e2b50b656a7b6"
+        },
+        {
+          "bytes": 131,
+          "path": "conf/mfcc.conf",
+          "sha256": "1e2228006d01d805ad1c267fee9f79709ca87ac51bd82b0e3f5c69ba543f0fc4"
+        },
+        {
+          "bytes": 290,
+          "path": "conf/model.conf",
+          "sha256": "8f14cb1eeb07c762c371db648c6be688d347236155ca0f64fb13b6567a8ce81f"
+        },
+        {
+          "bytes": 24013795,
+          "path": "graph/Gr.fst",
+          "sha256": "023c8b7e30704a9e37765c635c252e608a02f361235bf94abdcf2a5225d85b20"
+        },
+        {
+          "bytes": 22416994,
+          "path": "graph/HCLr.fst",
+          "sha256": "5caafba3081e1646545ac6bff0dd7a318e53dcbdc86f237909ce1d2ac1293d34"
+        },
+        {
+          "bytes": 102,
+          "path": "graph/disambig_tid.int",
+          "sha256": "9ad87cc166d0998f08f758f47a6223a120dfffcbee805c4849c3aa5e6bb3c0fc"
+        },
+        {
+          "bytes": 1761,
+          "path": "graph/phones/word_boundary.int",
+          "sha256": "da199d9c991e0e84681ddbb34627b915b26302d50a8fdaa23c51e2bc3a50b5c3"
+        },
+        {
+          "bytes": 168048,
+          "path": "ivector/final.dubm",
+          "sha256": "8c5d7dd69d2122313baaf19f61f35dd3fa18b70c62ac0687e311e1c46e6daca7"
+        },
+        {
+          "bytes": 8288887,
+          "path": "ivector/final.ie",
+          "sha256": "3f37faf90c375b9e4740b569398b5829ed9cc07d19be6d441f72c3b71d7efcc6"
+        },
+        {
+          "bytes": 44975,
+          "path": "ivector/final.mat",
+          "sha256": "ddd83586dc5f928cda8738b922c85ffe38fc789cb5f9151a712ca12f37265382"
+        },
+        {
+          "bytes": 1080,
+          "path": "ivector/global_cmvn.stats",
+          "sha256": "33be09afcc80059847a275c3d043b51f1ab954c7c2438ddbbf4745e8ba144ff9"
+        },
+        {
+          "bytes": 95,
+          "path": "ivector/online_cmvn.conf",
+          "sha256": "a2f3571754b64297cb7efb2e7ca3df61995c5a45fcbb97188f90613552bb2dfe"
+        },
+        {
+          "bytes": 35,
+          "path": "ivector/splice.conf",
+          "sha256": "9f0c5f7c82d18eaf25d8bce470efa9f7741f88411fe428774bc0a9bb69a24756"
+        },
+        {
+          "bytes": 11358,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "id": "vosk-model-small-en-us-0.15",
+      "label": "vosk-model-small-en-us-0.15",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "Alpha Cephei Inc."
+          ],
+          "record_digest": "651e3930a3eade07d83099644fc08dec8db00c22e08dcf328194ab5ca1dbfd75",
+          "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "provider": "kilix-voice",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 41205931,
+        "installed_bytes": 70910325,
+        "temporary_bytes": 112116256
+      },
+      "source": {
+        "archive_bytes": 41205931,
+        "archive_sha256": "30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498",
+        "format": "zip",
+        "mode": "upstream-archive",
+        "provenance": {
+          "project": "alphacep/vosk-models",
+          "revision": "0.15",
+          "original_url": "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip"
+        },
+        "root": "vosk-model-small-en-us-0.15",
+        "url": "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip"
+      },
+      "stream": "F104",
+      "version": "0.15"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.speech.models/v1",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 159,
+          "path": "README",
+          "sha256": "722534312e1a64c449a02aa487b231f018c234ea238f19cfe921fcfe19278df4"
+        },
+        {
+          "bytes": 73728293,
+          "path": "am/final.mdl",
+          "sha256": "c8586dfa7f571b8b01bac8217ef96493690c65aa512b72e6ce5acde39c262afe"
+        },
+        {
+          "bytes": 880976,
+          "path": "am/tree",
+          "sha256": "cc3f3ecb42b3e4513575e7c43c922eb1cf48657f46414350cdb48c165b51be2b"
+        },
+        {
+          "bytes": 154,
+          "path": "conf/mfcc.conf",
+          "sha256": "df62f0c23a628b6a2c2e030d43b72ca992fcbe9f2d6d768946579ae25898570f"
+        },
+        {
+          "bytes": 293,
+          "path": "conf/model.conf",
+          "sha256": "f867cc746ce8633b747f723a8b78ea36a6e5db291e8c37bfefc5fb155420b10c"
+        },
+        {
+          "bytes": 47168231,
+          "path": "graph/Gr.fst",
+          "sha256": "0edf01f3582de257e89415cd508c21790bb6f0e820e743d87adcafd2bcbd9545"
+        },
+        {
+          "bytes": 66551106,
+          "path": "graph/HCLr.fst",
+          "sha256": "96981cf4a3d5fe9e8f4a5205b681fadec0e85221972c929192b121a9f7e7c175"
+        },
+        {
+          "bytes": 234,
+          "path": "graph/disambig_tid.int",
+          "sha256": "efbeb98e263f08d2de5477158854bd9e307a35600db4c58a935ccbaf4432e345"
+        },
+        {
+          "bytes": 2176,
+          "path": "graph/phones.txt",
+          "sha256": "6d01b4f94c7a161fc41a5573ace33f72d0c01b7b6e99cc7d14ffe9526d4fe4ca"
+        },
+        {
+          "bytes": 2454,
+          "path": "graph/phones/word_boundary.int",
+          "sha256": "9f63870f605d47e29a050117d255c4fc2cb1551d903883c0040aa16219856165"
+        },
+        {
+          "bytes": 5722620,
+          "path": "graph/words.txt",
+          "sha256": "2714049587071344be482fa0e6b7b33792020ba689f422f9895dde5bedbd667b"
+        },
+        {
+          "bytes": 168048,
+          "path": "ivector/final.dubm",
+          "sha256": "76309d6d4f4612de0e6e2c1e836811becaa9a0adc0e0bfff53a90371488a413d"
+        },
+        {
+          "bytes": 19757687,
+          "path": "ivector/final.ie",
+          "sha256": "ed35fa2f46d8853370f89480a53d3e0184ceaab9afef7f112b43cdda492e5326"
+        },
+        {
+          "bytes": 44975,
+          "path": "ivector/final.mat",
+          "sha256": "29f411865e71494ff1ff03965b3a5812b5c38d3bcdff3e62aa80462978234f4f"
+        },
+        {
+          "bytes": 1080,
+          "path": "ivector/global_cmvn.stats",
+          "sha256": "3d7d721fa592c21136597955fd550b1f84568d32e4de7adc35d3b9a033e65afe"
+        },
+        {
+          "bytes": 95,
+          "path": "ivector/online_cmvn.conf",
+          "sha256": "a2f3571754b64297cb7efb2e7ca3df61995c5a45fcbb97188f90613552bb2dfe"
+        },
+        {
+          "bytes": 35,
+          "path": "ivector/splice.conf",
+          "sha256": "9f0c5f7c82d18eaf25d8bce470efa9f7741f88411fe428774bc0a9bb69a24756"
+        },
+        {
+          "bytes": 11358,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "id": "vosk-model-en-us-0.22-lgraph",
+      "label": "vosk-model-en-us-0.22-lgraph",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "Appen",
+            "Alpha Cephei"
+          ],
+          "record_digest": "3de52a5bdf4a53d6002aef63115f2e8efbf6a33c2424912fbea85f41aa7dacc7",
+          "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "provider": "kilix-voice",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 130557655,
+        "installed_bytes": 214039974,
+        "temporary_bytes": 344597629
+      },
+      "source": {
+        "archive_bytes": 130557655,
+        "archive_sha256": "d9838b4aaa82a75c4a17f5aca300eaca129aaab2a7cbf951bafbb500eb9c4334",
+        "format": "zip",
+        "mode": "upstream-archive",
+        "provenance": {
+          "project": "alphacep/vosk-models",
+          "revision": "0.22-lgraph",
+          "original_url": "https://alphacephei.com/vosk/models/vosk-model-en-us-0.22-lgraph.zip"
+        },
+        "root": "vosk-model-en-us-0.22-lgraph",
+        "url": "https://alphacephei.com/vosk/models/vosk-model-en-us-0.22-lgraph.zip"
+      },
+      "stream": "F104",
+      "version": "0.22-lgraph"
     }
   ]
 }

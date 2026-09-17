@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -9,6 +10,7 @@ from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any
+from urllib.parse import urlsplit
 
 _ID = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 _PREFERRED_SIZE = re.compile(r"^[1-9][0-9]{0,4}x[1-9][0-9]{0,4}$")
@@ -16,8 +18,17 @@ _HEX = frozenset("0123456789abcdef")
 _SOURCE_TYPES = frozenset(("git", "archive", "system", "custom"))
 _INSTALLABLE_SOURCE_TYPES = frozenset(("git", "archive"))
 _LAUNCH_MODES = frozenset(("terminal", "run", "xpane", "browse", "window", "custom"))
-_SCHEMA_VERSIONS = frozenset((1, 2, 3))
-_ROOT_KEYS = frozenset(("schema_version", "packages", "content"))
+_SCHEMA_VERSIONS = frozenset((1, 2, 3, 4))
+_ROOT_KEYS = frozenset(("schema_version", "packages", "content", "assets"))
+_MAX_ASSETS = 4096
+_MAX_ASSET_FILES = 100_000
+_ASSET_SOURCE_MODES = frozenset(
+    ("upstream-archive", "upstream-files", "upstream-convert", "registry-manifest")
+)
+_KILIX_HOSTS = frozenset(
+    ("github.com", "www.github.com", "objects.githubusercontent.com", "raw.githubusercontent.com")
+)
+_KILIX_OWNER = "itsmygithubacct"
 _PACKAGE_KEYS = frozenset(("id", "source", "build", "dependency_hint"))
 _ENTRY_KEYS = frozenset(
     (
@@ -107,6 +118,86 @@ def _exact_hex(value: str, length: int, label: str) -> str:
             f"{label} must be exactly {length} lowercase hexadecimal characters"
         )
     return value
+
+
+def _canonical_json(value: Any) -> bytes:
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+
+
+def _byte_count(value: Any, label: str) -> int:
+    if type(value) is not int or not 0 <= value <= 2**63 - 1:
+        raise CatalogError(f"{label} must be a non-negative 64-bit integer")
+    return value
+
+
+def _nonempty_text(value: Any, label: str, *, maximum: int = 256) -> str:
+    if not isinstance(value, str) or not value or not _valid_text(value) or len(value) > maximum:
+        raise CatalogError(f"{label} must be a non-empty string")
+    return value
+
+
+def _is_kilix_hosted(url: str) -> bool:
+    try:
+        parsed = urlsplit(url)
+    except ValueError:
+        return False
+    host = (parsed.hostname or "").lower()
+    path = parsed.path or ""
+    if host in {"github.com", "www.github.com"}:
+        return path.lower().startswith(f"/{_KILIX_OWNER}/")
+    if host == "raw.githubusercontent.com":
+        return path.lower().startswith(f"/{_KILIX_OWNER}/")
+    if host == "objects.githubusercontent.com":
+        return f"/{_KILIX_OWNER}/" in path.lower()
+    return False
+
+
+def _https_url(value: Any, label: str, *, allow_file: bool = False) -> str:
+    value = _nonempty_text(value, label, maximum=4096)
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except ValueError as exc:
+        raise CatalogError(f"{label} has an invalid port") from exc
+    if allow_file and parsed.scheme == "file":
+        if parsed.netloc and parsed.netloc not in {"", "localhost"}:
+            raise CatalogError(f"{label} file URL must be local")
+        return value
+    if (
+        parsed.scheme != "https"
+        or not parsed.netloc
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or (port is not None and not 1 <= port <= 65535)
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise CatalogError(f"{label} must be a public HTTPS URL")
+    if _is_kilix_hosted(value):
+        raise CatalogError("model bytes must come from upstream (OD-S)")
+    host = parsed.hostname.lower()
+    if host in {"huggingface.co", "www.huggingface.co"}:
+        if "/resolve/" not in parsed.path:
+            raise CatalogError(f"{label} Hugging Face URL must use resolve/<commit>")
+        after = parsed.path.split("/resolve/", 1)[1]
+        commit = after.split("/", 1)[0]
+        if len(commit) != 40 or any(character not in _HEX for character in commit.lower()):
+            raise CatalogError(f"{label} Hugging Face URL must use resolve/<40-hex>")
+    return value
+
+
+def _require_provenance_host(url: str, provenance_url: str, label: str) -> None:
+    fetch_host = (urlsplit(url).hostname or "").lower()
+    proven_host = (urlsplit(provenance_url).hostname or "").lower()
+    if fetch_host != proven_host:
+        raise CatalogError(f"{label} fetch host must match provenance host")
 
 
 def _relative_path(value: str, label: str) -> str:
@@ -487,6 +578,584 @@ class ContentSpec:
         )
 
 
+@dataclass(frozen=True)
+class AssetFileSpec:
+    """One immutable regular file in an asset manifest."""
+
+    path: str
+    bytes: int
+    sha256: str
+
+    def to_mapping(self) -> dict[str, Any]:
+        return {"bytes": self.bytes, "path": self.path, "sha256": self.sha256}
+
+    @classmethod
+    def from_mapping(cls, raw: Mapping[str, Any], label: str) -> AssetFileSpec:
+        raw = _mapping(raw, label)
+        _known_keys(raw, frozenset(("path", "bytes", "sha256")), label)
+        try:
+            path = _relative_path(raw["path"], f"{label}.path")
+            size = _byte_count(raw["bytes"], f"{label}.bytes")
+            digest = raw["sha256"]
+        except KeyError as exc:
+            raise CatalogError(f"{label} is missing {exc.args[0]!r}") from exc
+        if not isinstance(digest, str):
+            raise CatalogError(f"{label}.sha256 must be a string")
+        return cls(path, size, _exact_hex(digest, 64, f"{label}.sha256"))
+
+
+@dataclass(frozen=True)
+class AssetLicenseSpec:
+    """Licence identity plus the kilix-license record digest (OD-AJ)."""
+
+    license_id: str
+    text_sha256: str
+    decision: str
+    licensors: tuple[str, ...]
+    record_digest: str
+
+    def to_mapping(self) -> dict[str, Any]:
+        return {
+            "decision": self.decision,
+            "id": self.license_id,
+            "licensors": list(self.licensors),
+            "record_digest": self.record_digest,
+            "text_sha256": self.text_sha256,
+        }
+
+    @classmethod
+    def from_mapping(cls, raw: Mapping[str, Any], label: str) -> AssetLicenseSpec:
+        raw = _mapping(raw, label)
+        _known_keys(
+            raw,
+            frozenset(("id", "text_sha256", "decision", "licensors", "record_digest")),
+            label,
+        )
+        try:
+            license_id = raw["id"]
+            digest = raw["text_sha256"]
+            decision = raw["decision"]
+            record_digest = raw["record_digest"]
+        except KeyError as exc:
+            raise CatalogError(f"{label} is missing {exc.args[0]!r}") from exc
+        if digest is None or digest == "":
+            raise CatalogError(f"{label} is missing a licence text digest")
+        if not isinstance(license_id, str) or not license_id or not _valid_text(license_id):
+            raise CatalogError(f"{label}.id is invalid")
+        if decision not in ("informational", "affirmative"):
+            raise CatalogError(f"{label}.decision is unsupported")
+        licensors_raw = raw.get("licensors")
+        if not isinstance(licensors_raw, list) or not 1 <= len(licensors_raw) <= 4:
+            raise CatalogError(f"{label}.licensors must be 1..4 strings")
+        licensors = tuple(
+            _nonempty_text(item, f"{label}.licensors[{index}]", maximum=128)
+            for index, item in enumerate(licensors_raw)
+        )
+        return cls(
+            license_id,
+            _exact_hex(digest, 64, f"{label}.text_sha256"),
+            decision,
+            licensors,
+            _exact_hex(record_digest, 64, f"{label}.record_digest"),
+        )
+
+
+@dataclass(frozen=True)
+class AssetFetchSpec:
+    path: str
+    url: str
+
+    def to_mapping(self) -> dict[str, Any]:
+        return {"path": self.path, "url": self.url}
+
+
+@dataclass(frozen=True)
+class AssetSpec:
+    """A validated kilix.content.asset/v3 record."""
+
+    asset_id: str
+    label: str
+    provider: str
+    stream: str
+    version: str
+    files: tuple[AssetFileSpec, ...]
+    source_mode: str
+    url: str
+    archive_bytes: int
+    archive_sha256: str
+    archive_format: str
+    root: str
+    fetch: tuple[AssetFetchSpec, ...]
+    convert_url: str
+    convert_bytes: int
+    convert_sha256: str
+    convert_tool_asset_id: str
+    convert_argv: tuple[str, ...]
+    manifest_url: str
+    manifest_sha256: str
+    blobs: tuple[AssetFetchSpec, ...]
+    provenance_project: str
+    provenance_revision: str
+    provenance_url: str
+    download_bytes: int
+    installed_bytes: int
+    temporary_bytes: int
+    licenses: tuple[AssetLicenseSpec, ...]
+    consumer_schema: str
+    compatibility_minimum: int
+    compatibility_maximum: int
+
+    def to_mapping(self) -> dict[str, Any]:
+        provenance = {
+            "original_url": self.provenance_url,
+            "project": self.provenance_project,
+            "revision": self.provenance_revision,
+        }
+        if self.source_mode == "upstream-archive":
+            source: dict[str, Any] = {
+                "archive_bytes": self.archive_bytes,
+                "archive_sha256": self.archive_sha256,
+                "format": self.archive_format,
+                "mode": self.source_mode,
+                "provenance": provenance,
+                "root": self.root,
+                "url": self.url,
+            }
+        elif self.source_mode == "upstream-files":
+            source = {
+                "fetch": [{"path": item.path, "url": item.url} for item in self.fetch],
+                "mode": self.source_mode,
+                "provenance": provenance,
+            }
+        elif self.source_mode == "upstream-convert":
+            source = {
+                "conversion": {
+                    "argv": list(self.convert_argv),
+                    "tool_asset_id": self.convert_tool_asset_id,
+                },
+                "input": {
+                    "bytes": self.convert_bytes,
+                    "sha256": self.convert_sha256,
+                    "url": self.convert_url,
+                },
+                "mode": self.source_mode,
+                "provenance": provenance,
+            }
+        else:
+            source = {
+                "blobs": [{"path": item.path, "url": item.url} for item in self.blobs],
+                "manifest_sha256": self.manifest_sha256,
+                "manifest_url": self.manifest_url,
+                "mode": self.source_mode,
+                "provenance": provenance,
+            }
+        return {
+            "compatibility": {
+                "consumer_schema": self.consumer_schema,
+                "maximum": self.compatibility_maximum,
+                "minimum": self.compatibility_minimum,
+            },
+            "files": [item.to_mapping() for item in self.files],
+            "id": self.asset_id,
+            "label": self.label,
+            "licenses": [item.to_mapping() for item in self.licenses],
+            "provider": self.provider,
+            "schema": "kilix.content.asset/v3",
+            "sizes": {
+                "download_bytes": self.download_bytes,
+                "installed_bytes": self.installed_bytes,
+                "temporary_bytes": self.temporary_bytes,
+            },
+            "source": source,
+            "stream": self.stream,
+            "version": self.version,
+        }
+
+    @property
+    def digest(self) -> str:
+        return hashlib.sha256(_canonical_json(self.to_mapping())).hexdigest()
+
+    @property
+    def manifest_digest(self) -> str:
+        payload = [item.to_mapping() for item in self.files]
+        return hashlib.sha256(_canonical_json(payload)).hexdigest()
+
+    @property
+    def source_url(self) -> str:
+        if self.source_mode == "upstream-archive":
+            return self.url
+        if self.source_mode == "upstream-files" and self.fetch:
+            return self.fetch[0].url
+        if self.source_mode == "upstream-convert":
+            return self.convert_url
+        return self.manifest_url
+
+    @property
+    def source_host(self) -> str:
+        try:
+            return urlsplit(self.source_url).hostname or ""
+        except ValueError:
+            return ""
+
+    @classmethod
+    def from_mapping(
+        cls,
+        raw: Mapping[str, Any],
+        *,
+        allow_file_urls: bool = False,
+    ) -> AssetSpec:
+        raw = _mapping(raw, "asset entry")
+        _known_keys(
+            raw,
+            frozenset(
+                (
+                    "schema",
+                    "id",
+                    "label",
+                    "provider",
+                    "stream",
+                    "version",
+                    "files",
+                    "source",
+                    "sizes",
+                    "licenses",
+                    "compatibility",
+                )
+            ),
+            "asset entry",
+        )
+        required = (
+            "schema",
+            "id",
+            "label",
+            "provider",
+            "stream",
+            "version",
+            "files",
+            "source",
+            "sizes",
+            "licenses",
+            "compatibility",
+        )
+        missing = next((key for key in required if key not in raw), None)
+        if missing is not None:
+            raise CatalogError(f"asset entry is missing {missing!r}")
+        if raw["schema"] != "kilix.content.asset/v3":
+            raise CatalogError("asset entry has unsupported schema")
+        asset_id = _content_id(raw["id"], "asset id")
+        label = _nonempty_text(raw["label"], f"{asset_id}.label")
+        provider = _content_id(raw["provider"], f"{asset_id}.provider")
+        stream = raw["stream"]
+        if not isinstance(stream, str) or not re.fullmatch(r"F[0-9]{3}", stream):
+            raise CatalogError(f"{asset_id}.stream must be an FNNN identifier")
+        version = _nonempty_text(raw["version"], f"{asset_id}.version", maximum=128)
+        raw_files = raw["files"]
+        if not isinstance(raw_files, list) or not raw_files:
+            raise CatalogError(f"{asset_id}.files must be a non-empty array")
+        if len(raw_files) > _MAX_ASSET_FILES:
+            raise CatalogError(f"{asset_id}.files exceeds {_MAX_ASSET_FILES} entries")
+        files = tuple(
+            AssetFileSpec.from_mapping(item, f"{asset_id}.files[{index}]")
+            for index, item in enumerate(raw_files)
+        )
+        paths = tuple(item.path for item in files)
+        if len(paths) != len(set(paths)):
+            raise CatalogError(f"{asset_id}.files contains duplicate paths")
+        sizes = _mapping(raw["sizes"], f"{asset_id}.sizes")
+        _known_keys(
+            sizes,
+            frozenset(("download_bytes", "installed_bytes", "temporary_bytes")),
+            f"{asset_id}.sizes",
+        )
+        try:
+            download_bytes = _byte_count(
+                sizes["download_bytes"], f"{asset_id}.sizes.download_bytes"
+            )
+            installed_bytes = _byte_count(
+                sizes["installed_bytes"], f"{asset_id}.sizes.installed_bytes"
+            )
+            temporary_bytes = _byte_count(
+                sizes["temporary_bytes"], f"{asset_id}.sizes.temporary_bytes"
+            )
+        except KeyError as exc:
+            raise CatalogError(f"{asset_id}.sizes is missing {exc.args[0]!r}") from exc
+        if installed_bytes != sum(item.bytes for item in files):
+            raise CatalogError(f"{asset_id}.sizes.installed_bytes does not match files")
+        raw_licenses = raw["licenses"]
+        if not isinstance(raw_licenses, list) or not raw_licenses:
+            raise CatalogError(f"{asset_id}.licenses must be a non-empty array")
+        licenses = tuple(
+            AssetLicenseSpec.from_mapping(item, f"{asset_id}.licenses[{index}]")
+            for index, item in enumerate(raw_licenses)
+        )
+        license_ids = tuple(item.license_id for item in licenses)
+        if len(license_ids) != len(set(license_ids)):
+            raise CatalogError(f"{asset_id}.licenses contains a duplicate license id")
+        compatibility = _mapping(raw["compatibility"], f"{asset_id}.compatibility")
+        _known_keys(
+            compatibility,
+            frozenset(("consumer_schema", "minimum", "maximum")),
+            f"{asset_id}.compatibility",
+        )
+        try:
+            consumer_schema = _nonempty_text(
+                compatibility["consumer_schema"],
+                f"{asset_id}.compatibility.consumer_schema",
+                maximum=128,
+            )
+            compatibility_minimum = compatibility["minimum"]
+            compatibility_maximum = compatibility["maximum"]
+        except KeyError as exc:
+            raise CatalogError(f"{asset_id}.compatibility is missing {exc.args[0]!r}") from exc
+        if (
+            type(compatibility_minimum) is not int
+            or type(compatibility_maximum) is not int
+            or compatibility_minimum < 1
+            or compatibility_minimum > compatibility_maximum
+        ):
+            raise CatalogError(f"{asset_id}.compatibility range is invalid")
+        source = _mapping(raw["source"], f"{asset_id}.source")
+        if "mirrors" in source or "parts" in source:
+            raise CatalogError(f"{asset_id}.source must not include mirrors or parts")
+        source_mode = source.get("mode")
+        if source_mode not in _ASSET_SOURCE_MODES:
+            raise CatalogError(f"{asset_id}.source.mode is unsupported")
+        provenance = _mapping(source.get("provenance"), f"{asset_id}.source.provenance")
+        _known_keys(
+            provenance,
+            frozenset(("project", "revision", "original_url")),
+            f"{asset_id}.source.provenance",
+        )
+        try:
+            provenance_project = _nonempty_text(
+                provenance["project"], f"{asset_id}.source.provenance.project"
+            )
+            provenance_revision = _nonempty_text(
+                provenance["revision"], f"{asset_id}.source.provenance.revision"
+            )
+            provenance_url = _https_url(
+                provenance["original_url"],
+                f"{asset_id}.source.provenance.original_url",
+                allow_file=allow_file_urls,
+            )
+        except KeyError as exc:
+            raise CatalogError(
+                f"{asset_id}.source.provenance is missing {exc.args[0]!r}"
+            ) from exc
+        url = archive_sha256 = archive_format = root = convert_url = convert_sha256 = ""
+        convert_tool_asset_id = manifest_url = manifest_sha256 = ""
+        archive_bytes = convert_bytes = 0
+        fetch: tuple[AssetFetchSpec, ...] = ()
+        convert_argv: tuple[str, ...] = ()
+        blobs: tuple[AssetFetchSpec, ...] = ()
+        if source_mode == "upstream-archive":
+            _known_keys(
+                source,
+                frozenset(
+                    (
+                        "mode",
+                        "url",
+                        "archive_bytes",
+                        "archive_sha256",
+                        "format",
+                        "root",
+                        "provenance",
+                    )
+                ),
+                f"{asset_id}.source",
+            )
+            try:
+                url = _https_url(
+                    source["url"], f"{asset_id}.source.url", allow_file=allow_file_urls
+                )
+                archive_bytes = _byte_count(
+                    source["archive_bytes"], f"{asset_id}.source.archive_bytes"
+                )
+                archive_sha256 = _exact_hex(
+                    source["archive_sha256"], 64, f"{asset_id}.source.archive_sha256"
+                )
+                archive_format = source["format"]
+                root = _nonempty_text(source["root"], f"{asset_id}.source.root", maximum=256)
+            except KeyError as exc:
+                raise CatalogError(f"{asset_id}.source is missing {exc.args[0]!r}") from exc
+            if archive_format not in {"zip", "tar"}:
+                raise CatalogError(f"{asset_id}.source.format must be zip or tar")
+            if "/" in root or root in {".", ".."}:
+                raise CatalogError(f"{asset_id}.source.root must be a single directory name")
+            _require_provenance_host(url, provenance_url, f"{asset_id}.source.url")
+            if download_bytes != archive_bytes:
+                raise CatalogError(f"{asset_id}.sizes.download_bytes must equal archive_bytes")
+        elif source_mode == "upstream-files":
+            _known_keys(
+                source,
+                frozenset(("mode", "fetch", "provenance")),
+                f"{asset_id}.source",
+            )
+            raw_fetch = source.get("fetch")
+            if not isinstance(raw_fetch, list) or not raw_fetch:
+                raise CatalogError(f"{asset_id}.source.fetch must be a non-empty array")
+            items: list[AssetFetchSpec] = []
+            for index, item in enumerate(raw_fetch):
+                mapping = _mapping(item, f"{asset_id}.source.fetch[{index}]")
+                _known_keys(mapping, frozenset(("path", "url")), f"{asset_id}.source.fetch[{index}]")
+                path = _relative_path(
+                    mapping.get("path", ""), f"{asset_id}.source.fetch[{index}].path"
+                )
+                item_url = _https_url(
+                    mapping.get("url"),
+                    f"{asset_id}.source.fetch[{index}].url",
+                    allow_file=allow_file_urls,
+                )
+                _require_provenance_host(
+                    item_url, provenance_url, f"{asset_id}.source.fetch[{index}].url"
+                )
+                items.append(AssetFetchSpec(path, item_url))
+            fetch = tuple(items)
+            fetch_paths = {item.path for item in fetch}
+            file_paths = {item.path for item in files if not item.path.startswith("notices/")}
+            if fetch_paths != file_paths:
+                raise CatalogError(f"{asset_id}.source.fetch paths must match files")
+        elif source_mode == "upstream-convert":
+            _known_keys(
+                source,
+                frozenset(("mode", "input", "conversion", "provenance")),
+                f"{asset_id}.source",
+            )
+            raw_input = _mapping(source.get("input"), f"{asset_id}.source.input")
+            _known_keys(
+                raw_input,
+                frozenset(("url", "bytes", "sha256")),
+                f"{asset_id}.source.input",
+            )
+            convert_url = _https_url(
+                raw_input.get("url"),
+                f"{asset_id}.source.input.url",
+                allow_file=allow_file_urls,
+            )
+            convert_bytes = _byte_count(
+                raw_input.get("bytes"), f"{asset_id}.source.input.bytes"
+            )
+            convert_sha256 = _exact_hex(
+                raw_input.get("sha256"), 64, f"{asset_id}.source.input.sha256"
+            )
+            _require_provenance_host(
+                convert_url, provenance_url, f"{asset_id}.source.input.url"
+            )
+            conversion = _mapping(source.get("conversion"), f"{asset_id}.source.conversion")
+            _known_keys(
+                conversion,
+                frozenset(("tool_asset_id", "argv")),
+                f"{asset_id}.source.conversion",
+            )
+            convert_tool_asset_id = _content_id(
+                conversion.get("tool_asset_id"), f"{asset_id}.source.conversion.tool_asset_id"
+            )
+            convert_argv = _string_tuple(
+                conversion.get("argv"), f"{asset_id}.source.conversion.argv"
+            )
+            if not convert_argv:
+                raise CatalogError(f"{asset_id}.source.conversion.argv is required")
+        else:
+            _known_keys(
+                source,
+                frozenset(("mode", "manifest_url", "manifest_sha256", "blobs", "provenance")),
+                f"{asset_id}.source",
+            )
+            manifest_url = _https_url(
+                source.get("manifest_url"),
+                f"{asset_id}.source.manifest_url",
+                allow_file=allow_file_urls,
+            )
+            manifest_sha256 = _exact_hex(
+                source.get("manifest_sha256"), 64, f"{asset_id}.source.manifest_sha256"
+            )
+            _require_provenance_host(
+                manifest_url, provenance_url, f"{asset_id}.source.manifest_url"
+            )
+            raw_blobs = source.get("blobs")
+            if not isinstance(raw_blobs, list) or not raw_blobs:
+                raise CatalogError(f"{asset_id}.source.blobs must be a non-empty array")
+            blob_items: list[AssetFetchSpec] = []
+            for index, item in enumerate(raw_blobs):
+                mapping = _mapping(item, f"{asset_id}.source.blobs[{index}]")
+                _known_keys(mapping, frozenset(("path", "url")), f"{asset_id}.source.blobs[{index}]")
+                blob_items.append(
+                    AssetFetchSpec(
+                        _relative_path(
+                            mapping.get("path", ""),
+                            f"{asset_id}.source.blobs[{index}].path",
+                        ),
+                        _https_url(
+                            mapping.get("url"),
+                            f"{asset_id}.source.blobs[{index}].url",
+                            allow_file=allow_file_urls,
+                        ),
+                    )
+                )
+            blobs = tuple(blob_items)
+        return cls(
+            asset_id=asset_id,
+            label=label,
+            provider=provider,
+            stream=stream,
+            version=version,
+            files=files,
+            source_mode=source_mode,
+            url=url,
+            archive_bytes=archive_bytes,
+            archive_sha256=archive_sha256,
+            archive_format=archive_format,
+            root=root,
+            fetch=fetch,
+            convert_url=convert_url,
+            convert_bytes=convert_bytes,
+            convert_sha256=convert_sha256,
+            convert_tool_asset_id=convert_tool_asset_id,
+            convert_argv=convert_argv,
+            manifest_url=manifest_url,
+            manifest_sha256=manifest_sha256,
+            blobs=blobs,
+            provenance_project=provenance_project,
+            provenance_revision=provenance_revision,
+            provenance_url=provenance_url,
+            download_bytes=download_bytes,
+            installed_bytes=installed_bytes,
+            temporary_bytes=temporary_bytes,
+            licenses=licenses,
+            consumer_schema=consumer_schema,
+            compatibility_minimum=compatibility_minimum,
+            compatibility_maximum=compatibility_maximum,
+        )
+
+
+def source_objects_sha256(spec: AssetSpec) -> str:
+    """Digest of the upstream objects named by the record (R2-016)."""
+    if spec.source_mode == "upstream-archive":
+        payload: Any = {
+            "archive_bytes": spec.archive_bytes,
+            "archive_sha256": spec.archive_sha256,
+            "url": spec.url,
+        }
+    elif spec.source_mode == "upstream-files":
+        payload = [
+            {"path": item.path, "sha256": next(f.sha256 for f in spec.files if f.path == item.path), "url": item.url}
+            for item in spec.fetch
+        ]
+    elif spec.source_mode == "upstream-convert":
+        payload = {
+            "bytes": spec.convert_bytes,
+            "sha256": spec.convert_sha256,
+            "url": spec.convert_url,
+        }
+    else:
+        payload = {
+            "blobs": [{"path": item.path, "url": item.url} for item in spec.blobs],
+            "manifest_sha256": spec.manifest_sha256,
+            "manifest_url": spec.manifest_url,
+        }
+    return hashlib.sha256(_canonical_json(payload)).hexdigest()
+
+
 class Catalog:
     """An immutable, uniquely keyed content catalog."""
 
@@ -496,6 +1165,8 @@ class Catalog:
         schema_version: int = 1,
         *,
         packages: Iterable[PackageSpec] = (),
+        assets: Iterable[AssetSpec] = (),
+        test_authority: bool = False,
     ):
         if type(schema_version) is not int or schema_version not in _SCHEMA_VERSIONS:
             raise CatalogError(
@@ -510,6 +1181,17 @@ class Catalog:
             by_package[package.package_id] = package
         if schema_version == 1 and by_package:
             raise CatalogError("catalog schema version 1 cannot define packages")
+        by_asset: dict[str, AssetSpec] = {}
+        for asset in assets:
+            if len(by_asset) >= _MAX_ASSETS:
+                raise CatalogError(f"catalog has more than {_MAX_ASSETS} assets")
+            if not isinstance(asset, AssetSpec):
+                raise CatalogError("catalog assets must be AssetSpec instances")
+            if asset.asset_id in by_asset:
+                raise CatalogError(f"duplicate asset id: {asset.asset_id}")
+            by_asset[asset.asset_id] = asset
+        if schema_version < 4 and by_asset:
+            raise CatalogError("catalog assets require schema version 4")
 
         by_id: dict[str, ContentSpec] = {}
         provided: dict[str, list[ContentSpec]] = {}
@@ -528,6 +1210,10 @@ class Catalog:
                 )
             if entry.content_id in by_id:
                 raise CatalogError(f"duplicate content id: {entry.content_id}")
+            if entry.content_id in by_asset:
+                raise CatalogError(
+                    f"{entry.content_id}: content id conflicts with an asset id"
+                )
             if (
                 entry.content_id in by_package
                 and entry.package_id != entry.content_id
@@ -565,10 +1251,17 @@ class Catalog:
         self._provided = MappingProxyType(
             {package_id: tuple(items) for package_id, items in provided.items()}
         )
+        self._assets = tuple(by_asset.values())
+        self._by_asset = MappingProxyType(by_asset)
+        self.test_authority = test_authority
 
     @property
     def packages(self) -> tuple[PackageSpec, ...]:
         return self._packages
+
+    @property
+    def assets(self) -> tuple[AssetSpec, ...]:
+        return self._assets
 
     def __iter__(self) -> Iterator[ContentSpec]:
         return iter(self._entries)
@@ -598,8 +1291,19 @@ class Catalog:
         """Every entry sharing one installation/cache identity."""
         return self._provided.get(install_id, ())
 
+    def get_asset(self, asset_id: str) -> AssetSpec | None:
+        return self._by_asset.get(asset_id)
+
+    def require_asset(self, asset_id: str) -> AssetSpec:
+        try:
+            return self._by_asset[asset_id]
+        except KeyError as exc:
+            raise CatalogError(f"unknown asset id: {asset_id}") from exc
+
     @classmethod
-    def from_mapping(cls, raw: Mapping[str, Any]) -> Catalog:
+    def from_mapping(
+        cls, raw: Mapping[str, Any], *, test_authority: bool = False
+    ) -> Catalog:
         raw = _mapping(raw, "catalog root")
         _known_keys(raw, _ROOT_KEYS, "catalog root")
         entries = raw.get("content")
@@ -643,10 +1347,29 @@ class Catalog:
         parsed = tuple(
             ContentSpec.from_mapping(item, packages=by_package) for item in entries
         )
-        return cls(parsed, version, packages=packages)
+        raw_assets = raw.get("assets", [])
+        if not isinstance(raw_assets, list):
+            raise CatalogError("catalog assets must be an array")
+        if len(raw_assets) > _MAX_ASSETS:
+            raise CatalogError(f"catalog has more than {_MAX_ASSETS} asset entries")
+        if version < 4 and raw_assets:
+            raise CatalogError("catalog assets require schema version 4")
+        assets = tuple(
+            AssetSpec.from_mapping(item, allow_file_urls=test_authority)
+            for item in raw_assets
+        )
+        return cls(
+            parsed,
+            version,
+            packages=packages,
+            assets=assets,
+            test_authority=test_authority,
+        )
 
     @classmethod
-    def loads(cls, payload: str, *, label: str = "catalog") -> Catalog:
+    def loads(
+        cls, payload: str, *, label: str = "catalog", test_authority: bool = False
+    ) -> Catalog:
         if not isinstance(payload, str):
             raise CatalogError(f"{label} JSON must be text")
         try:
@@ -663,7 +1386,7 @@ class Catalog:
             raise
         except (json.JSONDecodeError, RecursionError) as exc:
             raise CatalogError(f"could not parse {label}: {exc}") from exc
-        return cls.from_mapping(raw)
+        return cls.from_mapping(raw, test_authority=test_authority)
 
     @classmethod
     def load(cls, path: str | os.PathLike[str]) -> Catalog:

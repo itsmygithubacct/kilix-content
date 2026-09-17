@@ -1,0 +1,103 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "vosk-model-en-us-0.22-lgraph",
+  "archive_url": "https://alphacephei.com/vosk/models/vosk-model-en-us-0.22-lgraph.zip",
+  "archive_bytes": 130557655,
+  "archive_sha256": "d9838b4aaa82a75c4a17f5aca300eaca129aaab2a7cbf951bafbb500eb9c4334",
+  "format": "zip",
+  "root": "vosk-model-en-us-0.22-lgraph",
+  "version": "0.22-lgraph",
+  "license_record_id": "lgraph-en-us",
+  "provenance": {
+    "project": "alphacep/vosk-models",
+    "revision": "0.22-lgraph",
+    "original_url": "https://alphacephei.com/vosk/models/vosk-model-en-us-0.22-lgraph.zip"
+  },
+  "members": [
+    {
+      "path": "README",
+      "bytes": 159,
+      "sha256": "722534312e1a64c449a02aa487b231f018c234ea238f19cfe921fcfe19278df4"
+    },
+    {
+      "path": "am/final.mdl",
+      "bytes": 73728293,
+      "sha256": "c8586dfa7f571b8b01bac8217ef96493690c65aa512b72e6ce5acde39c262afe"
+    },
+    {
+      "path": "am/tree",
+      "bytes": 880976,
+      "sha256": "cc3f3ecb42b3e4513575e7c43c922eb1cf48657f46414350cdb48c165b51be2b"
+    },
+    {
+      "path": "conf/mfcc.conf",
+      "bytes": 154,
+      "sha256": "df62f0c23a628b6a2c2e030d43b72ca992fcbe9f2d6d768946579ae25898570f"
+    },
+    {
+      "path": "conf/model.conf",
+      "bytes": 293,
+      "sha256": "f867cc746ce8633b747f723a8b78ea36a6e5db291e8c37bfefc5fb155420b10c"
+    },
+    {
+      "path": "graph/Gr.fst",
+      "bytes": 47168231,
+      "sha256": "0edf01f3582de257e89415cd508c21790bb6f0e820e743d87adcafd2bcbd9545"
+    },
+    {
+      "path": "graph/HCLr.fst",
+      "bytes": 66551106,
+      "sha256": "96981cf4a3d5fe9e8f4a5205b681fadec0e85221972c929192b121a9f7e7c175"
+    },
+    {
+      "path": "graph/disambig_tid.int",
+      "bytes": 234,
+      "sha256": "efbeb98e263f08d2de5477158854bd9e307a35600db4c58a935ccbaf4432e345"
+    },
+    {
+      "path": "graph/phones.txt",
+      "bytes": 2176,
+      "sha256": "6d01b4f94c7a161fc41a5573ace33f72d0c01b7b6e99cc7d14ffe9526d4fe4ca"
+    },
+    {
+      "path": "graph/phones/word_boundary.int",
+      "bytes": 2454,
+      "sha256": "9f63870f605d47e29a050117d255c4fc2cb1551d903883c0040aa16219856165"
+    },
+    {
+      "path": "graph/words.txt",
+      "bytes": 5722620,
+      "sha256": "2714049587071344be482fa0e6b7b33792020ba689f422f9895dde5bedbd667b"
+    },
+    {
+      "path": "ivector/final.dubm",
+      "bytes": 168048,
+      "sha256": "76309d6d4f4612de0e6e2c1e836811becaa9a0adc0e0bfff53a90371488a413d"
+    },
+    {
+      "path": "ivector/final.ie",
+      "bytes": 19757687,
+      "sha256": "ed35fa2f46d8853370f89480a53d3e0184ceaab9afef7f112b43cdda492e5326"
+    },
+    {
+      "path": "ivector/final.mat",
+      "bytes": 44975,
+      "sha256": "29f411865e71494ff1ff03965b3a5812b5c38d3bcdff3e62aa80462978234f4f"
+    },
+    {
+      "path": "ivector/global_cmvn.stats",
+      "bytes": 1080,
+      "sha256": "3d7d721fa592c21136597955fd550b1f84568d32e4de7adc35d3b9a033e65afe"
+    },
+    {
+      "path": "ivector/online_cmvn.conf",
+      "bytes": 95,
+      "sha256": "a2f3571754b64297cb7efb2e7ca3df61995c5a45fcbb97188f90613552bb2dfe"
+    },
+    {
+      "path": "ivector/splice.conf",
+      "bytes": 35,
+      "sha256": "9f0c5f7c82d18eaf25d8bce470efa9f7741f88411fe428774bc0a9bb69a24756"
+    }
+  ]
+}

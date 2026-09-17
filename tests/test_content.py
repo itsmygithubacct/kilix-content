@@ -1428,7 +1428,7 @@ class ContentTests(unittest.TestCase):
 
     def test_json_loader_reports_malformed_catalog(self) -> None:
         path = self.root / "catalog.json"
-        path.write_text(json.dumps({"schema_version": 4, "content": []}))
+        path.write_text(json.dumps({"schema_version": 5, "content": []}))
         with self.assertRaises(CatalogError):
             Catalog.load(path)
 
