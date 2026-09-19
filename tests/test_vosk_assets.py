@@ -7,6 +7,7 @@ import unittest
 from kilix_license.agreement import typed_agreement_line
 from kilix_license.catalog import load_determined_records, load_determined_texts
 
+from fake_store import FakeStore
 from kilix_content import default_catalog
 from kilix_content.first_use import present_asset
 from kilix_content.model import AssetSpec
@@ -64,7 +65,10 @@ class VoskAssetTests(unittest.TestCase):
         spec = self.catalog.require_asset("vosk-model-small-en-us-0.15")
         record = self.records.by_id("small-en-us")
         texts = load_determined_texts(self._scratch_texts())
-        screen = present_asset(spec, record, texts).decode("utf-8")
+        store = FakeStore(self._scratch_texts() / "receipts")
+        screen = present_asset(
+            spec, record, texts, receipts=store, records=self.records
+        ).decode("utf-8")
         self.assertIn("vosk-model-small-en-us-0.15", screen)
         self.assertIn("alphacephei.com", screen)
         self.assertIn("41205931", screen)

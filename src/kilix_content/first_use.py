@@ -96,29 +96,21 @@ def changed_binding_conditions(
     }
 
 
-def _changed_block(record: LicenseRecord, changed: ChangedBindings) -> bytes:
-    current = record.agreement_binding_digests()
-    lines = ["=== changed since your last acceptance ==="]
-    for key in sorted(changed):
-        lines.append(f"changed: binding:{key}")
-        for digest in changed[key]:
-            lines.append(f"accepted sha256: {digest}")
-        lines.append(f"shown sha256: {current[key]}")
-    lines.append(
-        "The text below differs from the text you accepted before. "
-        "Your earlier acceptance does not cover it."
-    )
-    return ("\n".join(lines) + "\n\n").encode("utf-8")
-
-
 def present_asset(
     spec: AssetSpec,
     record: LicenseRecord,
     texts: TextStore,
     *,
-    changed: ChangedBindings | None = None,
+    receipts: ReceiptStore,
+    records: RecordIndex,
 ) -> bytes:
-    """Identity, source, size, licence, changed bindings and the verbatim text."""
+    """Identity, source, size, licence, changed texts and the verbatim text.
+
+    The screen below the header is kilix-license's (OD-AJ, SR-4): it marks
+    every bound text that changed since an earlier acceptance in `receipts`,
+    and `records` resolves the identities of receipts written for sibling
+    records or before LIC4.
+    """
     licence_ids = ", ".join(row.license_id for row in spec.licenses)
     licensors = ", ".join(
         dict.fromkeys(
@@ -136,8 +128,9 @@ def present_asset(
         f"licensors: {licensors}\n"
         f"decision: {spec.licenses[0].decision}\n"
     ).encode("utf-8")
-    notice = _changed_block(record, changed) if changed else b""
-    return header + b"\n" + notice + render_screen(record, texts)
+    return header + b"\n" + render_screen(
+        record, texts, receipts=receipts, records=records
+    )
 
 
 def install_with_agreement(
@@ -156,8 +149,7 @@ def install_with_agreement(
 ) -> tuple[str, ...] | None:
     """Render the screen, record a receipt on accept, then fetch. Decline writes nothing."""
     record = license_record_for(spec, records)
-    changed = changed_binding_conditions(record, store)
-    payload = present_asset(spec, record, texts, changed=changed)
+    payload = present_asset(spec, record, texts, receipts=store, records=records)
     if screen is not None:
         screen.write(payload)
         screen.flush()

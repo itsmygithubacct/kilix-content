@@ -13,6 +13,12 @@ With --repo PATH (a kilix-license repository holding the pin):
            and every vendored file equals its `git archive <pin>` member,
            with no file missing or extra.
   --write  regenerate the record from the repository. It never re-vendors.
+  --repin NEW --old OLD
+           move the pin to NEW and re-vendor from `git archive NEW`. The pin
+           file must hold OLD, exactly once, and the vendored tree must still
+           hash up to OLD, so nothing is replaced on a guess. Vendored bytes
+           only ever come from `git archive`, never from a checkout, and the
+           pin file and the objects record are written here, never by hand.
 
 Without --repo, --check verifies the recorded chain against the tree only.
 """
@@ -203,9 +209,10 @@ def render(objects: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def archive_members(repo: str) -> dict[str, bytes]:
-    data = _git(repo, "archive", "--format=tar", read_pin())
-    members: dict[str, bytes] = {}
+def archive_members(repo: str, rev: str | None = None) -> dict[str, tuple[bytes, bool]]:
+    """path -> (bytes, executable) for every file in `git archive <rev>`."""
+    data = _git(repo, "archive", "--format=tar", rev or read_pin())
+    members: dict[str, tuple[bytes, bool]] = {}
     with tarfile.open(fileobj=io.BytesIO(data)) as archive:
         for member in archive.getmembers():
             if member.issym() or member.islnk():
@@ -213,7 +220,7 @@ def archive_members(repo: str) -> dict[str, bytes]:
             if member.isfile():
                 handle = archive.extractfile(member)
                 assert handle is not None
-                members[member.name] = handle.read()
+                members[member.name] = (handle.read(), bool(member.mode & 0o111))
     return members
 
 
@@ -222,7 +229,7 @@ def check_repo(repo: str) -> str:
     if OBJECTS_FILE.read_text(encoding="utf-8") != expected:
         raise VendorError("objects record differs from the repository's pinned objects")
     blobs = check_chain()
-    archive = archive_members(repo)
+    archive = {path: body for path, (body, _x) in archive_members(repo).items()}
     wanted = {
         path: body
         for path, body in archive.items()
@@ -247,15 +254,85 @@ def check_repo(repo: str) -> str:
     )
 
 
+def _commit_id(repo: str, rev: str) -> str:
+    if len(rev) != 40 or any(character not in "0123456789abcdef" for character in rev):
+        raise VendorError(f"{rev} is not a 40-hex commit id")
+    resolved = _git(repo, "rev-parse", "--verify", f"{rev}^{{commit}}").decode().strip()
+    if resolved != rev:
+        raise VendorError(f"{rev} does not name a commit in {repo}")
+    return resolved
+
+
+def repin(repo: str, new_pin: str, old_pin: str) -> str:
+    """Move the pin to new_pin and re-vendor from `git archive new_pin`.
+
+    The old-value guard holds the whole operation: the pin file must read
+    old_pin, exactly once, and the vendored tree must still hash up to it. So
+    a re-pin can only ever replace the bytes it names.
+    """
+    text = PIN_FILE.read_text(encoding="utf-8")
+    current = text.strip()
+    if text.count(old_pin) != 1:
+        raise VendorError(
+            f"old-value guard failed: {old_pin} occurs {text.count(old_pin)} times in "
+            f"{PIN_FILE.relative_to(ROOT)}"
+        )
+    if current != old_pin:
+        raise VendorError(f"old-value guard failed: pin is {current}, expected {old_pin}")
+    if new_pin == old_pin:
+        raise VendorError(f"already pinned to {new_pin}")
+    _commit_id(repo, old_pin)
+    _commit_id(repo, new_pin)
+    before = check_chain()  # the tree on disk is still exactly the old pin
+    members = archive_members(repo, new_pin)
+    top_level = {name for _mode, name, _oid in parse_tree(_git(repo, "cat-file", "tree", new_pin))}
+    missing = sorted(set(EXCLUDED) - top_level)
+    if missing:
+        raise VendorError(f"{new_pin} has no top-level entry {missing}")
+    wanted = {
+        path: value
+        for path, value in members.items()
+        if path.split("/", 1)[0] not in EXCLUDED
+    }
+    if not wanted:
+        raise VendorError(f"git archive {new_pin} vendors no file")
+    for path in sorted(VENDORED.rglob("*"), reverse=True):
+        if "__pycache__" in path.relative_to(VENDORED).parts:
+            continue
+        if path.is_symlink() or path.is_file():
+            path.unlink()
+        elif path.is_dir() and not any(path.iterdir()):
+            path.rmdir()
+    for path, (body, executable) in sorted(wanted.items()):
+        destination = VENDORED / path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(body)
+        destination.chmod(0o755 if executable else 0o644)
+    PIN_FILE.write_text(new_pin + "\n", encoding="utf-8")
+    OBJECTS_FILE.write_text(render(objects_from_repo(repo)), encoding="utf-8")
+    return (
+        f"re-pinned {old_pin} -> {new_pin} ({len(before)} vendored files before, "
+        f"{len(wanted)} after)\n{check_repo(repo)}"
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--repo", help="kilix-license repository holding the pin")
+    parser.add_argument("--old", help="the pin --repin must find in place")
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--check", action="store_true")
     mode.add_argument("--write", action="store_true")
+    mode.add_argument("--repin", help="commit to move the pin to, re-vendoring it")
     args = parser.parse_args(argv)
     try:
-        if args.write:
+        if args.repin:
+            if not args.repo:
+                parser.error("--repin needs --repo")
+            if not args.old:
+                parser.error("--repin needs --old")
+            print(repin(args.repo, args.repin, args.old))
+        elif args.write:
             if not args.repo:
                 parser.error("--write needs --repo")
             OBJECTS_FILE.write_text(render(objects_from_repo(args.repo)), encoding="utf-8")

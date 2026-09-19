@@ -213,7 +213,10 @@ class YoloxYamnetAssetTests(unittest.TestCase):
         record = self.records.by_id("yolox_nano")
         scratch = Path(tempfile.mkdtemp(prefix="kilix-content-yolox-screen-"))
         texts = load_determined_texts(scratch / "texts")
-        screen = present_asset(spec, record, texts).decode("utf-8")
+        store = FakeStore(scratch / "receipts")
+        screen = present_asset(
+            spec, record, texts, receipts=store, records=self.records
+        ).decode("utf-8")
         self.assertIn("yolox_nano", screen)
         self.assertIn("github.com", screen)
         self.assertIn("/Megvii-BaseDetection/YOLOX/releases/download/0.1.1rc0/yolox_nano.onnx", screen)
@@ -286,7 +289,10 @@ class YoloxYamnetAssetTests(unittest.TestCase):
         record = self.records.by_id("yamnet")
         scratch = Path(tempfile.mkdtemp(prefix="kilix-content-yamnet-screen-"))
         texts = load_determined_texts(scratch / "texts")
-        screen = present_asset(spec, record, texts).decode("utf-8")
+        store = FakeStore(scratch / "receipts")
+        screen = present_asset(
+            spec, record, texts, receipts=store, records=self.records
+        ).decode("utf-8")
         self.assertIn("yamnet", screen)
         self.assertIn("storage.googleapis.com", screen)
         self.assertIn("/audio_classifier/yamnet/float32/1/yamnet.tflite", screen)

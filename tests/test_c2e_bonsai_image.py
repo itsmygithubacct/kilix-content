@@ -24,7 +24,7 @@ from kilix_license.catalog import load_determined_records, load_determined_texts
 from kilix_license.coverage import covers
 from kilix_license.errors import AgreementRequired, CoverageRefused
 from kilix_license.receipts import parse_receipt_bytes, receipt_from_agreement
-from kilix_license.records import BindingCondition, RecordIndex
+from kilix_license.records import RecordIndex
 
 from fake_store import FakeStore
 from first_use_fixture import (
@@ -410,6 +410,7 @@ class BonsaiImageRecordTests(unittest.TestCase):
     def test_screen_quotes_policy_in_full_with_notice_and_licence(self) -> None:
         scratch = Path(tempfile.mkdtemp(prefix="kilix-content-bonsai-image-screen-"))
         texts = load_determined_texts(scratch / "texts")
+        store = FakeStore(scratch / "receipts")
         policy = texts.get(POLICY_SHA256)
         self.assertEqual(len(policy), POLICY_BYTES)
         lines = policy.split(b"\n")
@@ -422,7 +423,9 @@ class BonsaiImageRecordTests(unittest.TestCase):
         for asset_id, expected in VARIANTS.items():
             spec = self.catalog.require_asset(asset_id)
             record = self.records.by_id(expected["record"])
-            screen = present_asset(spec, record, texts)
+            screen = present_asset(
+                spec, record, texts, receipts=store, records=self.records
+            )
             section = f"=== binding:{expected['policy_id']} ===\n".encode("utf-8")
             self.assertIn(section + policy + b"\n", screen)
             self.assertIn(b"Last Revised on August 4, 2026", screen)
@@ -445,10 +448,13 @@ class BonsaiImageRecordTests(unittest.TestCase):
     def test_self_hosted_commercial_terms_do_not_apply(self) -> None:
         scratch = Path(tempfile.mkdtemp(prefix="kilix-content-bonsai-image-selfhosted-"))
         texts = load_determined_texts(scratch / "texts")
+        store = FakeStore(scratch / "receipts")
         for asset_id, expected in VARIANTS.items():
             spec = self.catalog.require_asset(asset_id)
             record = self.records.by_id(expected["record"])
-            screen = present_asset(spec, record, texts)
+            screen = present_asset(
+                spec, record, texts, receipts=store, records=self.records
+            )
             for phrase in (b"Self-Hosted", b"FLUX [dev]", b"Commercial License Terms"):
                 self.assertNotIn(phrase, screen)
             referenced = {record.text_sha256}
@@ -606,15 +612,11 @@ class BonsaiImagePolicyChangeTests(unittest.TestCase):
         digest = self.texts.put(planted, label="planted-policy")
         self.assertNotEqual(digest, POLICY_SHA256)
         condition = self.record.binding_conditions[0]
+        # Only the text moves: the binding keeps its id and its text identity,
+        # which is what makes a revised policy "changed" and not a new text.
         changed = dataclasses.replace(
             self.record,
-            binding_conditions=(
-                BindingCondition(
-                    id=condition.id,
-                    text_sha256=digest,
-                    agreement_required=condition.agreement_required,
-                ),
-            ),
+            binding_conditions=(dataclasses.replace(condition, text_sha256=digest),),
         )
         self.assertEqual(changed.id, self.record.id)
         self.assertNotEqual(changed.digest, self.record.digest)

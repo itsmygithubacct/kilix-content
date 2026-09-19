@@ -246,7 +246,10 @@ class C2dAssetTests(unittest.TestCase):
         record = self.records.by_id("bitnet-b1.58-2b4t")
         scratch = Path(tempfile.mkdtemp(prefix="kilix-content-bitnet-screen-"))
         texts = load_determined_texts(scratch / "texts")
-        screen = present_asset(spec, record, texts).decode("utf-8")
+        store = FakeStore(scratch / "receipts")
+        screen = present_asset(
+            spec, record, texts, receipts=store, records=self.records
+        ).decode("utf-8")
         self.assertIn("bitnet-b1.58-2b4t", screen)
         self.assertIn("huggingface.co", screen)
         self.assertIn("mit", screen)
@@ -432,7 +435,10 @@ class C2dAssetTests(unittest.TestCase):
         record = self.records.by_id("pocket-tts-english-q8_0")
         scratch = Path(tempfile.mkdtemp(prefix="kilix-content-pocket-screen-"))
         texts = load_determined_texts(scratch / "texts")
-        screen = present_asset(spec, record, texts).decode("utf-8")
+        store = FakeStore(scratch / "receipts")
+        screen = present_asset(
+            spec, record, texts, receipts=store, records=self.records
+        ).decode("utf-8")
         prohibited = texts.get(PROHIBITED).decode("utf-8")
         self.assertIn(prohibited, screen)
         self.assertIn("## Prohibited use", screen)

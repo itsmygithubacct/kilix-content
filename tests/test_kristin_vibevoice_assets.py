@@ -217,7 +217,10 @@ class KristinVibeVoiceAssetTests(unittest.TestCase):
         record = self.records.by_id("piper-en-us-kristin-medium")
         scratch = Path(tempfile.mkdtemp(prefix="kilix-content-kristin-screen-"))
         texts = load_determined_texts(scratch / "texts")
-        screen = present_asset(spec, record, texts).decode("utf-8")
+        store = FakeStore(scratch / "receipts")
+        screen = present_asset(
+            spec, record, texts, receipts=store, records=self.records
+        ).decode("utf-8")
         self.assertIn("piper-en-us-kristin-medium", screen)
         self.assertIn("huggingface.co", screen)
         self.assertIn(str(spec.download_bytes), screen)
@@ -296,7 +299,10 @@ class KristinVibeVoiceAssetTests(unittest.TestCase):
         record = self.records.by_id("vibevoice-asr-bitnet")
         scratch = Path(tempfile.mkdtemp(prefix="kilix-content-vibevoice-screen-"))
         texts = load_determined_texts(scratch / "texts")
-        screen = present_asset(spec, record, texts).decode("utf-8")
+        store = FakeStore(scratch / "receipts")
+        screen = present_asset(
+            spec, record, texts, receipts=store, records=self.records
+        ).decode("utf-8")
         self.assertIn("vibevoice-asr-bitnet", screen)
         self.assertIn("huggingface.co", screen)
         self.assertIn("/microsoft/VibeVoice-ASR-BitNet/resolve/", screen)
