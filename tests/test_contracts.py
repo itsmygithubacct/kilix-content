@@ -13,6 +13,31 @@ from kilix_content.receipt import (
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = ROOT / "src" / "kilix_content" / "contracts" / "kilix.content.asset-v3.schema.json"
 PUBLIC_SCHEMA = ROOT / "contracts" / "kilix.content.asset-v3.schema.json"
+KILIX_LICENSE_PIN = "d8e2c40ab9c1e4594f8297a9a9bf957933b105ef"
+VENDORED = ROOT / "third_party" / "kilix-license"
+VENDORED_OBJECTS = ROOT / "third_party" / "kilix-license.objects.json"
+# Top-level kilix-license entries that are deliberately not vendored.
+NOT_VENDORED = (
+    ".gitignore",
+    ".python-version",
+    "Makefile",
+    "PUBLICATION.md",
+    "tests",
+    "tools",
+    "uv.lock",
+)
+VENDORED_FILE_COUNT = 115
+
+
+def _git_oid(kind: bytes, body: bytes) -> str:
+    return hashlib.sha1(kind + b" " + str(len(body)).encode("ascii") + b"\0" + body).hexdigest()
+
+
+def _tree_bytes(entries: list[list[str]]) -> bytes:
+    return b"".join(
+        mode.encode("ascii") + b" " + name.encode("utf-8") + b"\0" + bytes.fromhex(oid)
+        for mode, name, oid in entries
+    )
 
 
 class ContractTests(unittest.TestCase):
@@ -37,7 +62,56 @@ class ContractTests(unittest.TestCase):
 
     def test_kilix_license_is_pinned_lic2_archive(self) -> None:
         pin = (ROOT / "third_party" / "kilix-license.pin").read_text(encoding="utf-8").strip()
-        self.assertEqual(pin, "d8e2c40ab9c1e4594f8297a9a9bf957933b105ef")
+        self.assertEqual(pin, KILIX_LICENSE_PIN)
         self.assertTrue(
             (ROOT / "third_party" / "kilix-license" / "src" / "kilix_license" / "data" / "records" / "small-en-us.json").is_file()
         )
+
+    def test_vendored_kilix_license_is_the_pinned_git_archive(self) -> None:
+        """Every vendored byte hashes up to the pinned commit (C2E-VERIFY F5).
+
+        The recorded commit and tree objects must hash to the pin, and each
+        vendored file to its blob id in them. git archive of the pin emits
+        exactly those blobs (the tree has no .gitattributes), so a changed,
+        missing or extra vendored file fails, and so does a changed record.
+        tools/vendored_kilix_license.py --repo compares with git archive itself.
+        """
+        objects = json.loads(VENDORED_OBJECTS.read_text(encoding="utf-8"))
+        self.assertEqual(objects["schema"], "kilix-content.vendored-git-objects/v1")
+        self.assertEqual(objects["pin"], KILIX_LICENSE_PIN)
+        self.assertEqual(tuple(objects["excluded_top_level"]), NOT_VENDORED)
+        commit = objects["commit"].encode("utf-8")
+        self.assertEqual(_git_oid(b"commit", commit), KILIX_LICENSE_PIN)
+        first = commit.split(b"\n", 1)[0].decode("ascii")
+        self.assertTrue(first.startswith("tree "), first)
+        pinned: dict[str, str] = {}
+        excluded: list[str] = []
+
+        def walk(oid: str, prefix: str) -> None:
+            entries = objects["trees"][oid]
+            self.assertEqual(_git_oid(b"tree", _tree_bytes(entries)), oid, prefix or "/")
+            for mode, name, child in entries:
+                path = prefix + name
+                self.assertNotIn(".gitattributes", name, path)
+                if not prefix and name in NOT_VENDORED:
+                    excluded.append(name)
+                elif mode == "40000":
+                    walk(child, path + "/")
+                else:
+                    self.assertIn(mode, ("100644", "100755"), path)
+                    pinned[path] = child
+
+        walk(first[len("tree ") :], "")
+        self.assertEqual(sorted(excluded), sorted(NOT_VENDORED))
+        vendored: dict[str, str] = {}
+        for path in VENDORED.rglob("*"):
+            relative = path.relative_to(VENDORED)
+            if "__pycache__" in relative.parts:
+                continue
+            self.assertFalse(path.is_symlink(), relative)
+            if path.is_file():
+                vendored[relative.as_posix()] = _git_oid(b"blob", path.read_bytes())
+        self.assertEqual(sorted(vendored), sorted(pinned))
+        for path, oid in pinned.items():
+            self.assertEqual(vendored[path], oid, path)
+        self.assertEqual(len(vendored), VENDORED_FILE_COUNT)

@@ -15,7 +15,7 @@ from urllib.parse import urlsplit
 from kilix_license.agreement import capture_agreement, typed_agreement_line
 from kilix_license.catalog import load_determined_records, load_determined_texts
 from kilix_license.coverage import covers
-from kilix_license.errors import CoverageRefused
+from kilix_license.errors import AgreementRequired, CoverageRefused
 from kilix_license.receipts import parse_receipt_bytes, receipt_from_agreement
 from kilix_license.records import BindingCondition, RecordIndex
 
@@ -60,6 +60,7 @@ VARIANTS = {
         "revision": TERNARY_REV,
         "project": "prism-ml/bonsai-image-ternary-4B-gemlite-2bit",
         "policy_id": "bfl-usage-policy",
+        "typed_line": "accept bonsai-image-4b:ternary-gemlite bfl-usage-policy from Prism ML, Inc.",
         "default": True,
     },
     "bonsai-image-4b-binary-gemlite": {
@@ -67,10 +68,16 @@ VARIANTS = {
         "revision": BINARY_REV,
         "project": "prism-ml/bonsai-image-binary-4B-gemlite-1bit",
         "policy_id": "bfl-usage-policy-binary",
+        "typed_line": (
+            "accept bonsai-image-4b:binary-gemlite bfl-usage-policy-binary from Prism ML, Inc."
+        ),
         "default": False,
     },
 }
 DEFAULT_ASSET = "bonsai-image-4b-ternary-gemlite"
+# Typed literally, never computed with typed_agreement_line: the line must name
+# the BFL policy binding even if the vendored helper stops doing so (F5).
+TERNARY_TYPED_LINE = VARIANTS[DEFAULT_ASSET]["typed_line"]
 
 
 def _pin(asset_id: str) -> dict:
@@ -334,7 +341,7 @@ class BonsaiImageRecordTests(unittest.TestCase):
         for asset_id, expected in VARIANTS.items():
             spec = self.catalog.require_asset(asset_id)
             record = self.records.by_id(expected["record"])
-            agreement = capture_agreement(record, typed_agreement_line(record))
+            agreement = capture_agreement(record, expected["typed_line"])
             receipt = receipt_from_agreement(
                 record,
                 agreement,
@@ -377,6 +384,30 @@ class BonsaiImageRecordTests(unittest.TestCase):
                 with self.assertRaises(CoverageRefused) as caught:
                     covers(record, receipt, manifest_digest=changed_spec.manifest_digest)
                 self.assertEqual(caught.exception.field, "manifest_digest")
+
+    def test_typed_agreement_names_the_bfl_policy_binding(self) -> None:
+        """The typed line is the full literal naming the policy (C2E-VERIFY F5, V12)."""
+        for asset_id, expected in VARIANTS.items():
+            record = self.records.by_id(expected["record"])
+            line = expected["typed_line"]
+            self.assertEqual(
+                line,
+                f"accept {expected['record']} {expected['policy_id']} from Prism ML, Inc.",
+            )
+            self.assertEqual(typed_agreement_line(record), line, asset_id)
+            agreement = capture_agreement(record, line)
+            self.assertEqual(agreement.decision, "accept")
+            self.assertEqual(agreement.named_binding_ids, (expected["policy_id"],))
+            self.assertEqual(
+                agreement.binding_condition_text_digests,
+                {expected["policy_id"]: POLICY_SHA256},
+            )
+            for omitted in (
+                f"accept {expected['record']} from Prism ML, Inc.",
+                line.replace(f" {expected['policy_id']} ", " "),
+            ):
+                with self.assertRaises(AgreementRequired, msg=omitted):
+                    capture_agreement(record, omitted)
 
     def test_source_html_is_provenance_not_coverage(self) -> None:
         for expected in VARIANTS.values():
@@ -470,7 +501,7 @@ class BonsaiImagePolicyChangeTests(unittest.TestCase):
             store=self.store,
             records=self.records,
             texts=self.texts,
-            typed_text=typed_agreement_line(self.record),
+            typed_text=TERNARY_TYPED_LINE,
             screen=io.BytesIO(),
         )
         self.assertIsNotNone(result)
@@ -557,7 +588,7 @@ class BonsaiImagePolicyChangeTests(unittest.TestCase):
             store=self.store,
             records=records,
             texts=self.texts,
-            typed_text=typed_agreement_line(changed_record),
+            typed_text=TERNARY_TYPED_LINE,
             screen=io.BytesIO(),
         )
         self.assertIsNotNone(accepted)
@@ -617,7 +648,7 @@ class BonsaiImagePolicyChangeTests(unittest.TestCase):
             store=self.store,
             records=records,
             texts=self.texts,
-            typed_text=typed_agreement_line(changed_record),
+            typed_text=TERNARY_TYPED_LINE,
             screen=io.BytesIO(),
         )
         self.assertIsNotNone(accepted)
