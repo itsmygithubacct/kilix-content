@@ -2,6 +2,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -115,3 +121,46 @@ class ContractTests(unittest.TestCase):
         for path, oid in pinned.items():
             self.assertEqual(vendored[path], oid, path)
         self.assertEqual(len(vendored), VENDORED_FILE_COUNT)
+
+    def test_make_pins_refuses_hand_edited_receipt_pins(self) -> None:
+        """make pins (generator --check) gates receipt.py's pins (C2E-VERIFY F7)."""
+        scratch = Path(tempfile.mkdtemp(prefix="kilix-content-pins-"))
+        for name in ("src", "tools", "third_party"):
+            shutil.copytree(
+                ROOT / name,
+                scratch / name,
+                ignore=shutil.ignore_patterns("__pycache__"),
+            )
+        receipt = scratch / "src" / "kilix_content" / "receipt.py"
+        original = receipt.read_text(encoding="utf-8")
+        env = dict(os.environ)
+        env["PYTHONPATH"] = "src:third_party/kilix-license/src"
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
+
+        def check() -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                [sys.executable, "tools/generate_upstream_records.py", "--check"],
+                cwd=scratch,
+                check=False,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+        control = check()
+        self.assertEqual(control.returncode, 0, control.stderr)
+        for name in ("_CATALOG_SHA256", "_ASSET_V3_SCHEMA_SHA256"):
+            match = re.search(rf'{name} = \(\n    "([0-9a-f]{{64}})"\n\)', original)
+            self.assertIsNotNone(match, name)
+            pinned = match.group(1)
+            self.assertEqual(original.count(pinned), 1, name)
+            edited = pinned[:-1] + ("0" if pinned[-1] != "0" else "1")
+            receipt.write_text(original.replace(pinned, edited), encoding="utf-8")
+            try:
+                result = check()
+            finally:
+                receipt.write_text(original, encoding="utf-8")
+            self.assertNotEqual(result.returncode, 0, name)
+            self.assertIn(f"{name} in src/kilix_content/receipt.py is {edited}", result.stderr)
+            self.assertIn(f"hash to {pinned}", result.stderr)
+        self.assertEqual(check().returncode, 0)
