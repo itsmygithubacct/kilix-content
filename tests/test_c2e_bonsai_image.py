@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import dataclasses
+import errno
 import hashlib
 import io
 import json
 import os
 import re
+import stat
+import subprocess
+import sys
 import tempfile
 import threading
 import time
@@ -176,6 +180,110 @@ def _assert_junk_intact(case: unittest.TestCase, root: Path, planted: dict[str, 
             case.assertEqual(path.stat().st_mode & 0o777, 0o000, name)
             os.chmod(path, 0o600)
         case.assertEqual(path.read_bytes(), payload, name)
+
+
+def _receipt_v1_bytes(licence_id: str, binding_id: str, digest: str) -> bytes:
+    raw = json.loads(_future_schema_receipt(licence_id, binding_id, digest))
+    raw["schema"] = "kilix.license.receipt/v1"
+    return json.dumps(raw, sort_keys=True).encode("utf-8") + b"\n"
+
+
+# *.json symlinks the scan cannot inspect or must not open (C2E-FIX-VERIFY R1),
+# with the errno os.stat() raises on each (None: stat succeeds on a character
+# device). Path.is_file() raises for EACCES and ENAMETOOLONG. Names sort before
+# a real receipt, so a scan that stops at the first bad entry is caught too.
+UNINSPECTABLE_SYMLINKS: dict[str, int | None] = {
+    "eacces": errno.EACCES,
+    "nametoolong": errno.ENAMETOOLONG,
+    "loop": errno.ELOOP,
+    "dev-zero": None,
+}
+# A usable receipt for the ternary licence behind the EACCES link: only the
+# error can keep it out of the scan, and "e" * 64 must then never be shown.
+LOCKED_RECEIPT = _receipt_v1_bytes(
+    "bonsai-image-4b:ternary-gemlite", "bfl-usage-policy", "e" * 64
+)
+
+# Runs the changed-policy scan over a store in a child capped at 1 GiB of
+# address space; the caller adds a 60 s timeout. A scan that reads /dev/zero
+# then fails in the child instead of growing the suite's own process.
+_CAPPED_SCAN = """
+import json, resource, sys
+_soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+cap = 1 << 30 if hard == resource.RLIM_INFINITY else min(1 << 30, hard)
+resource.setrlimit(resource.RLIMIT_AS, (cap, hard))
+from kilix_license.catalog import load_determined_records
+from fake_store import FakeStore
+from kilix_content.first_use import changed_binding_conditions
+record = load_determined_records().by_id(sys.argv[2])
+changed = changed_binding_conditions(record, FakeStore(sys.argv[1]))
+print(json.dumps({key: list(value) for key, value in changed.items()}))
+"""
+
+
+def _scan_in_capped_child(case: unittest.TestCase, root: Path, record_id: str) -> dict:
+    env = dict(os.environ)
+    env["PYTHONPATH"] = os.pathsep.join(
+        str(path)
+        for path in (
+            ROOT / "src",
+            ROOT / "third_party" / "kilix-license" / "src",
+            ROOT / "tests" / "support",
+        )
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", _CAPPED_SCAN, str(root), record_id],
+        env=env,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    case.assertEqual(result.returncode, 0, result.stderr)
+    return json.loads(result.stdout)
+
+
+def _plant_symlink(case: unittest.TestCase, root: Path, shape: str) -> dict[str, str]:
+    """Plant one UNINSPECTABLE_SYMLINKS shape in the store; return {link name: target}."""
+    if shape == "eacces":
+        locked = Path(tempfile.mkdtemp(prefix="kilix-content-locked-")) / "locked"
+        locked.mkdir()
+        (locked / "receipt.json").write_bytes(LOCKED_RECEIPT)
+        os.chmod(locked, 0o000)
+        case.addCleanup(os.chmod, locked, 0o700)
+        links = {"0000-planted-symlink-eacces.json": str(locked / "receipt.json")}
+    elif shape == "nametoolong":
+        component = "a" * (os.pathconf(root, "PC_NAME_MAX") + 1)
+        links = {"0000-planted-symlink-nametoolong.json": component}
+    elif shape == "loop":
+        links = {
+            "0000-planted-symlink-loop-a.json": "0000-planted-symlink-loop-b.json",
+            "0000-planted-symlink-loop-b.json": "0000-planted-symlink-loop-a.json",
+        }
+    elif shape == "dev-zero":
+        links = {"0000-planted-symlink-dev-zero.json": "/dev/zero"}
+    else:
+        raise AssertionError(f"unknown shape {shape}")
+    for name, target in links.items():
+        os.symlink(target, root / name)
+    # The shape is what the test claims: stat() fails with the errno that
+    # made is_file() raise, or (dev-zero) the target is a character device.
+    expected = UNINSPECTABLE_SYMLINKS[shape]
+    for name in links:
+        if expected is None:
+            case.assertTrue(stat.S_ISCHR(os.stat(root / name).st_mode), name)
+            continue
+        with case.assertRaises(OSError, msg=name) as raised:
+            os.stat(root / name)
+        case.assertEqual(raised.exception.errno, expected, name)
+    if shape == "dev-zero":
+        _scan_in_capped_child(case, root, "bonsai-image-4b:ternary-gemlite")
+    return links
+
+
+def _assert_symlinks_intact(case: unittest.TestCase, root: Path, links: dict[str, str]) -> None:
+    for name, target in links.items():
+        case.assertEqual(os.readlink(root / name), target, name)
 
 
 class BonsaiImageRecordTests(unittest.TestCase):
@@ -675,6 +783,70 @@ class BonsaiImagePolicyChangeTests(unittest.TestCase):
         self.assertEqual(changed_binding_conditions(changed_record, self.store), {})
         _assert_junk_intact(self, self.store.root, planted_junk)
 
+    def test_changed_block_is_still_shown_beside_symlinks_the_scan_cannot_inspect(self) -> None:
+        """C2E-FIX-VERIFY R1 (b): one such symlink raised from is_file() and hid the marker."""
+        self._accept_original()
+        locked = parse_receipt_bytes(LOCKED_RECEIPT)
+        self.assertEqual(locked.licence_id, self.record.id)
+        self.assertEqual(locked.binding_condition_text_digests, {"bfl-usage-policy": "e" * 64})
+        planted, digest, changed_record = self._planted_record()
+        records = RecordIndex([changed_record])
+        spec = self._fixture(changed_record, asset_id="fixture-bonsai-image-changed")
+        groups = [(shape,) for shape in UNINSPECTABLE_SYMLINKS]
+        groups.append(tuple(UNINSPECTABLE_SYMLINKS))
+        for group in groups:
+            with self.subTest(shapes=group):
+                # Each group starts from the one valid receipt, even if the
+                # group before it failed part-way.
+                for path in self.store.root.glob("0000-planted-symlink-*"):
+                    path.unlink()
+                self.assertEqual(len(list(self.store.root.glob("*.json"))), 1)
+                links: dict[str, str] = {}
+                for shape in group:
+                    links.update(_plant_symlink(self, self.store.root, shape))
+                self.assertEqual(
+                    changed_binding_conditions(changed_record, self.store),
+                    {"bfl-usage-policy": (POLICY_SHA256,)},
+                )
+                declined = io.BytesIO()
+                result = install_with_agreement(
+                    spec,
+                    installer=self.installer,
+                    store=self.store,
+                    records=records,
+                    texts=self.texts,
+                    typed_text=None,
+                    screen=declined,
+                    decline=True,
+                )
+                self.assertIsNone(result)
+                shown = declined.getvalue()
+                self.assertIn(b"=== changed since your last acceptance ===\n", shown)
+                self.assertIn(b"changed: binding:bfl-usage-policy\n", shown)
+                self.assertEqual(shown.count(b"accepted sha256: "), 1)
+                self.assertIn(f"accepted sha256: {POLICY_SHA256}\n".encode("utf-8"), shown)
+                self.assertIn(f"shown sha256: {digest}\n".encode("utf-8"), shown)
+                self.assertNotIn(("e" * 64).encode("utf-8"), shown)
+                self.assertIn(b"=== binding:bfl-usage-policy ===\n" + planted + b"\n", shown)
+                self.assertLess(
+                    shown.index(b"=== changed since your last acceptance ==="),
+                    shown.index(b"=== binding:bfl-usage-policy ==="),
+                )
+                _assert_symlinks_intact(self, self.store.root, links)
+        for path in self.store.root.glob("0000-planted-symlink-*"):
+            path.unlink()
+        accepted = install_with_agreement(
+            spec,
+            installer=self.installer,
+            store=self.store,
+            records=records,
+            texts=self.texts,
+            typed_text=TERNARY_TYPED_LINE,
+            screen=io.BytesIO(),
+        )
+        self.assertIsNotNone(accepted)
+        self.assertEqual(changed_binding_conditions(changed_record, self.store), {})
+
 
 class ReceiptStoreJunkTests(unittest.TestCase):
     """C2E-VERIFY F1 (a): one unusable file must not block an unrelated first-use install.
@@ -693,7 +865,7 @@ class ReceiptStoreJunkTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.upstream.close()
 
-    def _install_vosk_beside(self, names: tuple[str, ...], plant=None) -> None:
+    def _install_vosk_beside(self, names: tuple[str, ...], plant=None) -> Path:
         scratch = Path(tempfile.mkdtemp(prefix="kilix-content-junk-receipts-"))
         texts = load_determined_texts(scratch / "texts")
         store = FakeStore(scratch / "receipts")
@@ -735,6 +907,7 @@ class ReceiptStoreJunkTests(unittest.TestCase):
         self.assertEqual(parse_receipt_bytes(receipt_path.read_bytes()).licence_id, "small-en-us")
         self.assertFalse(needs_agreement(spec, records=self.records, store=store))
         _assert_junk_intact(self, store.root, planted)
+        return store.root
 
     def test_non_utf8_receipt_file_does_not_block_an_unrelated_install(self) -> None:
         self._install_vosk_beside(("0000-planted-non-utf8.json",))
@@ -748,6 +921,22 @@ class ReceiptStoreJunkTests(unittest.TestCase):
                 self._install_vosk_beside((name,))
         with self.subTest(name="all together"):
             self._install_vosk_beside(tuple(JUNK_RECEIPT_FILES))
+
+    def test_symlink_the_scan_cannot_inspect_does_not_block_an_unrelated_install(self) -> None:
+        """C2E-FIX-VERIFY R1 (a): is_file() raised EACCES and ENAMETOOLONG outside the try."""
+        groups = [(shape,) for shape in UNINSPECTABLE_SYMLINKS]
+        groups.append(tuple(UNINSPECTABLE_SYMLINKS))
+        for group in groups:
+            with self.subTest(shapes=group):
+                links: dict[str, str] = {}
+
+                def plant(root: Path, group: tuple[str, ...] = group) -> None:
+                    for shape in group:
+                        links.update(_plant_symlink(self, root, shape))
+
+                root = self._install_vosk_beside((), plant=plant)
+                self.assertEqual(len(links), len(group) + group.count("loop"))
+                _assert_symlinks_intact(self, root, links)
 
     def test_fifo_in_the_store_is_never_opened(self) -> None:
         """A FIFO named *.json would block the scan's read forever: it is skipped unopened."""

@@ -55,17 +55,22 @@ def changed_binding_conditions(
     changed. A binding no earlier receipt names is new, not changed.
 
     The marker is presentation only. Coverage is enforced by require(), which
-    reads the exact receipt path. A store file this build cannot read, that is
-    not a JSON object, or whose schema or shape it does not know is skipped
-    here, so it cannot stop the screen or the install of any asset. Anything
-    but a regular file (a FIFO would block the read forever) is never opened.
+    reads the exact receipt path. A store entry this build cannot inspect or
+    read, that is not a JSON object, or whose schema or shape it does not know
+    is skipped here, so it cannot stop the screen or the install of any asset.
+    Anything but a regular file (a FIFO would block the read forever) is never
+    opened.
     """
     current = record.agreement_binding_digests()
     accepted: dict[str, set[str]] = {key: set() for key in current}
     for path in sorted(store.root.glob("*.json")):
-        if path.name.startswith(".") or not path.is_file():
+        if path.name.startswith("."):
             continue
         try:
+            # is_file() follows a symlink and raises for some targets (EACCES,
+            # ENAMETOOLONG), so it sits inside the try (C2E-FIX-VERIFY R1).
+            if not path.is_file():
+                continue
             receipt = parse_receipt_bytes(path.read_bytes())
         except (OSError, ValueError, TypeError, RecursionError, LicenseError):
             continue
