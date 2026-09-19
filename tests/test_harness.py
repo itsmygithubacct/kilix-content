@@ -290,6 +290,36 @@ class HarnessTests(unittest.TestCase):
                 self.assertTrue(commands.strip(), target)
                 self.assertNotIn("tests/support", commands)
         self.assertIn("tests/support", make_output("-n", "test"))
+        # Recipe text is not enough: a target-specific `export PYTHONPATH` sets
+        # the variable without naming it in any command (C2E-FIX2-VERIFY T5).
+        # So run each Python recipe with a probe in place of the interpreter and
+        # read the environment and the sitecustomize it actually loaded.
+        probe_dir = Path(tempfile.mkdtemp(prefix="kilix-content-python-probe-"))
+        probe = probe_dir / "probe.py"
+        probe.write_text(
+            "import json, os, sys\n"
+            "module = sys.modules.get('sitecustomize')\n"
+            "print(json.dumps({\n"
+            "    'pythonpath': os.environ.get('PYTHONPATH', ''),\n"
+            "    'sitecustomize': getattr(module, '__file__', None),\n"
+            "    'argv': sys.argv[1:],\n"
+            "}))\n",
+            encoding="utf-8",
+        )
+        for target in ("generate", "pins", "benchmark"):
+            with self.subTest(target=target, arm="environment"):
+                reports = [
+                    json.loads(line)
+                    for line in make_output(
+                        target, f"PYTHON={sys.executable} {probe}"
+                    ).splitlines()
+                    if line.startswith("{")
+                ]
+                self.assertTrue(reports, f"{target} started no Python")
+                for report in reports:
+                    self.assertNotIn("tests/support", report["pythonpath"], report)
+                    loaded = report["sitecustomize"] or ""
+                    self.assertNotIn("tests/support", loaded, report)
 
     def test_tests_package_isolation_is_loaded(self) -> None:
         """make test must import tests/__init__.py: its env redirect and hook (F4)."""

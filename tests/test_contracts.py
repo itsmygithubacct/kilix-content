@@ -201,6 +201,10 @@ class ContractTests(unittest.TestCase):
                 # Refused even when the second value is the right one.
                 "same value": f'\n{name} = (\n    "{pinned}"\n)\n',
                 "augmented": f'\n{name} += ""\n',
+                # A counter that reads only top-level Assign/AugAssign targets
+                # misses these two (C2E-FIX2-VERIFY T6, mutant N1).
+                "annotated": f'\n{name}: str = "{"0" * 64}"\n',
+                "inside an if": f'\nif True:\n    {name} = "{"0" * 64}"\n',
             }
             for label, second in seconds.items():
                 with self.subTest(name=name, second=label):
