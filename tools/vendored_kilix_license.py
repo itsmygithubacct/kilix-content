@@ -254,9 +254,14 @@ def check_repo(repo: str) -> str:
     )
 
 
-def _commit_id(repo: str, rev: str) -> str:
+def _require_hex40(rev: str) -> str:
     if len(rev) != 40 or any(character not in "0123456789abcdef" for character in rev):
         raise VendorError(f"{rev} is not a 40-hex commit id")
+    return rev
+
+
+def _commit_id(repo: str, rev: str) -> str:
+    _require_hex40(rev)
     resolved = _git(repo, "rev-parse", "--verify", f"{rev}^{{commit}}").decode().strip()
     if resolved != rev:
         raise VendorError(f"{rev} does not name a commit in {repo}")
@@ -270,6 +275,10 @@ def repin(repo: str, new_pin: str, old_pin: str) -> str:
     old_pin, exactly once, and the vendored tree must still hash up to it. So
     a re-pin can only ever replace the bytes it names.
     """
+    # Everything that can be judged without touching the repository is judged
+    # first, so a guard never rests on a repository being readable.
+    _require_hex40(new_pin)
+    _require_hex40(old_pin)
     text = PIN_FILE.read_text(encoding="utf-8")
     current = text.strip()
     if text.count(old_pin) != 1:
@@ -281,9 +290,9 @@ def repin(repo: str, new_pin: str, old_pin: str) -> str:
         raise VendorError(f"old-value guard failed: pin is {current}, expected {old_pin}")
     if new_pin == old_pin:
         raise VendorError(f"already pinned to {new_pin}")
+    before = check_chain()  # the tree on disk is still exactly the old pin
     _commit_id(repo, old_pin)
     _commit_id(repo, new_pin)
-    before = check_chain()  # the tree on disk is still exactly the old pin
     members = archive_members(repo, new_pin)
     top_level = {name for _mode, name, _oid in parse_tree(_git(repo, "cat-file", "tree", new_pin))}
     missing = sorted(set(EXCLUDED) - top_level)

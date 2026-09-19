@@ -122,6 +122,75 @@ class ContractTests(unittest.TestCase):
             self.assertEqual(vendored[path], oid, path)
         self.assertEqual(len(vendored), VENDORED_FILE_COUNT)
 
+    def test_repin_refuses_a_wrong_old_value_or_a_changed_vendored_tree(self) -> None:
+        """--repin is the only way the pin moves, and it is guarded (C2f)."""
+        scratch = Path(tempfile.mkdtemp(prefix="kilix-content-repin-"))
+        for name in ("src", "tools", "third_party"):
+            shutil.copytree(
+                ROOT / name,
+                scratch / name,
+                ignore=shutil.ignore_patterns("__pycache__"),
+            )
+        pin_file = scratch / "third_party" / "kilix-license.pin"
+        objects = scratch / "third_party" / "kilix-license.objects.json"
+        before = (pin_file.read_bytes(), objects.read_bytes())
+        env = dict(os.environ)
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
+        repo = ROOT.parent  # never read: every arm below fails before git runs
+
+        def repin(new: str, old: str) -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                [
+                    sys.executable,
+                    "tools/vendored_kilix_license.py",
+                    "--repo",
+                    str(repo),
+                    "--repin",
+                    new,
+                    "--old",
+                    old,
+                ],
+                cwd=scratch,
+                check=False,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+        other = "0" * 39 + "1"
+        wrong = repin(other, "f" * 40)
+        self.assertNotEqual(wrong.returncode, 0)
+        self.assertIn("old-value guard failed", wrong.stderr)
+        same = repin(KILIX_LICENSE_PIN, KILIX_LICENSE_PIN)
+        self.assertNotEqual(same.returncode, 0)
+        self.assertIn(f"already pinned to {KILIX_LICENSE_PIN}", same.stderr)
+        short = repin("4db48b4c", KILIX_LICENSE_PIN)
+        self.assertNotEqual(short.returncode, 0)
+        self.assertIn("is not a 40-hex commit id", short.stderr)
+        # A vendored file that no longer hashes up to the pin stops a re-pin:
+        # the old bytes must be exactly the pin's before they are replaced.
+        changelog = scratch / "third_party" / "kilix-license" / "CHANGELOG.md"
+        original = changelog.read_bytes()
+        changelog.write_bytes(original + b"planted\n")
+        try:
+            edited = repin(other, KILIX_LICENSE_PIN)
+        finally:
+            changelog.write_bytes(original)
+        self.assertNotEqual(edited.returncode, 0)
+        self.assertIn("is not the pinned blob", edited.stderr)
+        self.assertEqual((pin_file.read_bytes(), objects.read_bytes()), before)
+        # The offline check still passes on the untouched copy.
+        clean = subprocess.run(
+            [sys.executable, "tools/vendored_kilix_license.py"],
+            cwd=scratch,
+            check=False,
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(clean.returncode, 0, clean.stderr)
+        self.assertIn(f"hash up to pin {KILIX_LICENSE_PIN}", clean.stdout)
+
     def test_make_pins_refuses_hand_edited_receipt_pins(self) -> None:
         """make pins (generator --check) gates receipt.py's pins (C2E-VERIFY F7)."""
         scratch = Path(tempfile.mkdtemp(prefix="kilix-content-pins-"))
