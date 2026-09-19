@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import os
+import re
+import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
+from collections.abc import Iterator
 from pathlib import Path
 from unittest import mock
 
@@ -60,6 +65,40 @@ def _run_by_make() -> bool:
     and the KILIX_CONTENT_MAKE_TEST marker (C2E-FIX-VERIFY R2).
     """
     return "MAKELEVEL" in os.environ or "KILIX_CONTENT_MAKE_TEST" in os.environ
+
+
+class _Backstop(Exception):
+    """A socket call got past the network guard; stopped before it reached libc."""
+
+
+_BACKSTOP_THREADS: set[int] = set()
+_BACKSTOP_INSTALLED = False
+
+
+def _backstop(event: str, _args: tuple[object, ...]) -> None:
+    if event.startswith("socket.") and threading.get_ident() in _BACKSTOP_THREADS:
+        raise _Backstop(event)
+
+
+@contextlib.contextmanager
+def _network_backstop() -> Iterator[None]:
+    """Stop, on this thread, every socket call the network guard lets through.
+
+    Audit hooks run in the order they were added, and the guard was added
+    first (sitecustomize, tests/__init__.py). A call the guard refuses raises
+    its OSError; any other call raises _Backstop here, before libc, even when
+    the guard is broken. So these tests never make a real lookup or send.
+    """
+    global _BACKSTOP_INSTALLED
+    if not _BACKSTOP_INSTALLED:
+        sys.addaudithook(_backstop)
+        _BACKSTOP_INSTALLED = True
+    ident = threading.get_ident()
+    _BACKSTOP_THREADS.add(ident)
+    try:
+        yield
+    finally:
+        _BACKSTOP_THREADS.discard(ident)
 
 
 def _exception_chain(error: BaseException) -> list[BaseException]:
@@ -140,6 +179,81 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(refusals, ["non-loopback DNS refused: alphacephei.com"])
         self.assertFalse(destination.exists())
         self.assertEqual(list(self.scratch.iterdir()), [])
+
+    def test_every_hooked_socket_call_is_refused_before_libc(self) -> None:
+        """Real calls for each event the guard claims, bytes hosts too (C2E-FIX-VERIFY R3)."""
+        self.assertTrue(network_guard.installed())
+        udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.addCleanup(udp.close)
+        dns = "non-loopback DNS refused: "
+        calls = {
+            "getaddrinfo": (lambda: socket.getaddrinfo("alphacephei.com", 443), dns + "alphacephei.com"),
+            "getaddrinfo, bytes host": (
+                lambda: socket.getaddrinfo(b"alphacephei.com", 443),
+                dns + "alphacephei.com",
+            ),
+            "gethostbyname": (lambda: socket.gethostbyname("alphacephei.com"), dns + "alphacephei.com"),
+            "gethostbyname_ex": (
+                lambda: socket.gethostbyname_ex("alphacephei.com"),
+                dns + "alphacephei.com",
+            ),
+            "gethostbyaddr": (lambda: socket.gethostbyaddr("192.0.2.1"), dns + "192.0.2.1"),
+            "getnameinfo": (lambda: socket.getnameinfo(("192.0.2.1", 443), 0), dns + "192.0.2.1"),
+            "connect": (lambda: udp.connect(("192.0.2.1", 9)), "non-loopback connect refused: 192.0.2.1"),
+            "sendto": (lambda: udp.sendto(b"x", ("192.0.2.1", 9)), "non-loopback send refused: 192.0.2.1"),
+            "sendmsg": (
+                lambda: udp.sendmsg([b"x"], [], 0, ("192.0.2.1", 9)),
+                "non-loopback send refused: 192.0.2.1",
+            ),
+            "create_connection": (
+                lambda: socket.create_connection(("alphacephei.com", 443), timeout=1),
+                dns + "alphacephei.com",
+            ),
+        }
+        for label, (call, message) in calls.items():
+            with self.subTest(call=label):
+                with _network_backstop():
+                    with self.assertRaisesRegex(OSError, f"^{re.escape(message)}$"):
+                        call()
+        # Control: loopback passes the guard, so the backstop is what stops it.
+        for host in ("127.0.0.1", b"127.0.0.1"):
+            with self.subTest(control=host):
+                with _network_backstop():
+                    with self.assertRaises(_Backstop):
+                        socket.getaddrinfo(host, 9)
+
+    def test_python_children_load_the_network_guard(self) -> None:
+        """A child started as the suite starts them has the guard (C2E-FIX-VERIFY R3).
+
+        It inherits this environment and runs from a temporary directory, where
+        a relative tests/support on PYTHONPATH would not resolve.
+        """
+        if not _run_by_make():
+            self.skipTest("not run by make")
+        probe = (
+            "import sys\n"
+            "print(getattr(sys.modules.get('sitecustomize'), '__file__', None))\n"
+            "try:\n"
+            "    sys.audit('socket.getaddrinfo', 'alphacephei.com', 443, 0, 0, 0)\n"
+            "except OSError as error:\n"
+            "    print(error)\n"
+            "else:\n"
+            "    print('not refused')\n"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", probe],
+            cwd=self.scratch,
+            env=dict(os.environ),
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        loaded, refused = result.stdout.splitlines()
+        self.assertEqual(Path(loaded).resolve(), ROOT / "tests" / "support" / "sitecustomize.py")
+        self.assertEqual(refused, "non-loopback DNS refused: alphacephei.com")
 
     def test_tests_package_isolation_is_loaded(self) -> None:
         """make test must import tests/__init__.py: its env redirect and hook (F4)."""

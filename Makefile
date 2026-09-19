@@ -28,7 +28,7 @@ test:
 	  KILIX_HOME="$$scratch/kilix-home" \
 	  GPU_TERMINAL_HOME="$$scratch/gpu-terminal" \
 	  TMPDIR="$$scratch/tmp" \
-	  PYTHONPATH="src:third_party/kilix-license/src:tests/support"; \
+	  PYTHONPATH="$(CURDIR)/src:$(CURDIR)/third_party/kilix-license/src:$(CURDIR)/tests/support"; \
 	$(PYTHON) -m compileall -q -f setup.py src tests; \
 	$(PYTHON) -m unittest discover -s tests -t . -v $(UNITTEST_ARGS)
 
