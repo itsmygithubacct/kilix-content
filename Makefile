@@ -1,6 +1,8 @@
 PYTHON ?= python3
 UNITTEST_ARGS ?=
-export PYTHONPATH := src:third_party/kilix-license/src:tests/support
+# tests/support (the test sitecustomize and its network guard) goes on
+# PYTHONPATH only in the test recipe; no other recipe loads it.
+
 # Exported by make itself, so it reaches every recipe command even if the
 # recipe's own environment is lost; the harness then requires the scratch.
 # Under make (MAKELEVEL), the harness fails rather than skips without it.
@@ -45,4 +47,4 @@ hygiene:
 	hygiene-scan --recurse
 
 benchmark:
-	$(PYTHON) benchmarks/benchmark_content.py
+	PYTHONPATH=src:third_party/kilix-license/src $(PYTHON) benchmarks/benchmark_content.py

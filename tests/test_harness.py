@@ -4,6 +4,7 @@ import contextlib
 import json
 import os
 import re
+import shutil
 import socket
 import subprocess
 import sys
@@ -254,6 +255,41 @@ class HarnessTests(unittest.TestCase):
         loaded, refused = result.stdout.splitlines()
         self.assertEqual(Path(loaded).resolve(), ROOT / "tests" / "support" / "sitecustomize.py")
         self.assertEqual(refused, "non-loopback DNS refused: alphacephei.com")
+
+    def test_only_the_test_recipe_puts_tests_support_on_pythonpath(self) -> None:
+        """No other recipe loads the test sitecustomize (C2E-FIX-VERIFY R4)."""
+        make = shutil.which("make")
+        self.assertIsNotNone(make, "make is not on PATH")
+        env = {
+            key: value
+            for key, value in os.environ.items()
+            if key not in ("PYTHONPATH", "MAKEFLAGS", "MFLAGS", "MAKELEVEL", "MAKEOVERRIDES")
+        }
+
+        def make_output(*args: str) -> str:
+            result = subprocess.run(
+                [make, "-s", "--no-print-directory", "-C", str(ROOT), *args],
+                env=env,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            return result.stdout
+
+        # What make exports to every recipe: nothing on PYTHONPATH.
+        probe = "kilix-content-pythonpath-probe: ; @printf '[%s]\\n' \"$$PYTHONPATH\""
+        self.assertEqual(
+            make_output("--eval", probe, "kilix-content-pythonpath-probe"), "[]\n"
+        )
+        # What each other recipe sets itself (-n prints, never runs).
+        for target in ("generate", "pins", "hygiene", "benchmark"):
+            with self.subTest(target=target):
+                commands = make_output("-n", target)
+                self.assertTrue(commands.strip(), target)
+                self.assertNotIn("tests/support", commands)
+        self.assertIn("tests/support", make_output("-n", "test"))
 
     def test_tests_package_isolation_is_loaded(self) -> None:
         """make test must import tests/__init__.py: its env redirect and hook (F4)."""
