@@ -7,7 +7,7 @@ from typing import BinaryIO
 
 from kilix_license.agreement import capture_agreement
 from kilix_license.coverage import AssetRef, require
-from kilix_license.errors import CoverageRefused
+from kilix_license.errors import CoverageRefused, LicenseError
 from kilix_license.receipts import parse_receipt_bytes, receipt_from_agreement
 from kilix_license.records import LicenseRecord, RecordIndex
 from kilix_license.screen import render_screen
@@ -53,13 +53,21 @@ def changed_binding_conditions(
     Returns binding id -> the digests earlier receipts for this licence bound.
     A binding whose current text an earlier receipt already bound is not
     changed. A binding no earlier receipt names is new, not changed.
+
+    The marker is presentation only. Coverage is enforced by require(), which
+    reads the exact receipt path. A store file this build cannot read, that is
+    not a JSON object, or whose schema or shape it does not know is skipped
+    here, so it cannot stop the screen or the install of any asset.
     """
     current = record.agreement_binding_digests()
     accepted: dict[str, set[str]] = {key: set() for key in current}
     for path in sorted(store.root.glob("*.json")):
         if path.name.startswith("."):
             continue
-        receipt = parse_receipt_bytes(path.read_bytes())
+        try:
+            receipt = parse_receipt_bytes(path.read_bytes())
+        except (OSError, ValueError, TypeError, RecursionError, LicenseError):
+            continue
         if receipt.licence_id != record.id:
             continue
         for key in current:

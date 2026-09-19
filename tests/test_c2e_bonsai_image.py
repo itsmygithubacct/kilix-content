@@ -20,7 +20,12 @@ from kilix_license.receipts import parse_receipt_bytes, receipt_from_agreement
 from kilix_license.records import BindingCondition, RecordIndex
 
 from fake_store import FakeStore
-from first_use_fixture import FakeUpstream, make_files_asset
+from first_use_fixture import (
+    FakeUpstream,
+    make_archive_asset,
+    make_files_asset,
+    vosk_fixture_zip,
+)
 from kilix_content import default_catalog
 from kilix_content.first_use import (
     changed_binding_conditions,
@@ -87,6 +92,62 @@ def _one_byte_policy_change(policy: bytes) -> bytes:
     marker = b"Last Revised on August 4, 2026"
     index = policy.index(marker) + len(b"Last Revised on August ")
     planted = policy[:index] + b"5" + policy[index + 1 :]
+    return planted
+
+
+def _future_schema_receipt(licence_id: str, binding_id: str, digest: str) -> bytes:
+    """A receipt a later kilix-license could write: receipt/v1 fields, schema v2."""
+    raw = {
+        "binding_condition_text_digests": {binding_id: digest},
+        "context": {
+            "advisory_digests": {},
+            "catalogue_digest": "c" * 64,
+            "release_digest": "d" * 64,
+        },
+        "decision": "accept",
+        "licence_id": licence_id,
+        "licence_text_digest": LICENSE_SHA256,
+        "licensor": "Prism ML, Inc.",
+        "manifest_digest": "b" * 64,
+        "record_digest": "a" * 64,
+        "schema": "kilix.license.receipt/v2",
+    }
+    return json.dumps(raw, sort_keys=True).encode("utf-8") + b"\n"
+
+
+def _unhashable_decision_receipt() -> bytes:
+    raw = json.loads(_future_schema_receipt("x", "y", "e" * 64))
+    raw["schema"] = "kilix.license.receipt/v1"
+    raw["decision"] = ["accept"]
+    return json.dumps(raw, sort_keys=True).encode("utf-8")
+
+
+# Files a receipt store can hold that this build cannot use (C2E-VERIFY F1).
+# None plants a directory. Names sort both before and after a real receipt
+# (64 hex characters), so a scan that stops at the first bad file is caught.
+JUNK_RECEIPT_FILES: dict[str, bytes | None] = {
+    "0000-planted-non-utf8.json": b"\xff\xfe\x00 not a receipt\n",
+    "0001-planted-receipt-v2.json": _future_schema_receipt(
+        "bonsai-image-4b:ternary-gemlite", "bfl-usage-policy", "e" * 64
+    ),
+    "zzzz-planted-non-object.json": b"[]\n",
+    "zzzz-planted-unhashable-decision.json": _unhashable_decision_receipt(),
+    "zzzz-planted-deep-nesting.json": b"[" * 100000,
+    "zzzz-planted-directory.json": None,
+}
+
+
+def _plant_junk(root: Path, names: tuple[str, ...] | None = None) -> dict[str, bytes | None]:
+    planted = {
+        name: payload
+        for name, payload in JUNK_RECEIPT_FILES.items()
+        if names is None or name in names
+    }
+    for name, payload in planted.items():
+        if payload is None:
+            (root / name).mkdir()
+        else:
+            (root / name).write_bytes(payload)
     return planted
 
 
@@ -507,6 +568,141 @@ class BonsaiImagePolicyChangeTests(unittest.TestCase):
             self.store.path_for(changed_record.digest, spec.manifest_digest).read_bytes()
         )
         self.assertEqual(newest.binding_condition_text_digests, {"bfl-usage-policy": digest})
+
+    def test_changed_block_is_still_shown_beside_junk_receipt_files(self) -> None:
+        """C2E-VERIFY F1 (b): junk in the store neither blocks nor hides the marker."""
+        self._accept_original()
+        planted_junk = _plant_junk(self.store.root)
+        self.assertIn("0000-planted-non-utf8.json", planted_junk)
+        self.assertIn("0001-planted-receipt-v2.json", planted_junk)
+        valid = [
+            path.name
+            for path in self.store.root.glob("*.json")
+            if path.name not in planted_junk
+        ]
+        self.assertEqual(len(valid), 1)
+        names = sorted(path.name for path in self.store.root.glob("*.json"))
+        self.assertLess(names.index("0000-planted-non-utf8.json"), names.index(valid[0]))
+        self.assertLess(names.index("0001-planted-receipt-v2.json"), names.index(valid[0]))
+        planted, digest, changed_record = self._planted_record()
+        records = RecordIndex([changed_record])
+        spec = self._fixture(changed_record, asset_id="fixture-bonsai-image-changed")
+        self.assertEqual(
+            changed_binding_conditions(changed_record, self.store),
+            {"bfl-usage-policy": (POLICY_SHA256,)},
+        )
+        declined = io.BytesIO()
+        result = install_with_agreement(
+            spec,
+            installer=self.installer,
+            store=self.store,
+            records=records,
+            texts=self.texts,
+            typed_text=None,
+            screen=declined,
+            decline=True,
+        )
+        self.assertIsNone(result)
+        shown = declined.getvalue()
+        self.assertIn(b"=== changed since your last acceptance ===\n", shown)
+        self.assertIn(b"changed: binding:bfl-usage-policy\n", shown)
+        self.assertEqual(shown.count(b"accepted sha256: "), 1)
+        self.assertIn(f"accepted sha256: {POLICY_SHA256}\n".encode("utf-8"), shown)
+        self.assertIn(f"shown sha256: {digest}\n".encode("utf-8"), shown)
+        self.assertNotIn(("e" * 64).encode("utf-8"), shown)
+        self.assertIn(b"=== binding:bfl-usage-policy ===\n" + planted + b"\n", shown)
+        accepted = install_with_agreement(
+            spec,
+            installer=self.installer,
+            store=self.store,
+            records=records,
+            texts=self.texts,
+            typed_text=typed_agreement_line(changed_record),
+            screen=io.BytesIO(),
+        )
+        self.assertIsNotNone(accepted)
+        self.assertEqual(changed_binding_conditions(changed_record, self.store), {})
+        for name, payload in planted_junk.items():
+            if payload is None:
+                self.assertTrue((self.store.root / name).is_dir(), name)
+            else:
+                self.assertEqual((self.store.root / name).read_bytes(), payload, name)
+
+
+class ReceiptStoreJunkTests(unittest.TestCase):
+    """C2E-VERIFY F1 (a): one unusable file must not block an unrelated first-use install.
+
+    The changed marker is presentation only. require() enforces coverage from
+    the exact receipt path, so the marker scan skips what it cannot use.
+    """
+
+    def setUp(self) -> None:
+        self.upstream = FakeUpstream()
+        self.records = load_determined_records()
+        self.record = self.records.by_id("small-en-us")
+        self.archive = vosk_fixture_zip()
+        self.url = self.upstream.add("/model.zip", self.archive)
+
+    def tearDown(self) -> None:
+        self.upstream.close()
+
+    def _install_vosk_beside(self, names: tuple[str, ...]) -> None:
+        scratch = Path(tempfile.mkdtemp(prefix="kilix-content-junk-receipts-"))
+        texts = load_determined_texts(scratch / "texts")
+        store = FakeStore(scratch / "receipts")
+        installer = Installer(str(scratch / "root"))
+        spec = AssetSpec.from_mapping(
+            make_archive_asset(
+                asset_id="fixture-vosk-beside-junk",
+                url=self.url,
+                archive=self.archive,
+                root="vosk-model-small-en-us-0.15",
+                license_record=self.record,
+                notice=texts.get(self.record.text_sha256),
+                licensors=["Alpha Cephei Inc."],
+            )
+        )
+        planted = _plant_junk(store.root, names)
+        self.assertEqual(set(planted), set(names))
+        self.assertEqual(changed_binding_conditions(self.record, store), {})
+        screen = io.BytesIO()
+        gets_before = len(self.upstream.requests())
+        result = install_with_agreement(
+            spec,
+            installer=installer,
+            store=store,
+            records=self.records,
+            texts=texts,
+            typed_text=typed_agreement_line(self.record),
+            screen=screen,
+        )
+        self.assertIsNotNone(result)
+        self.assertTrue(Path(result[0], "conf", "model.conf").is_file())
+        self.assertGreater(len(self.upstream.requests()), gets_before)
+        shown = screen.getvalue()
+        self.assertIn(b"id: fixture-vosk-beside-junk\n", shown)
+        self.assertNotIn(b"=== changed since your last acceptance ===", shown)
+        receipt_path = store.path_for(self.record.digest, spec.manifest_digest)
+        self.assertEqual(parse_receipt_bytes(receipt_path.read_bytes()).licence_id, "small-en-us")
+        self.assertFalse(needs_agreement(spec, records=self.records, store=store))
+        for name, payload in planted.items():
+            if payload is None:
+                self.assertTrue((store.root / name).is_dir(), name)
+            else:
+                self.assertEqual((store.root / name).read_bytes(), payload, name)
+
+    def test_non_utf8_receipt_file_does_not_block_an_unrelated_install(self) -> None:
+        self._install_vosk_beside(("0000-planted-non-utf8.json",))
+
+    def test_future_schema_receipt_does_not_block_an_unrelated_install(self) -> None:
+        self._install_vosk_beside(("0001-planted-receipt-v2.json",))
+
+    def test_every_unusable_receipt_shape_is_skipped(self) -> None:
+        for name in JUNK_RECEIPT_FILES:
+            with self.subTest(name=name):
+                self._install_vosk_beside((name,))
+        with self.subTest(name="all together"):
+            self._install_vosk_beside(tuple(JUNK_RECEIPT_FILES))
 
 
 if __name__ == "__main__":
