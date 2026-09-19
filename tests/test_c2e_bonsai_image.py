@@ -33,9 +33,9 @@ from first_use_fixture import (
     make_files_asset,
     vosk_fixture_zip,
 )
+from screen_marker import CHANGED_HEADER, changed_block, marker_lines
 from kilix_content import default_catalog
 from kilix_content.first_use import (
-    changed_binding_conditions,
     install_with_agreement,
     needs_agreement,
     present_asset,
@@ -60,6 +60,8 @@ SELF_HOSTED_HTML_SHA256 = "e70b8a0260cd25736236197f92b24e9adc0a954b961a3a3607428
 SELF_HOSTED_TXT_SHA256 = "547f82f179cfd7e8757ccc14ede772263636604399d94dfec8f594675da4b6b1"
 POLICY_LINES = 32
 POLICY_BYTES = 6525
+# The identity kilix-license keys the policy by: both variants show one text.
+POLICY_TEXT_ID = "bfl.ai/legal/usage-policy"
 
 VARIANTS = {
     "bonsai-image-4b-ternary-gemlite": {
@@ -204,24 +206,49 @@ LOCKED_RECEIPT = _receipt_v1_bytes(
     "bonsai-image-4b:ternary-gemlite", "bfl-usage-policy", "e" * 64
 )
 
-# Runs the changed-policy scan over a store in a child capped at 1 GiB of
-# address space; the caller adds a 60 s timeout. A scan that reads /dev/zero
-# then fails in the child instead of growing the suite's own process.
-_CAPPED_SCAN = """
-import json, resource, sys
+# Renders a packaged asset's first-use screen against a store, in a child
+# capped at 1 GiB of address space; the caller adds a 60 s timeout. A scan that
+# read /dev/zero or a sparse entry whole would die there instead of growing the
+# suite's own process. The screen is kilix-license's (SR-4), so this exercises
+# the delegation, not a kilix-content scan.
+_CAPPED_SCREEN = """
+import json, resource, sys, tempfile
 _soft, hard = resource.getrlimit(resource.RLIMIT_AS)
 cap = 1 << 30 if hard == resource.RLIM_INFINITY else min(1 << 30, hard)
 resource.setrlimit(resource.RLIMIT_AS, (cap, hard))
-from kilix_license.catalog import load_determined_records
+from pathlib import Path
+from kilix_license.catalog import load_determined_records, load_determined_texts
 from fake_store import FakeStore
-from kilix_content.first_use import changed_binding_conditions
-record = load_determined_records().by_id(sys.argv[2])
-changed = changed_binding_conditions(record, FakeStore(sys.argv[1]))
-print(json.dumps({key: list(value) for key, value in changed.items()}))
+from kilix_content import default_catalog
+from kilix_content.first_use import license_record_for, present_asset
+from screen_marker import changed_block
+records = load_determined_records()
+spec = default_catalog().require_asset(sys.argv[2])
+texts = load_determined_texts(Path(tempfile.mkdtemp(prefix="kilix-content-capped-")))
+screen = present_asset(
+    spec,
+    license_record_for(spec, records),
+    texts,
+    receipts=FakeStore(sys.argv[1]),
+    records=records,
+)
+print(json.dumps({"bytes": len(screen), "block": changed_block(screen)}))
 """
 
 
-def _scan_in_capped_child(case: unittest.TestCase, root: Path, record_id: str) -> dict:
+def policy_marker(
+    accepted: tuple[str, ...],
+    shown: str,
+    under: tuple[str, ...],
+    binding: str = "bfl-usage-policy",
+) -> list[str]:
+    """The block the screen must show for a revised BFL Usage Policy."""
+    return marker_lines(
+        f"binding:{binding}", f"text:{POLICY_TEXT_ID}", accepted, under, shown
+    )
+
+
+def _screen_in_capped_child(case: unittest.TestCase, root: Path, asset_id: str) -> dict:
     env = dict(os.environ)
     env["PYTHONPATH"] = os.pathsep.join(
         str(path)
@@ -229,10 +256,17 @@ def _scan_in_capped_child(case: unittest.TestCase, root: Path, record_id: str) -
             ROOT / "src",
             ROOT / "third_party" / "kilix-license" / "src",
             ROOT / "tests" / "support",
+            ROOT / "tests",
         )
     )
     result = subprocess.run(
-        [sys.executable, "-c", _CAPPED_SCAN, str(root), record_id],
+        [
+            sys.executable,
+            "-c",
+            _CAPPED_SCREEN,
+            str(root),
+            asset_id,
+        ],
         env=env,
         check=False,
         capture_output=True,
@@ -277,7 +311,9 @@ def _plant_symlink(case: unittest.TestCase, root: Path, shape: str) -> dict[str,
             os.stat(root / name)
         case.assertEqual(raised.exception.errno, expected, name)
     if shape == "dev-zero":
-        _scan_in_capped_child(case, root, "bonsai-image-4b:ternary-gemlite")
+        # The screen must render in a child capped at 1 GiB: a scan that read
+        # /dev/zero would die there instead of growing the suite's process.
+        _screen_in_capped_child(case, root, DEFAULT_ASSET)
     return links
 
 
@@ -622,6 +658,16 @@ class BonsaiImagePolicyChangeTests(unittest.TestCase):
         self.assertNotEqual(changed.digest, self.record.digest)
         return planted, digest, changed
 
+    def _screen(self, record, spec, records=None) -> bytes:
+        """The first-use screen as install_with_agreement renders it."""
+        return present_asset(
+            spec,
+            record,
+            self.texts,
+            receipts=self.store,
+            records=records or self.records,
+        )
+
     def _accept_original(self) -> AssetSpec:
         spec = self._fixture(self.record)
         self.assertTrue(needs_agreement(spec, records=self.records, store=self.store))
@@ -649,7 +695,7 @@ class BonsaiImagePolicyChangeTests(unittest.TestCase):
 
     def test_unchanged_policy_is_covered_and_not_marked_changed(self) -> None:
         spec = self._accept_original()
-        self.assertEqual(changed_binding_conditions(self.record, self.store), {})
+        self.assertEqual(changed_block(self._screen(self.record, spec)), [])
         buffer = io.BytesIO()
         result = install_with_agreement(
             spec,
@@ -679,8 +725,8 @@ class BonsaiImagePolicyChangeTests(unittest.TestCase):
         self.assertEqual(caught.exception.field, "binding_condition_text_digests:bfl-usage-policy")
         self.assertTrue(needs_agreement(spec, records=records, store=self.store))
         self.assertEqual(
-            changed_binding_conditions(changed_record, self.store),
-            {"bfl-usage-policy": (POLICY_SHA256,)},
+            changed_block(self._screen(changed_record, spec, records)),
+            policy_marker((POLICY_SHA256,), digest, (self.record.id,)),
         )
         with self.assertRaises(CoverageRefused):
             self.installer.ensure_upstream_asset(
@@ -724,7 +770,7 @@ class BonsaiImagePolicyChangeTests(unittest.TestCase):
         self.assertIsNotNone(accepted)
         self.assertEqual(len(list(self.store.root.glob("*.json"))), 2)
         self.assertFalse(needs_agreement(spec, records=records, store=self.store))
-        self.assertEqual(changed_binding_conditions(changed_record, self.store), {})
+        self.assertEqual(changed_block(self._screen(changed_record, spec, records)), [])
         newest = parse_receipt_bytes(
             self.store.path_for(changed_record.digest, spec.manifest_digest).read_bytes()
         )
@@ -749,8 +795,8 @@ class BonsaiImagePolicyChangeTests(unittest.TestCase):
         records = RecordIndex([changed_record])
         spec = self._fixture(changed_record, asset_id="fixture-bonsai-image-changed")
         self.assertEqual(
-            changed_binding_conditions(changed_record, self.store),
-            {"bfl-usage-policy": (POLICY_SHA256,)},
+            changed_block(self._screen(changed_record, spec, records)),
+            policy_marker((POLICY_SHA256,), digest, (self.record.id,)),
         )
         declined = io.BytesIO()
         result = install_with_agreement(
@@ -782,32 +828,34 @@ class BonsaiImagePolicyChangeTests(unittest.TestCase):
             screen=io.BytesIO(),
         )
         self.assertIsNotNone(accepted)
-        self.assertEqual(changed_binding_conditions(changed_record, self.store), {})
+        self.assertEqual(changed_block(self._screen(changed_record, spec, records)), [])
         _assert_junk_intact(self, self.store.root, planted_junk)
 
     def test_store_entry_over_the_read_limit_is_skipped(self) -> None:
-        """A receipt is under 2 KiB. The scan reads at most 1 MiB of any entry."""
-        self._accept_original()
+        """A receipt is under 2 KiB. The screen reads at most 1 MiB of any entry."""
+        spec = self._accept_original()
         valid = next(self.store.root.glob("*.json"))
         self.assertLess(valid.stat().st_size, 2048)
-        _planted, _digest, changed_record = self._planted_record()
+        _planted, digest, changed_record = self._planted_record()
+        records = RecordIndex([changed_record])
         receipt = _receipt_v1_bytes(self.record.id, "bfl-usage-policy", "e" * 64)
         limit = 1 << 20
-        # At the limit, a usable receipt is read and counted.
+        # At the limit, a usable receipt is read and its digest is listed.
         entry = self.store.root / "0000-planted-at-read-limit.json"
         entry.write_bytes(receipt.ljust(limit, b" "))
         self.assertEqual(entry.stat().st_size, limit)
         self.assertEqual(
-            changed_binding_conditions(changed_record, self.store),
-            {"bfl-usage-policy": (POLICY_SHA256, "e" * 64)},
+            changed_block(self._screen(changed_record, spec, records)),
+            # Two accepted digests for one identity, both under this licence.
+            policy_marker((POLICY_SHA256, "e" * 64), digest, (self.record.id,)),
         )
         entry.unlink()
         # One byte over, the same receipt is skipped unparsed.
         entry = self.store.root / "0000-planted-over-read-limit.json"
         entry.write_bytes(receipt.ljust(limit + 1, b" "))
         self.assertEqual(
-            changed_binding_conditions(changed_record, self.store),
-            {"bfl-usage-policy": (POLICY_SHA256,)},
+            changed_block(self._screen(changed_record, spec, records)),
+            policy_marker((POLICY_SHA256,), digest, (self.record.id,)),
         )
         entry.unlink()
         # A sparse 2 GiB entry: read whole, it fails the child's 1 GiB cap.
@@ -817,7 +865,10 @@ class BonsaiImagePolicyChangeTests(unittest.TestCase):
                 handle.truncate(2 << 30)
             self.assertEqual(entry.stat().st_size, 2 << 30)
             self.assertEqual(
-                _scan_in_capped_child(self, self.store.root, self.record.id), {}
+                _screen_in_capped_child(
+                    self, self.store.root, DEFAULT_ASSET
+                )["block"],
+                [],
             )
         finally:
             entry.unlink()
@@ -844,8 +895,8 @@ class BonsaiImagePolicyChangeTests(unittest.TestCase):
                 for shape in group:
                     links.update(_plant_symlink(self, self.store.root, shape))
                 self.assertEqual(
-                    changed_binding_conditions(changed_record, self.store),
-                    {"bfl-usage-policy": (POLICY_SHA256,)},
+                    changed_block(self._screen(changed_record, spec, records)),
+                    policy_marker((POLICY_SHA256,), digest, (self.record.id,)),
                 )
                 declined = io.BytesIO()
                 result = install_with_agreement(
@@ -884,7 +935,7 @@ class BonsaiImagePolicyChangeTests(unittest.TestCase):
             screen=io.BytesIO(),
         )
         self.assertIsNotNone(accepted)
-        self.assertEqual(changed_binding_conditions(changed_record, self.store), {})
+        self.assertEqual(changed_block(self._screen(changed_record, spec, records)), [])
 
 
 class ReceiptStoreJunkTests(unittest.TestCase):
@@ -924,7 +975,14 @@ class ReceiptStoreJunkTests(unittest.TestCase):
         self.assertEqual(set(planted), set(names))
         if plant is not None:
             plant(store.root)
-        self.assertEqual(changed_binding_conditions(self.record, store), {})
+        self.assertEqual(
+            changed_block(
+                present_asset(
+                    spec, self.record, texts, receipts=store, records=self.records
+                )
+            ),
+            [],
+        )
         screen = io.BytesIO()
         gets_before = len(self.upstream.requests())
         result = install_with_agreement(
