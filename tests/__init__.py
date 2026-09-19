@@ -3,18 +3,24 @@
 from __future__ import annotations
 
 import os
-import socket
 import sys
 import tempfile
 from pathlib import Path
 
-_ROOT = Path(__file__).resolve().parents[1]
-_SUPPORT = Path(__file__).resolve().parent / "support"
+_TESTS = Path(__file__).resolve().parent
+_ROOT = _TESTS.parent
+_SUPPORT = _TESTS / "support"
 _LICENSE_SRC = _ROOT / "third_party" / "kilix-license" / "src"
-for _path in (_SUPPORT, _ROOT / "src", _LICENSE_SRC):
+# make test discovers with -t . so this package runs first; test modules then
+# import their fixtures (first_use_fixture, fake_store) as top-level modules.
+for _path in (_TESTS, _SUPPORT, _ROOT / "src", _LICENSE_SRC):
     text = str(_path)
     if text not in sys.path:
         sys.path.insert(0, text)
+
+from network_guard import install as _install_network_guard  # noqa: E402
+
+_install_network_guard()
 
 _SCRATCH = Path(tempfile.mkdtemp(prefix="kilix-content-suite-"))
 for _key, _name in (
@@ -37,24 +43,6 @@ os.environ.setdefault("https_proxy", "http://127.0.0.1:9")
 os.environ.setdefault("HTTPS_PROXY", "http://127.0.0.1:9")
 os.environ.setdefault("no_proxy", "localhost,127.0.0.1,::1")
 os.environ.setdefault("NO_PROXY", "localhost,127.0.0.1,::1")
-
-_LOOPBACK = frozenset({"127.0.0.1", "::1", "localhost"})
-
-
-def _audit(event: str, args: tuple[object, ...]) -> None:
-    if event == "socket.connect" and len(args) >= 2:
-        address = args[1]
-        if isinstance(address, tuple) and address:
-            host = address[0]
-            if isinstance(host, str) and host not in _LOOPBACK:
-                raise OSError(f"non-loopback connect refused: {host}")
-    if event == "socket.getaddrinfo" and args:
-        host = args[0]
-        if isinstance(host, str) and host not in _LOOPBACK:
-            raise OSError(f"non-loopback DNS refused: {host}")
-
-
-sys.addaudithook(_audit)
 
 try:
     from live_store_guard import install as _install_live_store_guard
