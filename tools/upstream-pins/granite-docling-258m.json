@@ -1,0 +1,120 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "granite-docling-258m",
+  "label": "granite-docling-258m (kilix-pdf-conversion [granite] default engine model)",
+  "mode": "upstream-files",
+  "license_record_id": "granite-docling-258m",
+  "provider": "kilix-pdf-conversion",
+  "consumer_schema": "kilix.pdf-conversion.runtime",
+  "version": "982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe",
+  "destination": "$DOCLING_ARTIFACTS_PATH/ibm-granite--granite-docling-258M",
+  "provenance": {
+    "project": "ibm-granite/granite-docling-258M",
+    "revision": "982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe",
+    "original_url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/model.safetensors"
+  },
+  "members": [
+    {
+      "path": ".gitattributes",
+      "url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/.gitattributes",
+      "bytes": 1706,
+      "sha256": "ac7414e1a380803ade2fd0e73945a89898b5630939f73704f534c2ba8da74567"
+    },
+    {
+      "path": "README.md",
+      "url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/README.md",
+      "bytes": 21039,
+      "sha256": "b43727febeba2c6ce20b8746322e7687ca667d81a12d0364f346148f30622d84"
+    },
+    {
+      "path": "added_tokens.json",
+      "url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/added_tokens.json",
+      "bytes": 35,
+      "sha256": "882e49757a3bea90e00df1d2dc8c18b2b526ff77380db20439feeb1f053a63cd"
+    },
+    {
+      "path": "assets/granite_docling_split_page.png",
+      "url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/assets/granite_docling_split_page.png",
+      "bytes": 2321944,
+      "sha256": "a1bd51ff1cea9daabc7f00522c7cc4b5905fa5cd3f67c40d0d707ee0686ce94b"
+    },
+    {
+      "path": "assets/new_arxiv.png",
+      "url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/assets/new_arxiv.png",
+      "bytes": 523477,
+      "sha256": "15e72aca956d9e796788eaa4b0debb9ae988ca7a9637ae3b6df1e6ce671d73d0"
+    },
+    {
+      "path": "chat_template.jinja",
+      "url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/chat_template.jinja",
+      "bytes": 588,
+      "sha256": "a4b0bf4348b014acca131da664d05b61e39d5dc8af980f1913846a57ccc6d289"
+    },
+    {
+      "path": "config.json",
+      "url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/config.json",
+      "bytes": 1641,
+      "sha256": "4fbb5d2ad9549663e5740b36a5f45cb3d861d20d2e1c158af8569765f9864f30"
+    },
+    {
+      "path": "generation_config.json",
+      "url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/generation_config.json",
+      "bytes": 169,
+      "sha256": "369256b622c73d709b248da31ba4332ef19c01dec6e311d8e4b671bc1321bc06"
+    },
+    {
+      "path": "granite_docling.png",
+      "url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/granite_docling.png",
+      "bytes": 2185867,
+      "sha256": "f4d43939df541ab6958e989e7a6761a8db1ccb484dcb0c2749fedbb1357d2bb8"
+    },
+    {
+      "path": "merges.txt",
+      "url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/merges.txt",
+      "bytes": 916646,
+      "sha256": "b6fe424e334903f7fb84d3a106d9730455f4744b9fe3c21ee136d97a00e72502"
+    },
+    {
+      "path": "model.safetensors",
+      "url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/model.safetensors",
+      "bytes": 515093104,
+      "sha256": "1cdad234deb1cde18ee6a586f849057f19851daf1fedce2e40aff791dbe46f61"
+    },
+    {
+      "path": "preprocessor_config.json",
+      "url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/preprocessor_config.json",
+      "bytes": 486,
+      "sha256": "6cb6e36d6fcb88ca1502c4a26750715dc3e7dedddc9a8f17b27d8d167d1457e7"
+    },
+    {
+      "path": "processor_config.json",
+      "url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/processor_config.json",
+      "bytes": 68,
+      "sha256": "e7bff42da73ae9eec9042ef20e066e11f1ee20f025358ff79131e3c0fb549b46"
+    },
+    {
+      "path": "special_tokens_map.json",
+      "url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/special_tokens_map.json",
+      "bytes": 812,
+      "sha256": "45c073d82ba37a1fc69c8d6a772d17a8e4f78b64b63c0fce2c77d18a3259d18e"
+    },
+    {
+      "path": "tokenizer.json",
+      "url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/tokenizer.json",
+      "bytes": 7153134,
+      "sha256": "673ef3c60759806916ebf37c5d9b79f7ffd53a1419f1ebd75bfec8f177c2b1b3"
+    },
+    {
+      "path": "tokenizer_config.json",
+      "url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/tokenizer_config.json",
+      "bytes": 17774,
+      "sha256": "261f9491897226589c131a4ac5993c495eec2104dace144f69c397682865a3a0"
+    },
+    {
+      "path": "vocab.json",
+      "url": "https://huggingface.co/ibm-granite/granite-docling-258M/resolve/982fe3b40f2fa73c365bdb1bcacf6c81b7184bfe/vocab.json",
+      "bytes": 1612698,
+      "sha256": "e2bad0ce74e6ddfece426ef99e18067f4a6c3d4e65bb6dd9cfd638450cca0142"
+    }
+  ]
+}

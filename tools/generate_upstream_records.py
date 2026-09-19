@@ -42,6 +42,10 @@ PIN_NAMES = (
     "pocket-tts-english-q8_0.json",
     "bonsai-image-4b-ternary-gemlite.json",
     "bonsai-image-4b-binary-gemlite.json",
+    # OD-AY: the kilix-pdf-conversion [granite] engine models, and only those.
+    "granite-docling-258m.json",
+    "documentfigureclassifier-v2.5.json",
+    "granite-vision-4.1-4b.json",
 )
 
 LICENSORS = {
@@ -67,6 +71,9 @@ LICENSORS = {
     "pocket-tts-english-q8_0": ["Kyutai"],
     "bonsai-image-4b:ternary-gemlite": ["Prism ML, Inc."],
     "bonsai-image-4b:binary-gemlite": ["Prism ML, Inc."],
+    "granite-docling-258m": ["IBM"],
+    "documentfigureclassifier-v2.5": ["docling-project"],
+    "granite-vision-4.1-4b": ["IBM"],
 }
 
 LICENSE_ROW_IDS = {

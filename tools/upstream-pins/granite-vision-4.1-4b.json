@@ -1,0 +1,204 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "granite-vision-4.1-4b",
+  "label": "granite-vision-4.1-4b (kilix-pdf-conversion [granite], --chart-extraction only; loads the pinned Python model code with trust_remote_code=True)",
+  "mode": "upstream-files",
+  "license_record_id": "granite-vision-4.1-4b",
+  "provider": "kilix-pdf-conversion",
+  "consumer_schema": "kilix.pdf-conversion.runtime",
+  "version": "dd48e97503de471803850df70843cf9eb5da8712",
+  "destination": "$DOCLING_ARTIFACTS_PATH/ibm-granite--granite-vision-4.1-4b",
+  "provenance": {
+    "project": "ibm-granite/granite-vision-4.1-4b",
+    "revision": "dd48e97503de471803850df70843cf9eb5da8712",
+    "original_url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/model-00001-of-00002.safetensors"
+  },
+  "remote_code": [
+    "configuration.py",
+    "downsampling.py",
+    "modeling.py",
+    "processing.py"
+  ],
+  "members": [
+    {
+      "path": ".gitattributes",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/.gitattributes",
+      "bytes": 1819,
+      "sha256": "4a04dc3c987070f7efef1ba1899598cc15bef590ba8d5e2cd903567fac765ac5"
+    },
+    {
+      "path": "README.md",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/README.md",
+      "bytes": 17517,
+      "sha256": "de5180eafde0989816d60f51e9beacdcf9448f6c7246b7f240ad834da54d5db4"
+    },
+    {
+      "path": "added_tokens.json",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/added_tokens.json",
+      "bytes": 24,
+      "sha256": "6f7a34b9226191b2848560487570d026242767098f9c341dc37ec093914ef0c5"
+    },
+    {
+      "path": "bench_c2c.png",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/bench_c2c.png",
+      "bytes": 66876,
+      "sha256": "45c1fd0327ea96ad13d4db5000d9f05b01255f922aec460e319cfb9923b00c2a"
+    },
+    {
+      "path": "bench_c2s.png",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/bench_c2s.png",
+      "bytes": 67021,
+      "sha256": "935bae78a30d266c7aa02f4972cd7998665ac72ef5cb9569bae78d18c1ec27da"
+    },
+    {
+      "path": "bench_omni.png",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/bench_omni.png",
+      "bytes": 62580,
+      "sha256": "db7c0871f75befe34661c90909ce236f50dd53f950612ab2cf28c9cb37cea7da"
+    },
+    {
+      "path": "bench_pubcrop.png",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/bench_pubcrop.png",
+      "bytes": 56022,
+      "sha256": "746b2be8396190e4a167364000a5013e331b6b181f89f7cc7af377c08f160082"
+    },
+    {
+      "path": "bench_pubfull.png",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/bench_pubfull.png",
+      "bytes": 56127,
+      "sha256": "67bc337d0435e08a17924d85de71431abd7e94c037018296793453fcc7c7522c"
+    },
+    {
+      "path": "bench_tvqa.png",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/bench_tvqa.png",
+      "bytes": 57410,
+      "sha256": "a9353b83a8a7ea6fd3fb549b3c80885feef86bfc945abc5a4f639258863150cf"
+    },
+    {
+      "path": "bench_varex.png",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/bench_varex.png",
+      "bytes": 67486,
+      "sha256": "63ffd04635522769ad7cdca0ae02e9f94a10094afdf07fbf9c2194d445197d0e"
+    },
+    {
+      "path": "chart.jpg",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/chart.jpg",
+      "bytes": 60268,
+      "sha256": "6836305cfa8bb8322e926328e81f1a8fd39a34a7aa578bf69a42cd4b0943f54a"
+    },
+    {
+      "path": "chat_template.jinja",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/chat_template.jinja",
+      "bytes": 12125,
+      "sha256": "29825b7fcc5ce44c7fd3f9977d8f2cc1b9ccef713ea2fe4046ab0d57b72c84a1"
+    },
+    {
+      "path": "config.json",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/config.json",
+      "bytes": 3339,
+      "sha256": "93862c46c29c2b8f4d34271a2cb06f03293d72acf82dbcc88fe1c72301230239"
+    },
+    {
+      "path": "configuration.py",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/configuration.py",
+      "bytes": 1849,
+      "sha256": "ef3e97557d38b92c47f976588a84af854bd4b8318676a0983802398ac72f8bfc"
+    },
+    {
+      "path": "downsampling.py",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/downsampling.py",
+      "bytes": 6049,
+      "sha256": "556c955476d5b84d557c1cf6ede7bed322e0420f3df86c8baf8e0083a9d8d058"
+    },
+    {
+      "path": "generation_config.json",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/generation_config.json",
+      "bytes": 147,
+      "sha256": "4251329c35bf98284052856a4fd3cc8eaa232bd602889e5894a5b5d783e52427"
+    },
+    {
+      "path": "invoice.png",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/invoice.png",
+      "bytes": 612732,
+      "sha256": "778371cee9bc0d3c4c061756ed2304c3620f209f0cb7b56e63ea8e37f7f6e48b"
+    },
+    {
+      "path": "merges.txt",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/merges.txt",
+      "bytes": 916646,
+      "sha256": "b6fe424e334903f7fb84d3a106d9730455f4744b9fe3c21ee136d97a00e72502"
+    },
+    {
+      "path": "model-00001-of-00002.safetensors",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/model-00001-of-00002.safetensors",
+      "bytes": 4963948000,
+      "sha256": "395051b0b2dd55ff3a2ef95378da36568d4edd8e56f710f43bb28bc52e6209a8"
+    },
+    {
+      "path": "model-00002-of-00002.safetensors",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/model-00002-of-00002.safetensors",
+      "bytes": 3030617368,
+      "sha256": "71d866cf0f20a5d487e17d7c6b839939d6ce126d8a0d175abb34c55131ccd156"
+    },
+    {
+      "path": "model.safetensors.index.json",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/model.safetensors.index.json",
+      "bytes": 117568,
+      "sha256": "36591e77f9d6e12414907807bc1ea0b125f0ef7d18581fa7bb8523733516e06f"
+    },
+    {
+      "path": "modeling.py",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/modeling.py",
+      "bytes": 24076,
+      "sha256": "f13023583433adaf771e5a10675a1dc4244b46b5bce5d9165b91669d23c3b144"
+    },
+    {
+      "path": "preprocessor_config.json",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/preprocessor_config.json",
+      "bytes": 1560,
+      "sha256": "91736aff355de02740a81aa43a80a32f121f25a717b86f674eec9b10426b1630"
+    },
+    {
+      "path": "processing.py",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/processing.py",
+      "bytes": 2345,
+      "sha256": "4512b42a868c469aea9869457b55432e13223f5eb22f293a0ca61f598356aa9d"
+    },
+    {
+      "path": "processor_config.json",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/processor_config.json",
+      "bytes": 286,
+      "sha256": "f87304082506a6a78c24b3bf768639b5db82cde163f313381e6f33e26d9db392"
+    },
+    {
+      "path": "special_tokens_map.json",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/special_tokens_map.json",
+      "bytes": 631,
+      "sha256": "889bb925893df551f69dbcc0a82902689d0c06ad43473289819b4949e8c3a535"
+    },
+    {
+      "path": "table.png",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/table.png",
+      "bytes": 289918,
+      "sha256": "d4498e5af26dee68c6d75bd9c8e3d6d437a7e1c44a1b5cf00b986cc3688df004"
+    },
+    {
+      "path": "tokenizer.json",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/tokenizer.json",
+      "bytes": 7153605,
+      "sha256": "ab67c81a103c0ade199853ccffee38f88374190663662a81cc31393633c42f38"
+    },
+    {
+      "path": "tokenizer_config.json",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/tokenizer_config.json",
+      "bytes": 17956,
+      "sha256": "1b28981cbbe69c040fe48cd7f1a0a770b937a710a9610f4da359ca2f43a78556"
+    },
+    {
+      "path": "vocab.json",
+      "url": "https://huggingface.co/ibm-granite/granite-vision-4.1-4b/resolve/dd48e97503de471803850df70843cf9eb5da8712/vocab.json",
+      "bytes": 2014114,
+      "sha256": "3efa1cc7301ba3f2c0cb36f4c9ec1ece4e10eaadc60d29462013269769c161fb"
+    }
+  ]
+}
