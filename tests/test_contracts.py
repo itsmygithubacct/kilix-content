@@ -164,3 +164,54 @@ class ContractTests(unittest.TestCase):
             self.assertIn(f"{name} in src/kilix_content/receipt.py is {edited}", result.stderr)
             self.assertIn(f"hash to {pinned}", result.stderr)
         self.assertEqual(check().returncode, 0)
+
+    def test_make_pins_refuses_a_second_pin_assignment(self) -> None:
+        """The runtime uses the last assignment; make pins read the first (C2E-FIX-VERIFY R5)."""
+        scratch = Path(tempfile.mkdtemp(prefix="kilix-content-pins-twice-"))
+        for name in ("src", "tools", "third_party"):
+            shutil.copytree(
+                ROOT / name,
+                scratch / name,
+                ignore=shutil.ignore_patterns("__pycache__"),
+            )
+        receipt = scratch / "src" / "kilix_content" / "receipt.py"
+        original = receipt.read_text(encoding="utf-8")
+        env = dict(os.environ)
+        env["PYTHONPATH"] = "src:third_party/kilix-license/src"
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
+
+        def check() -> subprocess.CompletedProcess[str]:
+            return subprocess.run(
+                [sys.executable, "tools/generate_upstream_records.py", "--check"],
+                cwd=scratch,
+                check=False,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+        self.assertEqual(check().returncode, 0)
+        for name in ("_CATALOG_SHA256", "_ASSET_V3_SCHEMA_SHA256"):
+            match = re.search(rf'{name} = \(\n    "([0-9a-f]{{64}})"\n\)', original)
+            self.assertIsNotNone(match, name)
+            pinned = match.group(1)
+            seconds = {
+                # The verifier's shape: the runtime pin becomes all zeros.
+                "zeros": f'\n{name} = "{"0" * 64}"\n',
+                # Refused even when the second value is the right one.
+                "same value": f'\n{name} = (\n    "{pinned}"\n)\n',
+                "augmented": f'\n{name} += ""\n',
+            }
+            for label, second in seconds.items():
+                with self.subTest(name=name, second=label):
+                    receipt.write_text(original + second, encoding="utf-8")
+                    try:
+                        result = check()
+                    finally:
+                        receipt.write_text(original, encoding="utf-8")
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(
+                        f"{name} is bound 2 times in src/kilix_content/receipt.py",
+                        result.stderr,
+                    )
+        self.assertEqual(check().returncode, 0)
