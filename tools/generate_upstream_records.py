@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate packaged asset/v3 records from verified upstream pins (R4-050..R4-064)."""
+"""Generate packaged asset/v3 records from verified upstream pins (R4-050..R4-065)."""
 
 from __future__ import annotations
 
@@ -39,6 +39,8 @@ PIN_NAMES = (
     "granite3.2-vision-2b.json",
     "qwen3.5-4b.json",
     "pocket-tts-english-q8_0.json",
+    "bonsai-image-4b-ternary-gemlite.json",
+    "bonsai-image-4b-binary-gemlite.json",
 )
 
 LICENSORS = {
@@ -62,6 +64,8 @@ LICENSORS = {
     "granite3.2-vision:2b": ["IBM"],
     "qwen3.5:4b": ["Alibaba Cloud / Qwen"],
     "pocket-tts-english-q8_0": ["Kyutai"],
+    "bonsai-image-4b:ternary-gemlite": ["Prism ML, Inc."],
+    "bonsai-image-4b:binary-gemlite": ["Prism ML, Inc."],
 }
 
 LICENSE_ROW_IDS = {
