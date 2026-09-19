@@ -783,6 +783,43 @@ class BonsaiImagePolicyChangeTests(unittest.TestCase):
         self.assertEqual(changed_binding_conditions(changed_record, self.store), {})
         _assert_junk_intact(self, self.store.root, planted_junk)
 
+    def test_store_entry_over_the_read_limit_is_skipped(self) -> None:
+        """A receipt is under 2 KiB. The scan reads at most 1 MiB of any entry."""
+        self._accept_original()
+        valid = next(self.store.root.glob("*.json"))
+        self.assertLess(valid.stat().st_size, 2048)
+        _planted, _digest, changed_record = self._planted_record()
+        receipt = _receipt_v1_bytes(self.record.id, "bfl-usage-policy", "e" * 64)
+        limit = 1 << 20
+        # At the limit, a usable receipt is read and counted.
+        entry = self.store.root / "0000-planted-at-read-limit.json"
+        entry.write_bytes(receipt.ljust(limit, b" "))
+        self.assertEqual(entry.stat().st_size, limit)
+        self.assertEqual(
+            changed_binding_conditions(changed_record, self.store),
+            {"bfl-usage-policy": (POLICY_SHA256, "e" * 64)},
+        )
+        entry.unlink()
+        # One byte over, the same receipt is skipped unparsed.
+        entry = self.store.root / "0000-planted-over-read-limit.json"
+        entry.write_bytes(receipt.ljust(limit + 1, b" "))
+        self.assertEqual(
+            changed_binding_conditions(changed_record, self.store),
+            {"bfl-usage-policy": (POLICY_SHA256,)},
+        )
+        entry.unlink()
+        # A sparse 2 GiB entry: read whole, it fails the child's 1 GiB cap.
+        entry = self.store.root / "0000-planted-sparse-2gib.json"
+        try:
+            with entry.open("wb") as handle:
+                handle.truncate(2 << 30)
+            self.assertEqual(entry.stat().st_size, 2 << 30)
+            self.assertEqual(
+                _scan_in_capped_child(self, self.store.root, self.record.id), {}
+            )
+        finally:
+            entry.unlink()
+
     def test_changed_block_is_still_shown_beside_symlinks_the_scan_cannot_inspect(self) -> None:
         """C2E-FIX-VERIFY R1 (b): one such symlink raised from is_file() and hid the marker."""
         self._accept_original()
