@@ -57,12 +57,13 @@ def changed_binding_conditions(
     The marker is presentation only. Coverage is enforced by require(), which
     reads the exact receipt path. A store file this build cannot read, that is
     not a JSON object, or whose schema or shape it does not know is skipped
-    here, so it cannot stop the screen or the install of any asset.
+    here, so it cannot stop the screen or the install of any asset. Anything
+    but a regular file (a FIFO would block the read forever) is never opened.
     """
     current = record.agreement_binding_digests()
     accepted: dict[str, set[str]] = {key: set() for key in current}
     for path in sorted(store.root.glob("*.json")):
-        if path.name.startswith("."):
+        if path.name.startswith(".") or not path.is_file():
             continue
         try:
             receipt = parse_receipt_bytes(path.read_bytes())

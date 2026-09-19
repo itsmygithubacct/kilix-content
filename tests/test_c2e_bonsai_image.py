@@ -6,8 +6,11 @@ import dataclasses
 import hashlib
 import io
 import json
+import os
 import re
 import tempfile
+import threading
+import time
 import unittest
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -130,8 +133,10 @@ def _unhashable_decision_receipt() -> bytes:
 
 
 # Files a receipt store can hold that this build cannot use (C2E-VERIFY F1).
-# None plants a directory. Names sort both before and after a real receipt
+# None plants a directory; JUNK_UNREADABLE files are chmod 000, so reading them
+# raises PermissionError. Names sort both before and after a real receipt
 # (64 hex characters), so a scan that stops at the first bad file is caught.
+JUNK_UNREADABLE = frozenset({"zzzz-planted-unreadable.json"})
 JUNK_RECEIPT_FILES: dict[str, bytes | None] = {
     "0000-planted-non-utf8.json": b"\xff\xfe\x00 not a receipt\n",
     "0001-planted-receipt-v2.json": _future_schema_receipt(
@@ -141,6 +146,7 @@ JUNK_RECEIPT_FILES: dict[str, bytes | None] = {
     "zzzz-planted-unhashable-decision.json": _unhashable_decision_receipt(),
     "zzzz-planted-deep-nesting.json": b"[" * 100000,
     "zzzz-planted-directory.json": None,
+    "zzzz-planted-unreadable.json": b"\xff unreadable\n",
 }
 
 
@@ -155,7 +161,21 @@ def _plant_junk(root: Path, names: tuple[str, ...] | None = None) -> dict[str, b
             (root / name).mkdir()
         else:
             (root / name).write_bytes(payload)
+            if name in JUNK_UNREADABLE:
+                os.chmod(root / name, 0o000)
     return planted
+
+
+def _assert_junk_intact(case: unittest.TestCase, root: Path, planted: dict[str, bytes | None]) -> None:
+    for name, payload in planted.items():
+        path = root / name
+        if payload is None:
+            case.assertTrue(path.is_dir(), name)
+            continue
+        if name in JUNK_UNREADABLE:
+            case.assertEqual(path.stat().st_mode & 0o777, 0o000, name)
+            os.chmod(path, 0o600)
+        case.assertEqual(path.read_bytes(), payload, name)
 
 
 class BonsaiImageRecordTests(unittest.TestCase):
@@ -653,11 +673,7 @@ class BonsaiImagePolicyChangeTests(unittest.TestCase):
         )
         self.assertIsNotNone(accepted)
         self.assertEqual(changed_binding_conditions(changed_record, self.store), {})
-        for name, payload in planted_junk.items():
-            if payload is None:
-                self.assertTrue((self.store.root / name).is_dir(), name)
-            else:
-                self.assertEqual((self.store.root / name).read_bytes(), payload, name)
+        _assert_junk_intact(self, self.store.root, planted_junk)
 
 
 class ReceiptStoreJunkTests(unittest.TestCase):
@@ -677,7 +693,7 @@ class ReceiptStoreJunkTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.upstream.close()
 
-    def _install_vosk_beside(self, names: tuple[str, ...]) -> None:
+    def _install_vosk_beside(self, names: tuple[str, ...], plant=None) -> None:
         scratch = Path(tempfile.mkdtemp(prefix="kilix-content-junk-receipts-"))
         texts = load_determined_texts(scratch / "texts")
         store = FakeStore(scratch / "receipts")
@@ -695,6 +711,8 @@ class ReceiptStoreJunkTests(unittest.TestCase):
         )
         planted = _plant_junk(store.root, names)
         self.assertEqual(set(planted), set(names))
+        if plant is not None:
+            plant(store.root)
         self.assertEqual(changed_binding_conditions(self.record, store), {})
         screen = io.BytesIO()
         gets_before = len(self.upstream.requests())
@@ -716,11 +734,7 @@ class ReceiptStoreJunkTests(unittest.TestCase):
         receipt_path = store.path_for(self.record.digest, spec.manifest_digest)
         self.assertEqual(parse_receipt_bytes(receipt_path.read_bytes()).licence_id, "small-en-us")
         self.assertFalse(needs_agreement(spec, records=self.records, store=store))
-        for name, payload in planted.items():
-            if payload is None:
-                self.assertTrue((store.root / name).is_dir(), name)
-            else:
-                self.assertEqual((store.root / name).read_bytes(), payload, name)
+        _assert_junk_intact(self, store.root, planted)
 
     def test_non_utf8_receipt_file_does_not_block_an_unrelated_install(self) -> None:
         self._install_vosk_beside(("0000-planted-non-utf8.json",))
@@ -734,6 +748,42 @@ class ReceiptStoreJunkTests(unittest.TestCase):
                 self._install_vosk_beside((name,))
         with self.subTest(name="all together"):
             self._install_vosk_beside(tuple(JUNK_RECEIPT_FILES))
+
+    def test_fifo_in_the_store_is_never_opened(self) -> None:
+        """A FIFO named *.json would block the scan's read forever: it is skipped unopened."""
+        opened = threading.Event()
+        finished = threading.Event()
+        watchdogs: list[threading.Thread] = []
+
+        def plant(root: Path) -> None:
+            fifo = root / "zzzz-planted-fifo.json"
+            os.mkfifo(fifo)
+
+            def watchdog() -> None:
+                # A non-blocking open for writing succeeds only while a reader
+                # holds the FIFO open, i.e. while the scan is blocked on it.
+                # Record that, then close to give the reader EOF and unblock it.
+                while not finished.is_set():
+                    try:
+                        descriptor = os.open(fifo, os.O_WRONLY | os.O_NONBLOCK)
+                    except OSError:
+                        time.sleep(0.01)
+                        continue
+                    opened.set()
+                    os.close(descriptor)
+
+            thread = threading.Thread(target=watchdog, daemon=True)
+            thread.start()
+            watchdogs.append(thread)
+
+        try:
+            self._install_vosk_beside((), plant=plant)
+        finally:
+            finished.set()
+            for thread in watchdogs:
+                thread.join(5)
+        self.assertEqual(len(watchdogs), 1)
+        self.assertFalse(opened.is_set(), "the changed-policy scan opened a FIFO")
 
 
 if __name__ == "__main__":
