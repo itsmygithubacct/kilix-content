@@ -39,10 +39,16 @@ for _key, _name in (
     _path.mkdir(parents=True, exist_ok=True)
     os.environ[_key] = str(_path)
 
-os.environ.setdefault("https_proxy", "http://127.0.0.1:9")
-os.environ.setdefault("HTTPS_PROXY", "http://127.0.0.1:9")
-os.environ.setdefault("no_proxy", "localhost,127.0.0.1,::1")
-os.environ.setdefault("NO_PROXY", "localhost,127.0.0.1,::1")
+# Forced, not defaulted: a caller's proxy on loopback would pass the audit hook
+# (loopback is allowed) and then reach the network on the suite's behalf.
+DEAD_PROXY = "http://127.0.0.1:9"
+LOOPBACK_NO_PROXY = "localhost,127.0.0.1,::1"
+for _key in ("https_proxy", "HTTPS_PROXY", "http_proxy", "HTTP_PROXY"):
+    os.environ[_key] = DEAD_PROXY
+for _key in ("no_proxy", "NO_PROXY"):
+    os.environ[_key] = LOOPBACK_NO_PROXY
+for _key in ("all_proxy", "ALL_PROXY"):
+    os.environ.pop(_key, None)
 
 try:
     from live_store_guard import install as _install_live_store_guard

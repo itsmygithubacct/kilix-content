@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -145,6 +147,47 @@ class HarnessTests(unittest.TestCase):
         ):
             self.assertEqual(os.environ.get(key), str(scratch / name), key)
         self.assertTrue(network_guard.installed())
+
+    def test_caller_proxy_is_replaced_by_the_dead_proxy(self) -> None:
+        """A caller's loopback proxy would pass the hook, then reach the network."""
+        env = dict(os.environ)
+        planted = "http://127.0.0.1:18080"
+        for key in ("https_proxy", "HTTPS_PROXY", "http_proxy", "HTTP_PROXY"):
+            env[key] = planted
+        env["all_proxy"] = env["ALL_PROXY"] = "socks5://127.0.0.1:1080"
+        env["no_proxy"] = env["NO_PROXY"] = "*"
+        env["PYTHONPATH"] = os.pathsep.join(
+            str(path)
+            for path in (
+                ROOT,
+                ROOT / "src",
+                ROOT / "third_party" / "kilix-license" / "src",
+                ROOT / "tests" / "support",
+            )
+        )
+        probe = (
+            "import json, os, tests\n"
+            "keys = ('https_proxy', 'HTTPS_PROXY', 'http_proxy', 'HTTP_PROXY',\n"
+            "        'no_proxy', 'NO_PROXY', 'all_proxy', 'ALL_PROXY')\n"
+            "print(json.dumps({key: os.environ.get(key) for key in keys}))\n"
+        )
+        result = subprocess.run(
+            [sys.executable, "-c", probe],
+            cwd=ROOT,
+            env=env,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, "")
+        seen = json.loads(result.stdout)
+        for key in ("https_proxy", "HTTPS_PROXY", "http_proxy", "HTTP_PROXY"):
+            self.assertEqual(seen[key], "http://127.0.0.1:9", key)
+        for key in ("no_proxy", "NO_PROXY"):
+            self.assertEqual(seen[key], "localhost,127.0.0.1,::1", key)
+        self.assertIsNone(seen["all_proxy"])
+        self.assertIsNone(seen["ALL_PROXY"])
 
     def test_make_test_runs_unittest_in_its_scratch_environment(self) -> None:
         """The recipe's scratch reaches unittest, not only compileall (F4)."""
