@@ -3,6 +3,7 @@ UNITTEST_ARGS ?=
 export PYTHONPATH := src:third_party/kilix-license/src:tests/support
 # Exported by make itself, so it reaches every recipe command even if the
 # recipe's own environment is lost; the harness then requires the scratch.
+# Under make (MAKELEVEL), the harness fails rather than skips without it.
 export KILIX_CONTENT_MAKE_TEST := 1
 
 .PHONY: test check generate pins hygiene

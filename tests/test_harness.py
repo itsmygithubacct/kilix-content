@@ -52,6 +52,16 @@ _SCRATCH_ENV = (
 )
 
 
+def _run_by_make() -> bool:
+    """Whether a make recipe started this process.
+
+    make itself puts MAKELEVEL in every recipe's environment, so no edit of
+    this repository's Makefile can drop it together with the recipe's exports
+    and the KILIX_CONTENT_MAKE_TEST marker (C2E-FIX-VERIFY R2).
+    """
+    return "MAKELEVEL" in os.environ or "KILIX_CONTENT_MAKE_TEST" in os.environ
+
+
 def _exception_chain(error: BaseException) -> list[BaseException]:
     seen: list[BaseException] = []
     pending: list[object] = [error]
@@ -190,9 +200,18 @@ class HarnessTests(unittest.TestCase):
         self.assertIsNone(seen["ALL_PROXY"])
 
     def test_make_test_runs_unittest_in_its_scratch_environment(self) -> None:
-        """The recipe's scratch reaches unittest, not only compileall (F4)."""
-        if os.environ.get("KILIX_CONTENT_MAKE_TEST") != "1":
-            self.skipTest("not run by this repository's make test")
+        """The recipe's scratch reaches unittest, not only compileall (F4).
+
+        Skipped only outside make. Under make, a lost marker or scratch is a
+        failure, never a skip (C2E-FIX-VERIFY R2).
+        """
+        if not _run_by_make():
+            self.skipTest("not run by make")
+        self.assertEqual(
+            os.environ.get("KILIX_CONTENT_MAKE_TEST"),
+            "1",
+            "run by make, but make test did not export KILIX_CONTENT_MAKE_TEST=1",
+        )
         scratch = os.environ.get("KILIX_CONTENT_TEST_SCRATCH")
         self.assertTrue(scratch, "make test did not export its scratch to unittest")
         root = os.path.realpath(scratch)
