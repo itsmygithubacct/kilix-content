@@ -1458,6 +1458,64 @@
         "mode": "terminal",
         "preferred_size": "1100x720"
       }
+    },
+    {
+      "id": "kilix-encodec-convert-24khz",
+      "label": "EnCodec 24 kHz local converter",
+      "kind": "tool",
+      "icon": "package",
+      "description": "Convert the pinned upstream EnCodec 24khz download into the exact op17-v2-bb615145 graph population, locally, under the CC BY-NC 4.0 receipt the first-use screen recorded. Downloads no model and publishes nothing.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-encodec",
+        "ref": "16ad64ce545bd2abb5531439b9bf1b1c28c76767"
+      },
+      "binary": "bin/kilix-encodec-convert-24khz",
+      "build": [
+        "python3",
+        "tools/build_converter.py",
+        "--profile",
+        "24khz",
+        "--timeout",
+        "900"
+      ],
+      "dependency_hint": "needs Linux x86-64, system Python, bubblewrap, user namespaces and memfd seals; the first build acquires pinned tools and dependencies, but no model",
+      "capabilities": [
+        "filesystem-read",
+        "filesystem-write"
+      ],
+      "launch": {
+        "mode": "terminal"
+      }
+    },
+    {
+      "id": "kilix-encodec-convert-48khz",
+      "label": "EnCodec 48 kHz local converter",
+      "kind": "tool",
+      "icon": "package",
+      "description": "Convert the pinned upstream EnCodec 48khz download into the exact op17-v1-2ce5225d graph population, locally, under the CC BY-NC 4.0 receipt the first-use screen recorded. Downloads no model and publishes nothing.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-encodec",
+        "ref": "16ad64ce545bd2abb5531439b9bf1b1c28c76767"
+      },
+      "binary": "bin/kilix-encodec-convert-48khz",
+      "build": [
+        "python3",
+        "tools/build_converter.py",
+        "--profile",
+        "48khz",
+        "--timeout",
+        "900"
+      ],
+      "dependency_hint": "needs Linux x86-64, system Python, bubblewrap, user namespaces and memfd seals; the first build acquires pinned tools and dependencies, but no model",
+      "capabilities": [
+        "filesystem-read",
+        "filesystem-write"
+      ],
+      "launch": {
+        "mode": "terminal"
+      }
     }
   ],
   "assets": [
@@ -3405,9 +3463,9 @@
         },
         "input": {
           "bytes": 219029196,
-          "path": "languages/english/model.safetensors",
           "sha256": "be9c6b4876d3f30740a8225dfcaa2e43dc4aeb753c15272735bee16bbb4abb0a",
-          "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/languages/english/model.safetensors"
+          "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/languages/english/model.safetensors",
+          "path": "languages/english/model.safetensors"
         },
         "mode": "upstream-convert",
         "provenance": {
@@ -4513,6 +4571,216 @@
       },
       "stream": "F104",
       "version": "dd48e97503de471803850df70843cf9eb5da8712"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.encodec.graphs/v1",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 29733075,
+          "path": "decoder_stateful_op17.onnx",
+          "sha256": "90cb4f26f05df4ad3537cfc2ab495fa4e6f9074b5f32303cdf4b89dbe548722a"
+        },
+        {
+          "bytes": 29720617,
+          "path": "encoder_stateful_op17.onnx",
+          "sha256": "19c6f57f0d39d2660942c958a797133fa0eedd4120cccf5daecc5726427b8269"
+        },
+        {
+          "bytes": 12835,
+          "path": "manifest.json",
+          "sha256": "bb615145d4a33dbfa4c07c1ff3283303b461af1c6fc83dbf50b59bcf6489f81b"
+        },
+        {
+          "bytes": 19347,
+          "path": "notices/LICENSE-cc-by-nc-4.0.txt",
+          "sha256": "41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0"
+        },
+        {
+          "bytes": 8396869,
+          "path": "rvq_decode_12kbps_op17.onnx",
+          "sha256": "5e0db494814c629326fe4d82ce799915fdb45f841d3d99526bf126468849b9b2"
+        },
+        {
+          "bytes": 2099386,
+          "path": "rvq_decode_3kbps_op17.onnx",
+          "sha256": "776ab1b5a3990fb9b96a6eca43010356b08dc6f9c423af32601fb67f84a8a322"
+        },
+        {
+          "bytes": 4198507,
+          "path": "rvq_decode_6kbps_op17.onnx",
+          "sha256": "505b6e01f75e6e966499be4e20a42d282959320653978a951cf44094aae7b2c0"
+        },
+        {
+          "bytes": 16285603,
+          "path": "rvq_encode_12kbps_op17.onnx",
+          "sha256": "cf1c80c23955255809ba90f564e6f30e0911851a298c4622f180585b4a4c5a37"
+        },
+        {
+          "bytes": 3677949,
+          "path": "rvq_encode_3kbps_op17.onnx",
+          "sha256": "a873a3264a134df0d61557e0e751ac3702f15ad5a8fb97d53712ab746d533ad0"
+        },
+        {
+          "bytes": 7880428,
+          "path": "rvq_encode_6kbps_op17.onnx",
+          "sha256": "938a494c90dcb185a01e18457a9c08d6b6184785e8099baca29499cf5dbd020c"
+        }
+      ],
+      "id": "encodec-24khz-stateful",
+      "label": "EnCodec 24 kHz stateful graphs",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "cc-by-nc-4.0",
+          "licensors": [
+            "Meta Platforms"
+          ],
+          "record_digest": "8af1dc699df34436899f0b93dce271d2fadb119f62e136e74ad797686d880f4b",
+          "text_sha256": "41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0"
+        }
+      ],
+      "provider": "kilix-encodec",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 93171529,
+        "installed_bytes": 102024616,
+        "temporary_bytes": 4294967296
+      },
+      "source": {
+        "conversion": {
+          "argv": [
+            "/usr/lib/plebian-os/kilix-encodec/bin/kilix-encodec-convert-24khz",
+            "--input",
+            "{input}",
+            "--output",
+            "{output}",
+            "--receipt-store",
+            "{receipt_store}",
+            "--manifest-digest",
+            "{manifest_digest}",
+            "--timeout",
+            "180"
+          ],
+          "tool_asset_id": "kilix-encodec-convert-24khz"
+        },
+        "input": {
+          "bytes": 93171529,
+          "sha256": "d7cc33bcf1aad7f2dad9836f36431530744abeace3ca033005e3290ed4fa47bf",
+          "url": "https://dl.fbaipublicfiles.com/encodec/v0/encodec_24khz-d7cc33bc.th"
+        },
+        "mode": "upstream-convert",
+        "provenance": {
+          "project": "facebookresearch/encodec",
+          "revision": "encodec_24khz-d7cc33bc",
+          "original_url": "https://dl.fbaipublicfiles.com/encodec/v0/encodec_24khz-d7cc33bc.th"
+        }
+      },
+      "stream": "F101",
+      "version": "op17-v2-bb615145"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.encodec.graphs/v1",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 29882042,
+          "path": "decoder_frame_op17.onnx",
+          "sha256": "e0c2bc574a50e910f7d0daa7c1598c237cec0a4365eb229ecfbaf9c06dd397b1"
+        },
+        {
+          "bytes": 29909926,
+          "path": "encoder_frame_op17.onnx",
+          "sha256": "2fad822a1ab98a9b7d83340121c7cd7c8bb0a6cb2457b70aa458e6ef9022e27a"
+        },
+        {
+          "bytes": 3930,
+          "path": "manifest.json",
+          "sha256": "2ce5225dc458dd30fe91854755dcfb360300fe3cee7d0c5682e7be684eae7a87"
+        },
+        {
+          "bytes": 19347,
+          "path": "notices/LICENSE-cc-by-nc-4.0.txt",
+          "sha256": "41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0"
+        },
+        {
+          "bytes": 8388608,
+          "path": "rvq-codebooks.f32le",
+          "sha256": "4304cd8e3c8a9b59733224311aa405e0b04bd9b6c6737c32d8f682f9b255594f"
+        }
+      ],
+      "id": "encodec-48khz-frame",
+      "label": "EnCodec 48 kHz frame graphs",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "cc-by-nc-4.0",
+          "licensors": [
+            "Meta Platforms"
+          ],
+          "record_digest": "9c1baee4ad48816bba2568c7e14f136b388f11722d6e422a933a1a4a24d30f3f",
+          "text_sha256": "41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0"
+        }
+      ],
+      "provider": "kilix-encodec",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 76292186,
+        "installed_bytes": 68203853,
+        "temporary_bytes": 4294967296
+      },
+      "source": {
+        "conversion": {
+          "argv": [
+            "/usr/lib/plebian-os/kilix-encodec/bin/kilix-encodec-convert-48khz",
+            "--input",
+            "{input}",
+            "--output",
+            "{output}",
+            "--receipt-store",
+            "{receipt_store}",
+            "--manifest-digest",
+            "{manifest_digest}",
+            "--timeout",
+            "300"
+          ],
+          "tool_asset_id": "kilix-encodec-convert-48khz"
+        },
+        "input": {
+          "bytes": 76291152,
+          "sha256": "47a15ffbaf7bb76176d0833e10590de0a8988a7848748608cefc36a1c88adfdc",
+          "url": "https://huggingface.co/facebook/encodec_48khz/resolve/c3def8e7185ac8c8efdce6eb8c4a651e487a503e/model.safetensors",
+          "path": "model.safetensors"
+        },
+        "mode": "upstream-convert",
+        "provenance": {
+          "project": "facebook/encodec_48khz",
+          "revision": "c3def8e7185ac8c8efdce6eb8c4a651e487a503e",
+          "original_url": "https://huggingface.co/facebook/encodec_48khz/resolve/c3def8e7185ac8c8efdce6eb8c4a651e487a503e/model.safetensors"
+        },
+        "inputs": [
+          {
+            "bytes": 803,
+            "path": "config.json",
+            "sha256": "4a914ed15ed5a69e19932d05b0c51f2d22c68ffac70e959a757594cb0cd6e2a7",
+            "url": "https://huggingface.co/facebook/encodec_48khz/resolve/c3def8e7185ac8c8efdce6eb8c4a651e487a503e/config.json"
+          },
+          {
+            "bytes": 231,
+            "path": "preprocessor_config.json",
+            "sha256": "df1268bac588b486545baa1d0b6c9c32366c817efbd113158b4c2ef74f6eefeb",
+            "url": "https://huggingface.co/facebook/encodec_48khz/resolve/c3def8e7185ac8c8efdce6eb8c4a651e487a503e/preprocessor_config.json"
+          }
+        ]
+      },
+      "stream": "F101",
+      "version": "op17-v1-2ce5225d"
     }
   ]
 }

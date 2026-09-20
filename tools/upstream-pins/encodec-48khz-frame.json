@@ -1,0 +1,75 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "encodec-48khz-frame",
+  "label": "EnCodec 48 kHz frame graphs",
+  "mode": "upstream-convert",
+  "license_record_id": "encodec-48khz-frame",
+  "provider": "kilix-encodec",
+  "consumer_schema": "kilix.encodec.graphs/v1",
+  "stream": "F101",
+  "version": "op17-v1-2ce5225d",
+  "temporary_bytes": 4294967296,
+  "provenance": {
+    "project": "facebook/encodec_48khz",
+    "revision": "c3def8e7185ac8c8efdce6eb8c4a651e487a503e",
+    "original_url": "https://huggingface.co/facebook/encodec_48khz/resolve/c3def8e7185ac8c8efdce6eb8c4a651e487a503e/model.safetensors"
+  },
+  "input": {
+    "url": "https://huggingface.co/facebook/encodec_48khz/resolve/c3def8e7185ac8c8efdce6eb8c4a651e487a503e/model.safetensors",
+    "bytes": 76291152,
+    "sha256": "47a15ffbaf7bb76176d0833e10590de0a8988a7848748608cefc36a1c88adfdc",
+    "path": "model.safetensors"
+  },
+  "outputs": [
+    {
+      "path": "decoder_frame_op17.onnx",
+      "bytes": 29882042,
+      "sha256": "e0c2bc574a50e910f7d0daa7c1598c237cec0a4365eb229ecfbaf9c06dd397b1"
+    },
+    {
+      "path": "encoder_frame_op17.onnx",
+      "bytes": 29909926,
+      "sha256": "2fad822a1ab98a9b7d83340121c7cd7c8bb0a6cb2457b70aa458e6ef9022e27a"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 3930,
+      "sha256": "2ce5225dc458dd30fe91854755dcfb360300fe3cee7d0c5682e7be684eae7a87"
+    },
+    {
+      "path": "rvq-codebooks.f32le",
+      "bytes": 8388608,
+      "sha256": "4304cd8e3c8a9b59733224311aa405e0b04bd9b6c6737c32d8f682f9b255594f"
+    }
+  ],
+  "conversion": {
+    "tool_asset_id": "kilix-encodec-convert-48khz",
+    "argv": [
+      "/usr/lib/plebian-os/kilix-encodec/bin/kilix-encodec-convert-48khz",
+      "--input",
+      "{input}",
+      "--output",
+      "{output}",
+      "--receipt-store",
+      "{receipt_store}",
+      "--manifest-digest",
+      "{manifest_digest}",
+      "--timeout",
+      "300"
+    ]
+  },
+  "inputs": [
+    {
+      "path": "config.json",
+      "url": "https://huggingface.co/facebook/encodec_48khz/resolve/c3def8e7185ac8c8efdce6eb8c4a651e487a503e/config.json",
+      "bytes": 803,
+      "sha256": "4a914ed15ed5a69e19932d05b0c51f2d22c68ffac70e959a757594cb0cd6e2a7"
+    },
+    {
+      "path": "preprocessor_config.json",
+      "url": "https://huggingface.co/facebook/encodec_48khz/resolve/c3def8e7185ac8c8efdce6eb8c4a651e487a503e/preprocessor_config.json",
+      "bytes": 231,
+      "sha256": "df1268bac588b486545baa1d0b6c9c32366c817efbd113158b4c2ef74f6eefeb"
+    }
+  ]
+}

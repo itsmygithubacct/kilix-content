@@ -1,0 +1,85 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "encodec-24khz-stateful",
+  "label": "EnCodec 24 kHz stateful graphs",
+  "mode": "upstream-convert",
+  "license_record_id": "encodec-24khz-stateful",
+  "provider": "kilix-encodec",
+  "consumer_schema": "kilix.encodec.graphs/v1",
+  "stream": "F101",
+  "version": "op17-v2-bb615145",
+  "temporary_bytes": 4294967296,
+  "provenance": {
+    "project": "facebookresearch/encodec",
+    "revision": "encodec_24khz-d7cc33bc",
+    "original_url": "https://dl.fbaipublicfiles.com/encodec/v0/encodec_24khz-d7cc33bc.th"
+  },
+  "input": {
+    "url": "https://dl.fbaipublicfiles.com/encodec/v0/encodec_24khz-d7cc33bc.th",
+    "bytes": 93171529,
+    "sha256": "d7cc33bcf1aad7f2dad9836f36431530744abeace3ca033005e3290ed4fa47bf"
+  },
+  "outputs": [
+    {
+      "path": "decoder_stateful_op17.onnx",
+      "bytes": 29733075,
+      "sha256": "90cb4f26f05df4ad3537cfc2ab495fa4e6f9074b5f32303cdf4b89dbe548722a"
+    },
+    {
+      "path": "encoder_stateful_op17.onnx",
+      "bytes": 29720617,
+      "sha256": "19c6f57f0d39d2660942c958a797133fa0eedd4120cccf5daecc5726427b8269"
+    },
+    {
+      "path": "manifest.json",
+      "bytes": 12835,
+      "sha256": "bb615145d4a33dbfa4c07c1ff3283303b461af1c6fc83dbf50b59bcf6489f81b"
+    },
+    {
+      "path": "rvq_decode_12kbps_op17.onnx",
+      "bytes": 8396869,
+      "sha256": "5e0db494814c629326fe4d82ce799915fdb45f841d3d99526bf126468849b9b2"
+    },
+    {
+      "path": "rvq_decode_3kbps_op17.onnx",
+      "bytes": 2099386,
+      "sha256": "776ab1b5a3990fb9b96a6eca43010356b08dc6f9c423af32601fb67f84a8a322"
+    },
+    {
+      "path": "rvq_decode_6kbps_op17.onnx",
+      "bytes": 4198507,
+      "sha256": "505b6e01f75e6e966499be4e20a42d282959320653978a951cf44094aae7b2c0"
+    },
+    {
+      "path": "rvq_encode_12kbps_op17.onnx",
+      "bytes": 16285603,
+      "sha256": "cf1c80c23955255809ba90f564e6f30e0911851a298c4622f180585b4a4c5a37"
+    },
+    {
+      "path": "rvq_encode_3kbps_op17.onnx",
+      "bytes": 3677949,
+      "sha256": "a873a3264a134df0d61557e0e751ac3702f15ad5a8fb97d53712ab746d533ad0"
+    },
+    {
+      "path": "rvq_encode_6kbps_op17.onnx",
+      "bytes": 7880428,
+      "sha256": "938a494c90dcb185a01e18457a9c08d6b6184785e8099baca29499cf5dbd020c"
+    }
+  ],
+  "conversion": {
+    "tool_asset_id": "kilix-encodec-convert-24khz",
+    "argv": [
+      "/usr/lib/plebian-os/kilix-encodec/bin/kilix-encodec-convert-24khz",
+      "--input",
+      "{input}",
+      "--output",
+      "{output}",
+      "--receipt-store",
+      "{receipt_store}",
+      "--manifest-digest",
+      "{manifest_digest}",
+      "--timeout",
+      "180"
+    ]
+  }
+}

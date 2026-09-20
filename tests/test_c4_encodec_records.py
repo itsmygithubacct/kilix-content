@@ -33,6 +33,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -666,6 +667,387 @@ class EncodecShapedInstallTests(unittest.TestCase):
         self.assertNotEqual(
             source_objects_sha256(first), source_objects_sha256(second)
         )
+
+
+# The accepted kilix-encodec populations (SR-1, SR-3, SR-5, SR-10), as
+# kilix-encodec's own python/graph_population.py binds them.
+ACCEPTED_MANIFESTS = {
+    "encodec-24khz-stateful": (
+        "bb615145d4a33dbfa4c07c1ff3283303b461af1c6fc83dbf50b59bcf6489f81b",
+        "op17-v2-bb615145",
+        9,
+    ),
+    "encodec-48khz-frame": (
+        "2ce5225dc458dd30fe91854755dcfb360300fe3cee7d0c5682e7be684eae7a87",
+        "op17-v1-2ce5225d",
+        4,
+    ),
+}
+
+# The 0.2.1 populations OD-AR superseded. Neither may survive as a live pin.
+SUPERSEDED_MANIFESTS = (
+    "02201a5a947dc0a0b9cce84d585eca35fb8a7e57aee4d404d5cb14f495f40b6c",
+    "844d8fcfdb2fb13d0485a9429c83debb590dcf964244fe0d06c50b5ec3380e38",
+)
+
+# The kilix-license EnCodec records the two catalog records refer to.
+RECORD_DIGESTS = {
+    "encodec-24khz-stateful": (
+        "8af1dc699df34436899f0b93dce271d2fadb119f62e136e74ad797686d880f4b"
+    ),
+    "encodec-48khz-frame": (
+        "9c1baee4ad48816bba2568c7e14f136b388f11722d6e422a933a1a4a24d30f3f"
+    ),
+}
+CC_BY_NC_TEXT = "41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0"
+HISTORY_NOTE_TEXT = (
+    "d87a34ea5fea24c083d171bc99dc0bf052e2d92e3f021dc7701701f5d1b4ff4e"
+)
+NONCOMMERCIAL_TEXT = (
+    "fa152afc73238001c008ff67f5b8a3c6d645cfb714a3900a37a2481a8e75d748"
+)
+
+
+class PackagedEncodecRecordTests(unittest.TestCase):
+    """The two packaged records, as R4-068 requires them."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.catalog = default_catalog()
+        cls.records = load_determined_records()
+        cls.raw = json.loads(CATALOG_JSON.read_text(encoding="utf-8"))
+
+    def setUp(self) -> None:
+        self.scratch = Path(tempfile.mkdtemp(prefix="kilix-content-c4-records-"))
+        self.addCleanup(shutil.rmtree, self.scratch, True)
+        self.texts = load_determined_texts(self.scratch / "texts")
+
+    def test_both_records_are_first_use_upstream_convert_downloads(self) -> None:
+        for asset_id in ACCEPTED_MANIFESTS:
+            spec = self.catalog.require_asset(asset_id)
+            with self.subTest(asset=asset_id):
+                self.assertEqual(spec.source_mode, "upstream-convert")
+                self.assertEqual(spec.provider, "kilix-encodec")
+                self.assertEqual(spec.stream, "F101")
+                self.assertEqual(spec.consumer_schema, "kilix.encodec.graphs/v1")
+                # Downloaded, not supplied by hand: the record names the bytes.
+                self.assertGreater(spec.download_bytes, 0)
+                self.assertGreater(spec.convert_bytes, 0)
+                self.assertTrue(spec.convert_url.startswith("https://"))
+
+    def test_the_populations_are_the_accepted_manifests(self) -> None:
+        for asset_id, (manifest, version, count) in ACCEPTED_MANIFESTS.items():
+            spec = self.catalog.require_asset(asset_id)
+            with self.subTest(asset=asset_id):
+                listed = {item.path: item.sha256 for item in spec.files}
+                self.assertEqual(listed["manifest.json"], manifest)
+                self.assertEqual(spec.version, version)
+                self.assertTrue(version.endswith(manifest[:8]))
+                graphs = [
+                    item for item in spec.files
+                    if not item.path.startswith("notices/")
+                ]
+                self.assertEqual(len(graphs), count)
+
+    def test_no_superseded_population_survives_as_a_live_pin(self) -> None:
+        """02201a5a (24 kHz) and 844d8fcf (48 kHz) are gone from the tree."""
+        tracked = subprocess.run(
+            ["git", "grep", "-lF", "--"] + list(SUPERSEDED_MANIFESTS),
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(tracked.stdout.strip(), "", tracked.stdout)
+        # Visibility control: the same search does find the accepted ones.
+        control = subprocess.run(
+            ["git", "grep", "-lF", "--",
+             ACCEPTED_MANIFESTS["encodec-24khz-stateful"][0]],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(control.stdout.strip(), "")
+
+    def test_the_24khz_input_is_the_upstream_download(self) -> None:
+        """Never user-supplied: the exact checkpoint, from Meta's own host."""
+        spec = self.catalog.require_asset("encodec-24khz-stateful")
+        self.assertEqual(
+            spec.convert_url,
+            "https://dl.fbaipublicfiles.com/encodec/v0/encodec_24khz-d7cc33bc.th",
+        )
+        self.assertEqual(spec.source_host, "dl.fbaipublicfiles.com")
+        self.assertEqual(spec.convert_bytes, 93171529)
+        self.assertEqual(
+            spec.convert_sha256,
+            "d7cc33bcf1aad7f2dad9836f36431530744abeace3ca033005e3290ed4fa47bf",
+        )
+        # A single file: no input directory, and nothing staged into the tree.
+        self.assertEqual(spec.convert_inputs, ())
+        self.assertEqual(spec.fetch, ())
+        self.assertEqual(spec.convert_input_path, "")
+
+    def test_the_48khz_input_is_the_pinned_hugging_face_revision(self) -> None:
+        spec = self.catalog.require_asset("encodec-48khz-frame")
+        revision = "c3def8e7185ac8c8efdce6eb8c4a651e487a503e"
+        self.assertEqual(spec.provenance_project, "facebook/encodec_48khz")
+        self.assertEqual(spec.provenance_revision, revision)
+        self.assertEqual(
+            spec.convert_sha256,
+            "47a15ffbaf7bb76176d0833e10590de0a8988a7848748608cefc36a1c88adfdc",
+        )
+        self.assertEqual(spec.convert_bytes, 76291152)
+        self.assertEqual(spec.convert_input_path, "model.safetensors")
+        self.assertEqual(
+            [item.path for item in spec.convert_inputs],
+            ["config.json", "preprocessor_config.json"],
+        )
+        for item in (spec.convert_url, *[i.url for i in spec.convert_inputs]):
+            self.assertIn(f"/resolve/{revision}/", item)
+        # The converter's inputs are not part of the installed tree.
+        installed = {file.path for file in spec.files}
+        for name in ("model.safetensors", "config.json", "preprocessor_config.json"):
+            self.assertNotIn(name, installed)
+
+    def test_both_records_bind_cc_by_nc_4_0_with_attribution_to_meta(self) -> None:
+        for asset_id, record_digest in RECORD_DIGESTS.items():
+            spec = self.catalog.require_asset(asset_id)
+            with self.subTest(asset=asset_id):
+                self.assertEqual(len(spec.licenses), 1)
+                row = spec.licenses[0]
+                self.assertEqual(row.license_id, "cc-by-nc-4.0")
+                self.assertEqual(list(row.licensors), ["Meta Platforms"])
+                self.assertEqual(row.decision, "affirmative")
+                self.assertEqual(row.record_digest, record_digest)
+                self.assertEqual(row.text_sha256, CC_BY_NC_TEXT)
+                # The record referred to is the vendored kilix-license one.
+                record = self.records.by_digest(record_digest)
+                self.assertEqual(record.id, asset_id)
+                self.assertEqual(list(record.licence_ids), ["CC BY-NC 4.0"])
+                self.assertEqual(record.licensor, "Meta Platforms")
+                self.assertIn(
+                    "notices/LICENSE-cc-by-nc-4.0.txt",
+                    [file.path for file in spec.files],
+                )
+
+    def test_the_agreement_is_required_and_binding(self) -> None:
+        """OD-AR: the user must agree; the non-commercial condition is binding."""
+        from kilix_license.agreement import capture_agreement
+        from kilix_license.errors import AgreementRequired
+
+        for asset_id in RECORD_DIGESTS:
+            record = self.records.by_id(asset_id)
+            with self.subTest(asset=asset_id):
+                required = [
+                    condition
+                    for condition in record.binding_conditions
+                    if condition.agreement_required
+                ]
+                self.assertEqual(
+                    [condition.id for condition in required],
+                    ["encodec-noncommercial-binding"],
+                )
+                self.assertEqual(required[0].text_sha256, NONCOMMERCIAL_TEXT)
+                with self.assertRaises(AgreementRequired):
+                    capture_agreement(record, None)
+                with self.assertRaises(AgreementRequired):
+                    capture_agreement(record, "accept")
+                self.assertIsNotNone(
+                    capture_agreement(record, typed_agreement_line(record))
+                )
+
+    def screen_for(self, asset_id: str) -> str:
+        from kilix_content.first_use import license_record_for, present_asset
+
+        spec = self.catalog.require_asset(asset_id)
+        record = license_record_for(spec, self.records)
+        store = FakeStore(self.scratch / f"receipts-{asset_id}")
+        return present_asset(
+            spec, record, self.texts, receipts=store, records=self.records
+        ).decode("utf-8")
+
+    def test_the_first_use_screen_presents_the_licence_and_the_history_note(self) -> None:
+        for asset_id in RECORD_DIGESTS:
+            screen = self.screen_for(asset_id)
+            with self.subTest(asset=asset_id):
+                self.assertIn("licence: cc-by-nc-4.0", screen)
+                self.assertIn("licensors: Meta Platforms", screen)
+                self.assertIn(f"=== licence:{asset_id} ===", screen)
+                self.assertIn("=== binding:encodec-noncommercial-binding ===", screen)
+                self.assertIn("=== advisory:encodec-licence-history-note ===", screen)
+                # The CC BY-NC 4.0 legal code itself, verbatim.
+                self.assertIn(
+                    self.texts.get(CC_BY_NC_TEXT).decode("utf-8"), screen
+                )
+                self.assertIn(
+                    "Attribution-NonCommercial 4.0 International", screen
+                )
+
+    def test_the_licence_history_note_is_shown_verbatim_not_paraphrased(self) -> None:
+        """The note is the bound text, byte for byte; nothing restates it."""
+        note = self.texts.get(HISTORY_NOTE_TEXT).decode("utf-8")
+        self.assertEqual(
+            hashlib.sha256(note.encode("utf-8")).hexdigest(), HISTORY_NOTE_TEXT
+        )
+        for asset_id in RECORD_DIGESTS:
+            record = self.records.by_id(asset_id)
+            with self.subTest(asset=asset_id):
+                advisories = {
+                    advisory.id: advisory.text_sha256
+                    for advisory in record.advisories
+                }
+                self.assertEqual(
+                    advisories.get("encodec-licence-history-note"),
+                    HISTORY_NOTE_TEXT,
+                )
+                self.assertIn(note, self.screen_for(asset_id))
+
+    def test_a_planted_changed_licence_text_re_presents(self) -> None:
+        """SR-4: an earlier acceptance does not cover a changed bound text."""
+        import dataclasses
+
+        from kilix_license.agreement import capture_agreement
+        from kilix_license.receipts import receipt_from_agreement
+        from kilix_content.first_use import (
+            license_record_for,
+            needs_agreement,
+            present_asset,
+        )
+        from kilix_content.receipt import _CATALOG_SHA256, release_digest
+        from screen_marker import changed_block
+
+        spec = self.catalog.require_asset("encodec-24khz-stateful")
+        record = license_record_for(spec, self.records)
+        store = FakeStore(self.scratch / "changed-receipts")
+        store.write(
+            receipt_from_agreement(
+                record,
+                capture_agreement(record, typed_agreement_line(record)),
+                manifest_digest=spec.manifest_digest,
+                release_digest=release_digest(),
+                catalogue_digest=_CATALOG_SHA256,
+            )
+        )
+        self.assertFalse(
+            needs_agreement(spec, records=self.records, store=store)
+        )
+        quiet = present_asset(
+            spec, record, self.texts, receipts=store, records=self.records
+        )
+        self.assertEqual(changed_block(quiet), [])
+
+        # One byte of the binding condition's text changes upstream.
+        condition = record.binding_conditions[0]
+        original = self.texts.get(condition.text_sha256)
+        planted = original.replace(b"must agree", b"must Agree")
+        self.assertEqual(len(planted), len(original))
+        self.assertNotEqual(planted, original)
+        digest = self.texts.put(planted, label="planted-encodec-binding")
+        revised = dataclasses.replace(
+            record,
+            binding_conditions=(
+                dataclasses.replace(condition, text_sha256=digest),
+            ),
+        )
+        marked = present_asset(
+            spec, revised, self.texts, receipts=store, records=self.records
+        )
+        block = changed_block(marked)
+        self.assertNotEqual(block, [])
+        self.assertIn("changed: binding:encodec-noncommercial-binding", block)
+        self.assertIn(f"accepted sha256: {NONCOMMERCIAL_TEXT}", block)
+        self.assertIn(f"shown sha256: {digest}", block)
+
+
+class ConverterToolRecordTests(unittest.TestCase):
+    """The tool asset records the two conversions name (R4-068 part 3)."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.catalog = default_catalog()
+        cls.raw = json.loads(CATALOG_JSON.read_text(encoding="utf-8"))
+
+    TOOLS = ("kilix-encodec-convert-24khz", "kilix-encodec-convert-48khz")
+
+    def tool(self, content_id: str) -> dict:
+        return next(
+            record for record in self.raw["content"] if record["id"] == content_id
+        )
+
+    def test_both_converters_have_a_tool_record(self) -> None:
+        present = [
+            record["id"]
+            for record in self.raw["content"]
+            if record["id"].startswith("kilix-encodec-convert-")
+        ]
+        self.assertEqual(sorted(present), sorted(self.TOOLS))
+        for content_id in self.TOOLS:
+            spec = self.catalog.require(content_id)
+            with self.subTest(tool=content_id):
+                self.assertEqual(spec.kind, "tool")
+                self.assertEqual(spec.source_type, "git")
+                self.assertEqual(
+                    spec.repository,
+                    "https://github.com/itsmygithubacct/kilix-encodec",
+                )
+                self.assertEqual(len(spec.ref), 40)
+
+    def test_each_record_names_the_tool_that_converts_it(self) -> None:
+        for asset_id, tool_id in (
+            ("encodec-24khz-stateful", "kilix-encodec-convert-24khz"),
+            ("encodec-48khz-frame", "kilix-encodec-convert-48khz"),
+        ):
+            spec = self.catalog.require_asset(asset_id)
+            with self.subTest(asset=asset_id):
+                self.assertEqual(spec.convert_tool_asset_id, tool_id)
+                tool = self.catalog.require(tool_id)
+                # argv[0] is the tool's own binary, by name.
+                self.assertEqual(
+                    Path(spec.convert_argv[0]).name, Path(tool.binary).name
+                )
+                self.assertEqual(Path(tool.binary).name, tool_id)
+
+    def test_each_tool_builds_only_its_own_profile(self) -> None:
+        for content_id, profile in (
+            ("kilix-encodec-convert-24khz", "24khz"),
+            ("kilix-encodec-convert-48khz", "48khz"),
+        ):
+            spec = self.catalog.require(content_id)
+            with self.subTest(tool=content_id):
+                build = list(spec.build)
+                self.assertIn("--profile", build)
+                self.assertEqual(build[build.index("--profile") + 1], profile)
+                self.assertIn("tools/build_converter.py", build)
+
+    def test_both_tools_are_pinned_at_the_same_ref_for_c5(self) -> None:
+        """C4 pins the accepted release line; C5 re-pins to the released head."""
+        refs = {self.catalog.require(name).ref for name in self.TOOLS}
+        self.assertEqual(len(refs), 1, refs)
+
+    def test_neither_tool_downloads_a_model(self) -> None:
+        for content_id in self.TOOLS:
+            spec = self.catalog.require(content_id)
+            with self.subTest(tool=content_id):
+                self.assertNotIn("network", spec.capabilities)
+
+    def test_both_conversions_pass_the_gate_arguments(self) -> None:
+        """The record's argv, not the caller, supplies the store and digest."""
+        for asset_id in ACCEPTED_MANIFESTS:
+            spec = self.catalog.require_asset(asset_id)
+            argv = list(spec.convert_argv)
+            with self.subTest(asset=asset_id):
+                self.assertIn("--receipt-store", argv)
+                self.assertIn("--manifest-digest", argv)
+                self.assertEqual(
+                    argv[argv.index("--receipt-store") + 1], "{receipt_store}"
+                )
+                self.assertEqual(
+                    argv[argv.index("--manifest-digest") + 1], "{manifest_digest}"
+                )
+                self.assertEqual(argv[argv.index("--input") + 1], "{input}")
+                self.assertEqual(argv[argv.index("--output") + 1], "{output}")
+                # No literal digest may stand in for the record's own.
+                for argument in argv:
+                    self.assertNotRegex(argument, r"^[0-9a-f]{64}$")
 
 
 if __name__ == "__main__":

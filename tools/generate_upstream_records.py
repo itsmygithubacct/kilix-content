@@ -46,6 +46,10 @@ PIN_NAMES = (
     "granite-docling-258m.json",
     "documentfigureclassifier-v2.5.json",
     "granite-vision-4.1-4b.json",
+    # OD-AR: both EnCodec checkpoints, downloaded from upstream on first use
+    # under CC BY-NC 4.0 and converted locally (R4-068).
+    "encodec-24khz-stateful.json",
+    "encodec-48khz-frame.json",
 )
 
 LICENSORS = {
@@ -74,6 +78,8 @@ LICENSORS = {
     "granite-docling-258m": ["IBM"],
     "documentfigureclassifier-v2.5": ["docling-project"],
     "granite-vision-4.1-4b": ["IBM"],
+    "encodec-24khz-stateful": ["Meta Platforms"],
+    "encodec-48khz-frame": ["Meta Platforms"],
 }
 
 LICENSE_ROW_IDS = {
@@ -81,6 +87,8 @@ LICENSE_ROW_IDS = {
     "MIT": "mit",
     "Public domain, per the trainer's statement": "public-domain",
     "CC-BY-4.0": "cc-by-4.0",
+    # OD-AR: both EnCodec checkpoints, licensor Meta Platforms.
+    "CC BY-NC 4.0": "cc-by-nc-4.0",
 }
 
 NOTICE_PATHS = {
@@ -88,6 +96,7 @@ NOTICE_PATHS = {
     "mit": "notices/LICENSE-mit.txt",
     "public-domain": "notices/public-domain.txt",
     "cc-by-4.0": "notices/LICENSE-cc-by-4.0.txt",
+    "cc-by-nc-4.0": "notices/LICENSE-cc-by-nc-4.0.txt",
     "llama-3-community": "notices/LICENSE-llama-3-community.txt",
 }
 
@@ -273,19 +282,18 @@ def build_files_asset(pin: dict) -> dict:
 
 
 def build_convert_asset(pin: dict) -> dict:
+    """An upstream-convert record, in one of two layouts.
+
+    `members`: the fetched upstream files are the installed tree, and the
+    conversion derives something beside it.
+
+    `outputs`: the conversion's own output is the installed tree (OD-AR's
+    EnCodec records). The inputs are then not installed files at all -- the
+    converter requires an empty output directory -- so the primary one stays in
+    `input` and any others are pinned in `inputs`, by exact size and digest.
+    """
     record = load_license(pin["license_record_id"])
-    files = member_files(pin)
-    files.extend(notice_files(record))
-    files.sort(key=lambda item: item["path"])
     primary = pin["input"]
-    extra = [
-        {"path": item["path"], "url": item["url"]}
-        for item in pin["members"]
-        if item["path"] != primary["path"]
-    ]
-    extra.sort(key=lambda item: item["path"])
-    download = sum(int(item["bytes"]) for item in pin["members"])
-    installed = sum(int(item["bytes"]) for item in files)
     source = {
         "conversion": {
             "argv": list(pin["conversion"]["argv"]),
@@ -293,15 +301,52 @@ def build_convert_asset(pin: dict) -> dict:
         },
         "input": {
             "bytes": primary["bytes"],
-            "path": primary["path"],
             "sha256": primary["sha256"],
             "url": primary["url"],
         },
         "mode": "upstream-convert",
         "provenance": dict(pin["provenance"]),
     }
-    if extra:
-        source["fetch"] = extra
+    if "path" in primary:
+        source["input"]["path"] = primary["path"]
+
+    if "outputs" in pin:
+        if "members" in pin:
+            raise SystemExit(f"{pin['id']} pins both members and outputs")
+        files = [
+            {"bytes": item["bytes"], "path": item["path"], "sha256": item["sha256"]}
+            for item in pin["outputs"]
+        ]
+        extra_inputs = [
+            {
+                "bytes": item["bytes"],
+                "path": item["path"],
+                "sha256": item["sha256"],
+                "url": item["url"],
+            }
+            for item in pin.get("inputs", [])
+        ]
+        extra_inputs.sort(key=lambda item: item["path"])
+        if extra_inputs:
+            source["inputs"] = extra_inputs
+        download = int(primary["bytes"]) + sum(
+            int(item["bytes"]) for item in extra_inputs
+        )
+    else:
+        files = member_files(pin)
+        extra = [
+            {"path": item["path"], "url": item["url"]}
+            for item in pin["members"]
+            if item["path"] != primary["path"]
+        ]
+        extra.sort(key=lambda item: item["path"])
+        if extra:
+            source["fetch"] = extra
+        download = sum(int(item["bytes"]) for item in pin["members"])
+
+    files.extend(notice_files(record))
+    files.sort(key=lambda item: item["path"])
+    installed = sum(int(item["bytes"]) for item in files)
     return {
         "compatibility": {
             "consumer_schema": pin["consumer_schema"],
@@ -317,10 +362,12 @@ def build_convert_asset(pin: dict) -> dict:
         "sizes": {
             "download_bytes": download,
             "installed_bytes": installed,
-            "temporary_bytes": download + installed,
+            "temporary_bytes": int(
+                pin.get("temporary_bytes", download + installed)
+            ),
         },
         "source": source,
-        "stream": "F104",
+        "stream": pin.get("stream", "F104"),
         "version": pin["version"],
     }
 
