@@ -193,6 +193,19 @@ def _https_url(value: Any, label: str, *, allow_file: bool = False) -> str:
     return value
 
 
+def _input_name(value: Any, label: str) -> str:
+    """A converter input's name inside its private input directory.
+
+    The converter maps each of its pinned input names onto `<input dir>/<name>`,
+    so a name with a directory part, or one that navigates, is not a name it
+    can bind.
+    """
+    value = _nonempty_text(value, label, maximum=255)
+    if "/" in value or "\\" in value or value.startswith(".") or value in {".", ".."}:
+        raise CatalogError(f"{label} must be a plain file name")
+    return value
+
+
 def _require_provenance_host(url: str, provenance_url: str, label: str) -> None:
     fetch_host = (urlsplit(url).hostname or "").lower()
     proven_host = (urlsplit(provenance_url).hostname or "").lower()
@@ -670,6 +683,33 @@ class AssetFetchSpec:
 
 
 @dataclass(frozen=True)
+class AssetConvertInputSpec:
+    """One exact upstream file a converter reads, and never installs.
+
+    `upstream-convert` records whose installed tree is the conversion's own
+    output cannot carry their inputs in `files`: the converter is handed a
+    private input directory and writes a separate output. Each input is
+    therefore pinned here, by exact size and digest, instead of in `files`.
+    `path` is the file's name inside that input directory, which the converter
+    matches against its own pinned input names, so it is a plain name with no
+    directory part.
+    """
+
+    path: str
+    url: str
+    bytes: int
+    sha256: str
+
+    def to_mapping(self) -> dict[str, Any]:
+        return {
+            "bytes": self.bytes,
+            "path": self.path,
+            "sha256": self.sha256,
+            "url": self.url,
+        }
+
+
+@dataclass(frozen=True)
 class AssetSpec:
     """A validated kilix.content.asset/v3 record."""
 
@@ -690,6 +730,7 @@ class AssetSpec:
     convert_bytes: int
     convert_sha256: str
     convert_input_path: str
+    convert_inputs: tuple[AssetConvertInputSpec, ...]
     convert_tool_asset_id: str
     convert_argv: tuple[str, ...]
     manifest_url: str
@@ -745,6 +786,8 @@ class AssetSpec:
                 "mode": self.source_mode,
                 "provenance": provenance,
             }
+            if self.convert_inputs:
+                source["inputs"] = [item.to_mapping() for item in self.convert_inputs]
             if self.fetch:
                 source["fetch"] = [{"path": item.path, "url": item.url} for item in self.fetch]
         else:
@@ -953,6 +996,7 @@ class AssetSpec:
         archive_bytes = convert_bytes = 0
         fetch: tuple[AssetFetchSpec, ...] = ()
         convert_argv: tuple[str, ...] = ()
+        convert_inputs: tuple[AssetConvertInputSpec, ...] = ()
         blobs: tuple[AssetFetchSpec, ...] = ()
         if source_mode == "upstream-archive":
             _known_keys(
@@ -1024,7 +1068,9 @@ class AssetSpec:
         elif source_mode == "upstream-convert":
             _known_keys(
                 source,
-                frozenset(("mode", "input", "conversion", "provenance", "fetch")),
+                frozenset(
+                    ("mode", "input", "conversion", "provenance", "fetch", "inputs")
+                ),
                 f"{asset_id}.source",
             )
             raw_input = _mapping(source.get("input"), f"{asset_id}.source.input")
@@ -1051,6 +1097,33 @@ class AssetSpec:
                 convert_input_path = _relative_path(
                     raw_input.get("path", ""), f"{asset_id}.source.input.path"
                 )
+            raw_inputs = source.get("inputs")
+            if raw_inputs is not None:
+                if not isinstance(raw_inputs, list) or not raw_inputs:
+                    raise CatalogError(
+                        f"{asset_id}.source.inputs must be a non-empty array"
+                    )
+                extra_inputs = []
+                for index, item in enumerate(raw_inputs):
+                    label = f"{asset_id}.source.inputs[{index}]"
+                    mapping = _mapping(item, label)
+                    _known_keys(
+                        mapping, frozenset(("path", "url", "bytes", "sha256")), label
+                    )
+                    name = _input_name(mapping.get("path", ""), f"{label}.path")
+                    item_url = _https_url(
+                        mapping.get("url"), f"{label}.url", allow_file=allow_file_urls
+                    )
+                    _require_provenance_host(item_url, provenance_url, f"{label}.url")
+                    extra_inputs.append(
+                        AssetConvertInputSpec(
+                            name,
+                            item_url,
+                            _byte_count(mapping.get("bytes"), f"{label}.bytes"),
+                            _exact_hex(mapping.get("sha256"), 64, f"{label}.sha256"),
+                        )
+                    )
+                convert_inputs = tuple(extra_inputs)
             conversion = _mapping(source.get("conversion"), f"{asset_id}.source.conversion")
             _known_keys(
                 conversion,
@@ -1088,7 +1161,29 @@ class AssetSpec:
                     )
                     items.append(AssetFetchSpec(path, item_url))
                 fetch = tuple(items)
-            if convert_input_path or fetch:
+            if convert_inputs:
+                # Input-directory mode: the installed tree is the conversion's
+                # own output, so no input appears in `files` and `fetch`, which
+                # only ever stages installed files, has nothing to do here.
+                if fetch:
+                    raise CatalogError(
+                        f"{asset_id}.source.inputs and fetch are mutually exclusive"
+                    )
+                if not convert_input_path:
+                    raise CatalogError(
+                        f"{asset_id}.source.input.path is required with inputs"
+                    )
+                _input_name(convert_input_path, f"{asset_id}.source.input.path")
+                names = [convert_input_path] + [item.path for item in convert_inputs]
+                if len(set(names)) != len(names):
+                    raise CatalogError(f"{asset_id}.source.inputs names must be distinct")
+                listed = {item.path for item in files}
+                for name in names:
+                    if name in listed:
+                        raise CatalogError(
+                            f"{asset_id}.source input {name!r} must not be an installed file"
+                        )
+            elif convert_input_path or fetch:
                 extra_paths = {item.path for item in fetch}
                 if convert_input_path in extra_paths:
                     raise CatalogError(f"{asset_id}.source.input.path duplicates fetch")
@@ -1164,6 +1259,7 @@ class AssetSpec:
             convert_bytes=convert_bytes,
             convert_sha256=convert_sha256,
             convert_input_path=convert_input_path,
+            convert_inputs=convert_inputs,
             convert_tool_asset_id=convert_tool_asset_id,
             convert_argv=convert_argv,
             manifest_url=manifest_url,
@@ -1202,6 +1298,10 @@ def source_objects_sha256(spec: AssetSpec) -> str:
             "sha256": spec.convert_sha256,
             "url": spec.convert_url,
         }
+        if spec.convert_inputs:
+            # Pinned outside `files`, so they must be digested here or two
+            # records differing only in their extra inputs would look alike.
+            payload["inputs"] = [item.to_mapping() for item in spec.convert_inputs]
         if spec.fetch:
             payload["fetch"] = [
                 {

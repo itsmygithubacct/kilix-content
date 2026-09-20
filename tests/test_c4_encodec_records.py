@@ -27,13 +27,26 @@ what they are for; they are checked for the two modes, not for the host.
 
 from __future__ import annotations
 
+import hashlib
+import io
 import json
+import os
 import re
+import shutil
+import sys
+import tempfile
 import unittest
 from pathlib import Path
+from typing import Any
+
+from fake_store import FakeStore
+from kilix_license.agreement import typed_agreement_line
+from kilix_license.catalog import load_determined_records, load_determined_texts
 
 from kilix_content import default_catalog
-from kilix_content.model import _is_kilix_hosted
+from kilix_content.first_use import install_with_agreement
+from kilix_content.install import InstallError, Installer
+from kilix_content.model import AssetSpec, CatalogError, _is_kilix_hosted
 
 ROOT = Path(__file__).resolve().parents[1]
 CATALOG_JSON = ROOT / "src" / "kilix_content" / "catalog" / "plebian.json"
@@ -285,6 +298,373 @@ class CatalogWideGuardPlantedDefectTests(unittest.TestCase):
                 if key in REFUSED_SOURCE_KEYS
             ],
             [],
+        )
+
+
+# A stand-in for the kilix-encodec converter that keeps the one behaviour this
+# wave has to prove: E1-VERIFY F7 says the real gate admits *whatever* manifest
+# digest the caller asserts, so long as a receipt covers it. The gate is the
+# real kilix-license `require()`; only the export is stubbed out.
+STUB_CONVERTER = '''\
+import argparse, json, os, sys
+from kilix_license.catalog import load_determined_records
+from kilix_license.coverage import AssetRef, require
+from kilix_license.errors import CoverageRefused
+from kilix_license.store import ReceiptStore
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--input", required=True)
+parser.add_argument("--output", required=True)
+parser.add_argument("--receipt-store", default=None)
+parser.add_argument("--manifest-digest", default=None)
+parser.add_argument("--asset-id", required=True)
+parser.add_argument("--record-id", required=True)
+parser.add_argument("--population", required=True)
+parser.add_argument("--argv-log", required=True)
+arguments = parser.parse_args()
+
+with open(arguments.argv_log, "w", encoding="utf-8") as handle:
+    json.dump(sys.argv[1:], handle)
+
+# The gate runs before any input, runtime or output is touched.
+if not arguments.receipt_store:
+    sys.exit("conversion refused: a receipt store is required")
+if not arguments.manifest_digest:
+    sys.exit("conversion refused: a manifest digest is required")
+record = load_determined_records().by_id(arguments.record_id)
+try:
+    require(
+        AssetRef(
+            id=arguments.asset_id,
+            record_digest=record.digest,
+            manifest_digest=arguments.manifest_digest,
+        ),
+        records=load_determined_records(),
+        store=ReceiptStore(arguments.receipt_store),
+    )
+except CoverageRefused as error:
+    sys.exit("conversion refused: " + str(error))
+
+output = arguments.output
+if not os.path.isdir(output) or os.listdir(output):
+    sys.exit("conversion refused: output must be an existing, private empty directory")
+
+# The pinned inputs must all be where the installer staged them.
+population = json.loads(arguments.population)
+for name in population.pop("__inputs__"):
+    candidate = (
+        os.path.join(arguments.input, name)
+        if os.path.isdir(arguments.input)
+        else arguments.input
+    )
+    if not os.path.isfile(candidate):
+        sys.exit("conversion refused: missing input " + name)
+
+for name, text in population.items():
+    target = os.path.join(output, name)
+    os.makedirs(os.path.dirname(target), exist_ok=True)
+    with open(target, "wb") as handle:
+        handle.write(text.encode("utf-8"))
+'''
+
+
+def sha256_bytes(payload: bytes) -> str:
+    return hashlib.sha256(payload).hexdigest()
+
+
+class EncodecShapedInstallTests(unittest.TestCase):
+    """The install path over FakeUpstream, in the EnCodec record's shape.
+
+    The two packaged records name the real kilix-encodec converter, which is a
+    900 MB build this suite must not run and whose inputs are model weights
+    this suite must never download. These tests therefore drive the *installer*
+    over a fixture asset with the same record shape -- conversion output as the
+    installed tree, inputs staged outside it, and the same argv -- against the
+    real licence authority.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.records = load_determined_records()
+
+    def setUp(self) -> None:
+        self.scratch = Path(tempfile.mkdtemp(prefix="kilix-content-c4-"))
+        self.addCleanup(shutil.rmtree, self.scratch, True)
+        self.texts = load_determined_texts(self.scratch / "texts")
+        self.store = FakeStore(self.scratch / "receipts")
+        self.installer = Installer(str(self.scratch / "root"))
+        self.argv_log = self.scratch / "argv.json"
+        self.converter = self.scratch / "stub-converter.py"
+        self.converter.write_text(STUB_CONVERTER, encoding="utf-8")
+        from first_use_fixture import FakeUpstream
+
+        self.upstream = FakeUpstream()
+        self.addCleanup(self.upstream.close)
+
+    POPULATION = {
+        "manifest.json": '{"population": "fixture"}',
+        "encoder_frame_op17.onnx": "encoder-fixture",
+        "rvq-codebooks.f32le": "codebooks-fixture",
+    }
+
+    def make_asset(
+        self,
+        *,
+        record_id: str = "encodec-48khz-frame",
+        asset_id: str = "fixture-encodec-48khz",
+        manifest_digest_argument: str | None = None,
+        receipt_store_argument: str | None = None,
+        extra_inputs: bool = True,
+    ) -> dict[str, Any]:
+        """A record whose installed tree is the conversion's own output."""
+        record = self.records.by_id(record_id)
+        notice = self.texts.get(record.text_sha256)
+        files = [
+            {
+                "bytes": len(text.encode("utf-8")),
+                "path": name,
+                "sha256": sha256_bytes(text.encode("utf-8")),
+            }
+            for name, text in self.POPULATION.items()
+        ]
+        files.append(
+            {
+                "bytes": len(notice),
+                "path": "notices/LICENSE-cc-by-nc-4.0.txt",
+                "sha256": sha256_bytes(notice),
+            }
+        )
+        files.sort(key=lambda item: item["path"])
+
+        primary = b"safetensors-fixture-weights"
+        primary_url = self.upstream.add("/model.safetensors", primary)
+        extras = {
+            "config.json": b'{"config": "fixture"}',
+            "preprocessor_config.json": b'{"preprocessor": "fixture"}',
+        }
+        inputs = [
+            {
+                "bytes": len(body),
+                "path": name,
+                "sha256": sha256_bytes(body),
+                "url": self.upstream.add("/" + name, body),
+            }
+            for name, body in extras.items()
+        ]
+        payload = dict(self.POPULATION)
+        payload["__inputs__"] = ["model.safetensors"] + (
+            [item["path"] for item in inputs] if extra_inputs else []
+        )
+        argv = [
+            sys.executable,
+            str(self.converter),
+            "--input",
+            "{input}",
+            "--output",
+            "{output}",
+            "--asset-id",
+            asset_id,
+            "--record-id",
+            record_id,
+            "--population",
+            json.dumps(payload),
+            "--argv-log",
+            str(self.argv_log),
+        ]
+        if receipt_store_argument is None:
+            argv += ["--receipt-store", "{receipt_store}"]
+        elif receipt_store_argument != "":
+            argv += ["--receipt-store", receipt_store_argument]
+        if manifest_digest_argument is None:
+            argv += ["--manifest-digest", "{manifest_digest}"]
+        elif manifest_digest_argument != "":
+            argv += ["--manifest-digest", manifest_digest_argument]
+
+        source: dict[str, Any] = {
+            "conversion": {"argv": argv, "tool_asset_id": "kilix-encodec-convert-48khz"},
+            "input": {
+                "bytes": len(primary),
+                "path": "model.safetensors",
+                "sha256": sha256_bytes(primary),
+                "url": primary_url,
+            },
+            "mode": "upstream-convert",
+            "provenance": {
+                "original_url": primary_url,
+                "project": "facebook/encodec_48khz",
+                "revision": "fixture",
+            },
+        }
+        if extra_inputs:
+            source["inputs"] = inputs
+        installed = sum(int(item["bytes"]) for item in files)
+        download = len(primary) + sum(len(body) for body in extras.values())
+        return {
+            "compatibility": {
+                "consumer_schema": "kilix.encodec.graphs/v1",
+                "maximum": 1,
+                "minimum": 1,
+            },
+            "files": files,
+            "id": asset_id,
+            "label": asset_id,
+            "licenses": [
+                {
+                    "decision": record.decision_class,
+                    "id": "cc-by-nc-4.0",
+                    "licensors": ["Meta Platforms"],
+                    "record_digest": record.digest,
+                    "text_sha256": record.text_sha256,
+                }
+            ],
+            "provider": "kilix-encodec",
+            "schema": "kilix.content.asset/v3",
+            "sizes": {
+                "download_bytes": download,
+                "installed_bytes": installed,
+                "temporary_bytes": download + installed,
+            },
+            "source": source,
+            "stream": "F101",
+            "version": "fixture",
+        }
+
+    def install(self, mapping: dict[str, Any], *, record_id: str = "encodec-48khz-frame"):
+        spec = AssetSpec.from_mapping(mapping)
+        record = self.records.by_id(record_id)
+        return spec, install_with_agreement(
+            spec,
+            installer=self.installer,
+            store=self.store,
+            records=self.records,
+            texts=self.texts,
+            typed_text=typed_agreement_line(record),
+            screen=io.BytesIO(),
+        )
+
+    def logged_argv(self) -> list[str]:
+        return json.loads(self.argv_log.read_text(encoding="utf-8"))
+
+    # ---- the gate arguments (E1-VERIFY F7) ----
+
+    def test_the_installer_passes_the_real_receipt_store_and_manifest_digest(self) -> None:
+        """Not a stand-in: the store the receipt was written to, and the record's own digest."""
+        spec, result = self.install(self.make_asset())
+        self.assertIsNotNone(result)
+        argv = self.logged_argv()
+        self.assertIn("--receipt-store", argv)
+        self.assertIn("--manifest-digest", argv)
+        self.assertEqual(
+            argv[argv.index("--receipt-store") + 1], os.fspath(self.store.root)
+        )
+        passed = argv[argv.index("--manifest-digest") + 1]
+        self.assertEqual(passed, spec.manifest_digest)
+        self.assertRegex(passed, r"^[0-9a-f]{64}$")
+        # The receipt the screen wrote binds the same digest the gate was given.
+        receipts = list(self.store.root.glob("*.json"))
+        self.assertEqual(len(receipts), 1)
+        self.assertIn(passed, receipts[0].name)
+        # And it is not any of the obvious stand-ins.
+        for stand_in in ("c" * 64, "9" * 64, "f" * 64, "0" * 64):
+            self.assertNotEqual(passed, stand_in)
+
+    def test_a_stand_in_manifest_digest_is_refused_by_the_gate(self) -> None:
+        """The reason the real digest is load-bearing: a receipt covers only its own."""
+        with self.assertRaises(InstallError) as raised:
+            self.install(self.make_asset(manifest_digest_argument="c" * 64))
+        self.assertIn("conversion failed", str(raised.exception))
+        self.assertEqual(self.logged_argv()[-1], "c" * 64)
+
+    def test_an_absent_manifest_digest_is_refused_by_the_gate(self) -> None:
+        with self.assertRaises(InstallError):
+            self.install(self.make_asset(manifest_digest_argument=""))
+        self.assertNotIn("--manifest-digest", self.logged_argv())
+
+    def test_an_absent_receipt_store_is_refused_by_the_gate(self) -> None:
+        with self.assertRaises(InstallError):
+            self.install(self.make_asset(receipt_store_argument=""))
+        self.assertNotIn("--receipt-store", self.logged_argv())
+
+    def test_a_receipt_store_that_holds_no_covering_receipt_is_refused(self) -> None:
+        empty = self.scratch / "empty-store"
+        empty.mkdir(mode=0o700)
+        with self.assertRaises(InstallError):
+            self.install(self.make_asset(receipt_store_argument=str(empty)))
+
+    # ---- the installed tree is the conversion's own output ----
+
+    def test_the_installed_tree_is_the_population_and_the_notice_only(self) -> None:
+        spec, result = self.install(self.make_asset())
+        root = Path(result[0])
+        present = sorted(
+            str(path.relative_to(root)) for path in root.rglob("*") if path.is_file()
+        )
+        self.assertEqual(present, sorted(item.path for item in spec.files))
+        for name in ("model.safetensors", "config.json", "preprocessor_config.json"):
+            self.assertFalse((root / name).exists(), name)
+        self.assertTrue((root / "notices/LICENSE-cc-by-nc-4.0.txt").is_file())
+
+    def test_only_the_pinned_upstream_bytes_are_downloaded(self) -> None:
+        self.install(self.make_asset())
+        gotten = sorted(
+            item["path"]
+            for item in self.upstream.requests()
+            if item.get("command") == "GET"
+        )
+        self.assertEqual(
+            gotten, ["/config.json", "/model.safetensors", "/preprocessor_config.json"]
+        )
+
+    def test_every_extra_input_reaches_the_converter(self) -> None:
+        """Control: drop one pinned input and the converter refuses for want of it.
+
+        The record still asks the converter for all three names, so this fails
+        at the missing file rather than at the licence gate.
+        """
+        mapping = self.make_asset()
+        dropped = mapping["source"]["inputs"].pop()
+        self.assertEqual(dropped["path"], "preprocessor_config.json")
+        with self.assertRaises(InstallError) as raised:
+            self.install(mapping)
+        self.assertIn("conversion failed", str(raised.exception))
+        self.assertIn("missing input preprocessor_config.json", str(raised.exception))
+
+    # ---- the record shape itself ----
+
+    def test_an_input_that_is_also_an_installed_file_is_refused(self) -> None:
+        mapping = self.make_asset()
+        mapping["source"]["inputs"][0]["path"] = "manifest.json"
+        with self.assertRaises(CatalogError) as raised:
+            AssetSpec.from_mapping(mapping)
+        self.assertIn("must not be an installed file", str(raised.exception))
+
+    def test_an_input_name_with_a_directory_part_is_refused(self) -> None:
+        mapping = self.make_asset()
+        mapping["source"]["inputs"][0]["path"] = "nested/config.json"
+        with self.assertRaises(CatalogError) as raised:
+            AssetSpec.from_mapping(mapping)
+        self.assertIn("plain file name", str(raised.exception))
+
+    def test_inputs_and_fetch_are_mutually_exclusive(self) -> None:
+        mapping = self.make_asset()
+        mapping["source"]["fetch"] = [
+            {"path": "manifest.json", "url": mapping["source"]["input"]["url"]}
+        ]
+        with self.assertRaises(CatalogError) as raised:
+            AssetSpec.from_mapping(mapping)
+        self.assertIn("mutually exclusive", str(raised.exception))
+
+    def test_the_extra_inputs_are_part_of_the_record_identity(self) -> None:
+        """A changed extra input changes the record digest, not just its bytes."""
+        from kilix_content.model import source_objects_sha256
+
+        first = AssetSpec.from_mapping(self.make_asset())
+        mapping = self.make_asset()
+        mapping["source"]["inputs"][0]["sha256"] = "a" * 64
+        second = AssetSpec.from_mapping(mapping)
+        self.assertNotEqual(first.digest, second.digest)
+        self.assertNotEqual(
+            source_objects_sha256(first), source_objects_sha256(second)
         )
 
 

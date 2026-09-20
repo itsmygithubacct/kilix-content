@@ -42,6 +42,10 @@
       "pattern": "^(?!/)(?!.*\\\\)(?!.*//)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\u0000]+$"
     },
     "httpsUrl": {"type": "string", "pattern": "^https://"},
+    "inputName": {
+      "type": "string", "minLength": 1, "maxLength": 255,
+      "pattern": "^(?!\\.)[^/\\\\\\u0000]+$"
+    },
     "file": {
       "type": "object", "additionalProperties": false,
       "required": ["path", "bytes", "sha256"],
@@ -105,6 +109,19 @@
             "bytes": {"$ref": "#/$defs/bytes"},
             "sha256": {"$ref": "#/$defs/sha256"},
             "path": {"$ref": "#/$defs/relativePath"}
+          }
+        },
+        "inputs": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["path", "url", "bytes", "sha256"],
+            "properties": {
+              "path": {"$ref": "#/$defs/inputName"},
+              "url": {"$ref": "#/$defs/httpsUrl"},
+              "bytes": {"$ref": "#/$defs/bytes"},
+              "sha256": {"$ref": "#/$defs/sha256"}
+            }
           }
         },
         "fetch": {

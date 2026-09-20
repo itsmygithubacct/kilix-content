@@ -1041,6 +1041,7 @@ class Installer:
         report: Report,
         notices: TextStore,
         *,
+        store: ReceiptStore,
         cancelled: Callable[[], bool] | None = None,
         deadline: float | None = None,
         progress: Callable[[Progress], None] | None = None,
@@ -1094,15 +1095,27 @@ class Installer:
         elif spec.source_mode == "upstream-convert":
             output = os.path.join(stage, "content")
             os.makedirs(output, mode=0o700, exist_ok=True)
-            source_layout = bool(spec.convert_input_path)
+            # With extra inputs the converter reads a private input directory
+            # and writes the installed tree itself, so the inputs are staged
+            # outside `output` and `output` is still empty at the conversion.
+            input_directory = bool(spec.convert_inputs)
+            source_layout = bool(spec.convert_input_path) and not input_directory
             if source_layout:
                 staged_input = os.path.join(output, spec.convert_input_path)
                 os.makedirs(os.path.dirname(staged_input), mode=0o700, exist_ok=True)
+            elif input_directory:
+                staged_input = os.path.join(stage, "input")
+                os.makedirs(staged_input, mode=0o700, exist_ok=True)
             else:
                 staged_input = os.path.join(stage, "input")
+            primary = (
+                os.path.join(staged_input, spec.convert_input_path)
+                if input_directory
+                else staged_input
+            )
             fetch_exact(
                 spec.convert_url,
-                staged_input,
+                primary,
                 expected_bytes=spec.convert_bytes,
                 expected_sha256=spec.convert_sha256,
                 deadline=deadline,
@@ -1110,6 +1123,17 @@ class Installer:
                 progress=progress,
                 partial_dir=partial_dir,
             )
+            for index, item in enumerate(spec.convert_inputs):
+                fetch_exact(
+                    item.url,
+                    os.path.join(staged_input, item.path),
+                    expected_bytes=item.bytes,
+                    expected_sha256=item.sha256,
+                    deadline=deadline,
+                    cancelled=cancelled,
+                    progress=progress,
+                    partial_dir=os.path.join(partial_dir, f"input-{index}"),
+                )
             by_path = {item.path: item for item in spec.files}
             for index, item in enumerate(spec.fetch):
                 listed = by_path[item.path]
@@ -1127,10 +1151,16 @@ class Installer:
                 )
             derived = os.path.join(stage, "derived") if source_layout else output
             os.makedirs(derived, mode=0o700, exist_ok=True)
+            # E1-VERIFY F7: the converter's licence gate binds whatever manifest
+            # digest the caller asserts, so the caller must assert the real one.
+            # Both are the values the licence screen bound into the receipt that
+            # `ensure_upstream_asset` has already required.
             argv = [
                 argument.replace("{input}", staged_input)
                 .replace("{output}", derived)
                 .replace("{sources}", output)
+                .replace("{receipt_store}", os.fspath(store.root))
+                .replace("{manifest_digest}", spec.manifest_digest)
                 for argument in spec.convert_argv
             ]
             report(f"converting {spec.label} …")
@@ -1304,6 +1334,7 @@ class Installer:
                     stage,
                     report,
                     notices,
+                    store=store,
                     cancelled=cancelled,
                     deadline=deadline,
                     progress=progress,
