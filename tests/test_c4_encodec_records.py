@@ -942,6 +942,14 @@ class PackagedEncodecRecordTests(unittest.TestCase):
                 )
                 if "temporary_bytes" not in pin:
                     self.assertEqual(sizes["temporary_bytes"], floor)
+                else:
+                    # Declared: it must be the pin's value and nothing else,
+                    # so a declared override cannot be silently ignored, and
+                    # the pin's value is itself derived from an upstream
+                    # measurement (see EncodecPinGeneratorTests).
+                    self.assertEqual(
+                        sizes["temporary_bytes"], int(pin["temporary_bytes"])
+                    )
         # Control: the same rule holds for the only other upstream-convert
         # record, so this is the catalog's convention and not a local choice.
         other = next(
@@ -1372,6 +1380,12 @@ class EncodecPinGeneratorTests(unittest.TestCase):
             }
             if name == "48khz":
                 profile["revision"] = pin["provenance"]["revision"]
+            # An override in a committed pin is upstream's measurement, so the
+            # fixture carries it back: without this the reproduction control
+            # below would refuse the very override this generator emits, which
+            # is the V-F2 failure in a new place.
+            if "temporary_bytes" in pin:
+                profile["temporary_bytes"] = pin["temporary_bytes"]
             profiles[name] = profile
             native[authored["id"]] = (
                 pin["version"],
@@ -1397,7 +1411,101 @@ class EncodecPinGeneratorTests(unittest.TestCase):
                 committed = (
                     ROOT / "tools" / "upstream-pins" / f"{authored['id']}.json"
                 ).read_text(encoding="utf-8")
-                self.assertEqual(rendered, committed)
+                self.assertEqual(
+                    rendered,
+                    committed,
+                    "a committed pin must be what the generator writes from "
+                    "kilix-encodec, so it cannot be edited by hand. A measured "
+                    "sizes.temporary_bytes is set by recording it upstream in "
+                    "tools/converter-inputs.json and re-running "
+                    "tools/generate_encodec_pins.py --write; see "
+                    "measured_temporary_bytes in that script.",
+                )
+
+    def test_an_upstream_measurement_reaches_the_pin(self) -> None:
+        """C4-FIX-VERIFY V-F2: the documented override is now derivable.
+
+        The floor refuses an under-estimate but not an over-estimate, and the
+        test that refused an over-estimate -- this class's reproduction test --
+        equally refused a legitimate measured value, because the generator
+        never emitted `temporary_bytes` at all. It emits one now when
+        kilix-encodec records the measurement, so the value is derived rather
+        than declared and the reproduction check survives it.
+        """
+        profiles, native = self.upstream()
+        # Both directions, so this holds whether or not the committed pins
+        # currently carry a measurement: upstream silence means no key, and an
+        # upstream measurement means exactly that value.
+        profiles["24khz"].pop("temporary_bytes", None)
+        plain = self.build(profiles, native)
+        self.assertNotIn("temporary_bytes", plain)
+        floor = plain["input"]["bytes"] + sum(
+            item["bytes"] for item in plain.get("inputs", [])
+        ) + sum(item["bytes"] for item in plain["outputs"])
+        profiles["24khz"]["temporary_bytes"] = floor * 2
+        measured = self.build(profiles, native)
+        self.assertEqual(measured["temporary_bytes"], floor * 2)
+        # Still a pin the generator can write out and read back.
+        text = self.generator.render(measured)
+        self.generator.check_no_stand_in(measured, text)
+        self.assertEqual(json.loads(text), measured)
+
+    def test_a_measurement_below_what_it_measured_is_refused(self) -> None:
+        profiles, native = self.upstream()
+        plain = self.build(profiles, native)
+        floor = plain["input"]["bytes"] + sum(
+            item["bytes"] for item in plain.get("inputs", [])
+        ) + sum(item["bytes"] for item in plain["outputs"])
+        profiles["24khz"]["temporary_bytes"] = floor - 1
+        with self.assertRaises(self.generator.PinError) as raised:
+            self.build(profiles, native)
+        self.assertIn("below the", str(raised.exception))
+        # At the floor exactly it is accepted: the refusal is the inequality,
+        # not a blanket refusal of any declared value.
+        profiles["24khz"]["temporary_bytes"] = floor
+        self.assertEqual(self.build(profiles, native)["temporary_bytes"], floor)
+
+    def test_a_measurement_that_is_not_a_byte_count_is_refused(self) -> None:
+        profiles, native = self.upstream()
+        for planted in ("4294967296", True, -1, 1.5, 2**63):
+            with self.subTest(value=planted):
+                profiles["24khz"]["temporary_bytes"] = planted
+                with self.assertRaises(self.generator.PinError) as raised:
+                    self.build(profiles, native)
+                self.assertIn("must be a non-negative", str(raised.exception))
+
+    def test_the_record_generator_refuses_an_override_below_its_floor(self) -> None:
+        """The pin generator cannot see the notice files; this one can.
+
+        A value between the two floors would otherwise become a record that
+        only the suite refuses, which is the shape V-F2 reported. It is
+        refused where it is written, and the message carries the number that
+        would be accepted.
+        """
+        import importlib.util
+
+        path = ROOT / "tools" / "generate_upstream_records.py"
+        spec = importlib.util.spec_from_file_location("generate_upstream_records", path)
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+        pin = json.loads(
+            (ROOT / "tools" / "upstream-pins" / "encodec-24khz-stateful.json")
+            .read_text(encoding="utf-8")
+        )
+        # Whether or not this pin currently declares one, the no-override case
+        # is the floor and the override cases are relative to it.
+        pin.pop("temporary_bytes", None)
+        derived = module.build_convert_asset(dict(pin))
+        floor = (
+            derived["sizes"]["download_bytes"] + derived["sizes"]["installed_bytes"]
+        )
+        self.assertEqual(derived["sizes"]["temporary_bytes"], floor)
+        with self.assertRaises(SystemExit) as raised:
+            module.build_convert_asset({**pin, "temporary_bytes": floor - 1})
+        self.assertIn(str(floor), str(raised.exception))
+        raised_record = module.build_convert_asset({**pin, "temporary_bytes": floor + 1})
+        self.assertEqual(raised_record["sizes"]["temporary_bytes"], floor + 1)
 
     def test_a_superseded_population_is_refused(self) -> None:
         """The refusal is positive: the manifest must be the accepted one."""

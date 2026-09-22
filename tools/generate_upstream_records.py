@@ -347,6 +347,19 @@ def build_convert_asset(pin: dict) -> dict:
     files.extend(notice_files(record))
     files.sort(key=lambda item: item["path"])
     installed = sum(int(item["bytes"]) for item in files)
+    floor = download + installed
+    # An override may only raise the floor, and it is refused here rather than
+    # written into a record the suite then fails on (C4-FIX-VERIFY V-F2). The
+    # floor includes the notice files, which the pin generator cannot see, so
+    # a value it accepted can still be refused here -- by name, with the
+    # number that would be accepted.
+    temporary = int(pin.get("temporary_bytes", floor))
+    if temporary < floor:
+        raise SystemExit(
+            f"{pin['id']}: temporary_bytes {temporary} is below the record's "
+            f"floor of {floor} (download {download} + installed {installed}, "
+            "licence notices included)"
+        )
     return {
         "compatibility": {
             "consumer_schema": pin["consumer_schema"],
@@ -362,9 +375,7 @@ def build_convert_asset(pin: dict) -> dict:
         "sizes": {
             "download_bytes": download,
             "installed_bytes": installed,
-            "temporary_bytes": int(
-                pin.get("temporary_bytes", download + installed)
-            ),
+            "temporary_bytes": temporary,
         },
         "source": source,
         "stream": pin.get("stream", "F104"),

@@ -15,10 +15,12 @@ population, and it requires them to agree before it writes anything:
 
 What is DERIVED from kilix-encodec: the converter's input URLs, byte counts and
 digests; the produced population; the asset version; the converter command
-names. What is AUTHORED here, because it is kilix-content's side of the
-contract and appears nowhere upstream: the installed converter path, the
-per-profile timeout, the catalogue ids, labels, provider, stream, consumer
-schema, licence record id, and the provenance project.
+names; and, when the profile records one, the measured `temporary_bytes` for
+the conversion's peak scratch (see `measured_temporary_bytes`). What is
+AUTHORED here, because it is kilix-content's side of the contract and appears
+nowhere upstream: the installed converter path, the per-profile timeout, the
+catalogue ids, labels, provider, stream, consumer schema, licence record id,
+and the provenance project.
 
 Guards, in the order they run:
 
@@ -31,6 +33,8 @@ Guards, in the order they run:
   of superseded digests would have to carry them as literals, and this file is
   scanned by tests/test_c4_encodec_records.py for exactly that;
 * the native consumer's installed-bytes budget must cover the population;
+* a measured `temporary_bytes` must be a byte count no smaller than the inputs
+  and outputs it claims to have measured;
 * the rendered pin may contain no 64-hex string that is not one of the digests
   derived above, so a stand-in digest cannot be smuggled into a pin;
 * every derived digest and byte count must survive a round trip through the
@@ -149,6 +153,68 @@ def population_from_module(source: bytes) -> dict[str, tuple[str, int, dict]]:
     return found
 
 
+def measured_temporary_bytes(
+    asset_id: str,
+    profile: dict,
+    inputs: dict,
+    primary: dict,
+    extra: list[str],
+    installed: int,
+) -> int | None:
+    """An upstream measurement of the conversion's peak scratch, or None.
+
+    C4-VERIFY F5 replaced an underived 4 GiB with a derived floor -- the
+    fetched inputs and the produced outputs, which are on disk together -- and
+    C4-FIX-VERIFY V-F2 then found that the documented way to raise it could not
+    be executed: `sizes.temporary_bytes` in the record comes from the pin's
+    optional `temporary_bytes`, this generator never emitted that key, and
+    `test_the_fixture_reproduces_the_committed_pins` rebuilds the pin from
+    upstream and refuses anything the generator would not have written. So a
+    hand-added override -- including a legitimate measured one -- failed the
+    suite.
+
+    It is emitted here instead, which keeps both properties: a value above the
+    floor must cite a measurement recorded upstream, and the pin still
+    reproduces byte for byte from kilix-encodec.
+
+    **How a future conversion sets it.** Run the real converter once, measure
+    the peak bytes resident in the install scratch over the run (inputs,
+    outputs and the converter's own working set), and record that number in
+    kilix-encodec's `tools/converter-inputs.json`, in the profile, as
+    `temporary_bytes`. Then, in this repository:
+
+        tools/generate_encodec_pins.py --repo <kilix-encodec> --ref <ref> --write
+        PYTHONPATH=... tools/generate_upstream_records.py --old <current _CATALOG_SHA256>
+        make test
+
+    Nothing is hand-edited at any step, and `make pins` re-derives all of it.
+
+    The floor checked here is what this generator can derive from upstream:
+    the inputs plus the produced population. The record's own floor is that
+    plus the licence notice files, which only the record generator knows, and
+    `build_convert_asset` refuses an override below it -- so a value in the
+    narrow band between the two is refused there, by name, rather than
+    becoming a record the suite fails on.
+    """
+    value = profile.get("temporary_bytes")
+    if value is None:
+        return None
+    if type(value) is not int or value < 0 or value > 2**63 - 1:
+        raise PinError(
+            f"{asset_id}: {CONVERTER_INPUTS} temporary_bytes must be a "
+            f"non-negative 64-bit integer, not {value!r}"
+        )
+    download = int(primary["bytes"]) + sum(int(inputs[name]["bytes"]) for name in extra)
+    floor = download + installed
+    if value < floor:
+        raise PinError(
+            f"{asset_id}: measured temporary_bytes {value} is below the "
+            f"{floor} bytes the conversion's own inputs and outputs occupy "
+            f"together; a measurement cannot be smaller than what it measured"
+        )
+    return value
+
+
 def build_pin(name: str, profile: dict, native: tuple[str, int, dict]) -> dict:
     authored = PROFILES[name]
     asset_id = authored["id"]
@@ -203,6 +269,7 @@ def build_pin(name: str, profile: dict, native: tuple[str, int, dict]) -> dict:
         primary_pin["path"] = authored["install_primary_as"]
 
     extra = sorted(name for name in inputs if name != primary_name)
+    measured = measured_temporary_bytes(asset_id, profile, inputs, primary, extra, installed)
     revision = profile.get("revision")
     if revision is None:
         # A single-file checkpoint pins itself: the file name is the revision.
@@ -262,6 +329,8 @@ def build_pin(name: str, profile: dict, native: tuple[str, int, dict]) -> dict:
             }
             for path in extra
         ]
+    if measured is not None:
+        pin["temporary_bytes"] = measured
     return pin
 
 
