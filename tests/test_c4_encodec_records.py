@@ -727,8 +727,18 @@ RECORD_DIGESTS = {
     ),
 }
 CC_BY_NC_TEXT = "41003d4a74749c0220e33dd415042164b5a1093ed401f36277234f772d22d3d0"
+# The licence-history note, as kilix-license 7104ea5c binds it. Until 4db48b4c
+# the advisory carried OD-AR's *specification* of the note instead of the note
+# (C4-VERIFY F2); LIC6/LIC7 replaced it with text quoted byte for byte from the
+# evidence packet's `upstream-licence-history.txt`.
 HISTORY_NOTE_TEXT = (
-    "d87a34ea5fea24c083d171bc99dc0bf052e2d92e3f021dc7701701f5d1b4ff4e"
+    "8cfc463c41113f776eebc60642a0e4f9841aaff247d9659d8abc466743755260"
+)
+# The evidence source that note quotes, by its own digest. Pinning it is how
+# this repository can tell a note that quotes a source from a note that merely
+# describes one, without restating a single line of licence text here.
+HISTORY_NOTE_SOURCE = (
+    "1ce36c87223cc7a1cdd052a876440abd48e11604ffc0037a2b4afadef6da1e90"
 )
 NONCOMMERCIAL_TEXT = (
     "fa152afc73238001c008ff67f5b8a3c6d645cfb714a3900a37a2481a8e75d748"
@@ -945,6 +955,25 @@ class PackagedEncodecRecordTests(unittest.TestCase):
                     HISTORY_NOTE_TEXT,
                 )
                 self.assertIn(note, self.screen_for(asset_id))
+
+    def test_the_bound_note_quotes_a_named_source(self) -> None:
+        """R4-068 wants a *verbatim-sourced* note, not a description of one.
+
+        C4-VERIFY F2: the advisory bound at kilix-license 4db48b4c was OD-AR's
+        sentence specifying the note, sitting where the note should be, so the
+        screen promised a verbatim-sourced note and did not keep the promise.
+        A description cannot name the digest of the file it quotes, so the
+        note's own text is checked for the quoting marker and that digest.
+        Nothing here restates a line of licence text: the licence and the note
+        both live in kilix-license's store and are shown from it.
+        """
+        note = self.texts.get(HISTORY_NOTE_TEXT).decode("utf-8")
+        self.assertIn("quoted from", note)
+        self.assertIn(HISTORY_NOTE_SOURCE, note)
+        # A specification of the note would be a sentence; a quoting note
+        # carries the quoted lines. Length alone is weak, so it is a floor,
+        # not the assertion: the two above carry the claim.
+        self.assertGreater(len(note), 512)
 
     def test_a_planted_changed_licence_text_re_presents(self) -> None:
         """SR-4: an earlier acceptance does not cover a changed bound text."""

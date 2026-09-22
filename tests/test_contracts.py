@@ -19,7 +19,7 @@ from kilix_content.receipt import (
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = ROOT / "src" / "kilix_content" / "contracts" / "kilix.content.asset-v3.schema.json"
 PUBLIC_SCHEMA = ROOT / "contracts" / "kilix.content.asset-v3.schema.json"
-KILIX_LICENSE_PIN = "4db48b4c5cb4721dc3068db648976222c802b93e"
+KILIX_LICENSE_PIN = "7104ea5cb2670a9d52c14fcb324c86710e4c2681"
 VENDORED = ROOT / "third_party" / "kilix-license"
 VENDORED_OBJECTS = ROOT / "third_party" / "kilix-license.objects.json"
 # Top-level kilix-license entries that are deliberately not vendored.
@@ -32,7 +32,7 @@ NOT_VENDORED = (
     "tools",
     "uv.lock",
 )
-VENDORED_FILE_COUNT = 128
+VENDORED_FILE_COUNT = 129
 
 
 def _git_oid(kind: bytes, body: bytes) -> str:
@@ -164,7 +164,7 @@ class ContractTests(unittest.TestCase):
         same = repin(KILIX_LICENSE_PIN, KILIX_LICENSE_PIN)
         self.assertNotEqual(same.returncode, 0)
         self.assertIn(f"already pinned to {KILIX_LICENSE_PIN}", same.stderr)
-        short = repin("4db48b4c", KILIX_LICENSE_PIN)
+        short = repin("7104ea5c", KILIX_LICENSE_PIN)
         self.assertNotEqual(short.returncode, 0)
         self.assertIn("is not a 40-hex commit id", short.stderr)
         # A vendored file that no longer hashes up to the pin stops a re-pin:
