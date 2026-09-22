@@ -7,6 +7,14 @@ pre-1.0.
 
 ### Added
 
+- Catalog `needle2`, the Cactus Compute Needle 2 engine for kilix-needle, as
+  an `upstream-files` asset at revision `32e9e3a9` (one 14,888,896-byte
+  executable with the model built in, plus the Apache-2.0 notice). Its licence
+  record is the first in kilix-license's application authority, so it moved no
+  release record digest: the other 27 assets are byte-identical, and only
+  `_CATALOG_SHA256` and the weights digest list gained the new asset. The
+  vendored kilix-license moves to `24bc70fd` (129 files to 133), by
+  `tools/vendored_kilix_license.py --repin` under its old-value guard.
 - Catalog Kilix Land, the cross-game conversation room and training range,
   at an immutable commit with the shared `make all` game build.
 - Catalog the Tmux Sessions manager as a system entry dispatched through

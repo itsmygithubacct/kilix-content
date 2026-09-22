@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from kilix_license.generate import (
+    APP_RECORDS_DIRNAME,
     DATA_DIR,
     RECORDS_DIRNAME,
     TEXTS_DIRNAME,
@@ -23,11 +24,16 @@ def texts_dir(root: Path | None = None) -> Path:
     return data_dir(root) / TEXTS_DIRNAME
 
 
+def app_records_dir(root: Path | None = None) -> Path:
+    return data_dir(root) / APP_RECORDS_DIRNAME
+
+
 def load_determined_records(root: Path | None = None) -> RecordIndex:
-    directory = records_dir(root)
+    """Release records and application records; an id in both is refused."""
     records = []
-    for path in sorted(directory.glob("*.json")):
-        records.append(LicenseRecord.from_bytes(path.read_bytes()))
+    for directory in (records_dir(root), app_records_dir(root)):
+        for path in sorted(directory.glob("*.json")):
+            records.append(LicenseRecord.from_bytes(path.read_bytes()))
     return RecordIndex(records)
 
 

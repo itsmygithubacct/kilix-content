@@ -4781,6 +4781,61 @@
       },
       "stream": "F101",
       "version": "op17-v1-2ce5225d"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.needle.engine",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 14888896,
+          "path": "needle",
+          "sha256": "a2df5d661606957d2ff0e8abd4af31ee2953e759ce84e8e5921b6e8d13bd0e16"
+        },
+        {
+          "bytes": 11358,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "id": "needle2",
+      "label": "needle2",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "Cactus Compute, Inc."
+          ],
+          "record_digest": "59285c18b1a9f5ebc725cb82e70bc2e5922c496ec0c61f38ce06bf0d1cadc6ce",
+          "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "provider": "kilix-needle",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 14888896,
+        "installed_bytes": 14900254,
+        "temporary_bytes": 14900254
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "needle",
+            "url": "https://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/linux-x86_64/needle"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "Cactus-Compute/needle2",
+          "revision": "32e9e3a93b205f786929697446ae669cf0a84579",
+          "original_url": "https://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/linux-x86_64/needle"
+        }
+      },
+      "stream": "F104",
+      "version": "32e9e3a93b205f786929697446ae669cf0a84579"
     }
   ]
 }
