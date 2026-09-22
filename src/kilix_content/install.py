@@ -64,6 +64,15 @@ class SuppliedFile:
     that is truncated or rewritten in place between the check and the copy
     therefore fails, and a path swapped for a different file cannot change
     what was copied -- neither of which reopening by name can tell you.
+
+    Two ways in, and they are not the same guard:
+
+    * `open(path)` guards the **leaf only**. `O_NOFOLLOW` applies to the last
+      component; a symlinked *directory* anywhere above it is followed.
+    * `open_beneath(root, relative)` is what the supplied install uses. It
+      walks every component below `root` with `dir_fd` and `O_NOFOLLOW`, so
+      no symlink beneath the nominated directory is followed at any depth,
+      and `..`, empty and absolute components are refused outright.
     """
 
     def __init__(
@@ -76,21 +85,74 @@ class SuppliedFile:
         self.bytes = info.st_size
         self.sha256 = digest
 
+    _LEAF_FLAGS = os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW | os.O_CLOEXEC
+    _WALK_FLAGS = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+
     @classmethod
     def open(cls, path: str | os.PathLike[str]) -> SuppliedFile:
+        """Open one file by path. **Guards the leaf only** -- see the class note.
+
+        A symlinked directory above the leaf is followed. The supplied install
+        does not use this; it uses `open_beneath`.
+        """
         try:
             resolved = os.path.abspath(os.fspath(path))
-            descriptor = os.open(
-                resolved,
-                os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW | os.O_CLOEXEC,
-            )
+            descriptor = os.open(resolved, cls._LEAF_FLAGS)
         except (OSError, TypeError, ValueError) as exc:
             raise InstallError(f"could not open supplied file: {path}") from exc
+        return cls._held(resolved, descriptor)
+
+    @classmethod
+    def open_beneath(
+        cls, root: str | os.PathLike[str], relative: str
+    ) -> SuppliedFile:
+        """Open `root/relative` without following a symlink at any depth below `root`.
+
+        The documented boundary of a supplied install is "a directory holding
+        the asset's installed files". `open()` enforced it for the leaf only:
+        an intermediate directory symlink was followed and bytes were read from
+        outside that directory (C-V3-FIX F6). The digest still had to match, so
+        nothing unverified was installed -- but the boundary was stated and not
+        enforced.
+
+        `root` itself is opened by path and **may** be reached through a
+        symlink: the operator nominated it. Every component beneath it is then
+        opened with `dir_fd` relative to its parent and `O_NOFOLLOW`
+        (`O_DIRECTORY` for the intermediate ones), and the leaf with the same
+        flags as `open()`. `..`, empty and absolute components are refused
+        before anything is opened. Pure `os.open` with `dir_fd`: no `ctypes`,
+        no `openat2`.
+        """
+        base = os.path.abspath(os.fspath(root))
+        shown = os.path.join(base, relative)
+        parts = relative.split("/")
+        if os.path.isabs(relative) or any(part in ("", "..") for part in parts):
+            raise InstallError(
+                f"supplied path is not a plain path beneath the supplied directory: {relative!r}"
+            )
+        walked: list[int] = []
+        try:
+            try:
+                parent = os.open(base, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+                walked.append(parent)
+                for part in parts[:-1]:
+                    parent = os.open(part, cls._WALK_FLAGS, dir_fd=parent)
+                    walked.append(parent)
+                descriptor = os.open(parts[-1], cls._LEAF_FLAGS, dir_fd=parent)
+            except (OSError, TypeError, ValueError) as exc:
+                raise InstallError(f"could not open supplied file: {shown}") from exc
+        finally:
+            for handle in walked:
+                os.close(handle)
+        return cls._held(shown, descriptor)
+
+    @classmethod
+    def _held(cls, path: str, descriptor: int) -> SuppliedFile:
         try:
             info = os.fstat(descriptor)
             if not stat.S_ISREG(info.st_mode):
-                raise InstallError(f"supplied file is not a regular file: {resolved}")
-            return cls(resolved, descriptor, info, cls._digest(descriptor))
+                raise InstallError(f"supplied file is not a regular file: {path}")
+            return cls(path, descriptor, info, cls._digest(descriptor))
         except BaseException:
             os.close(descriptor)
             raise
@@ -1324,7 +1386,8 @@ class Installer:
         same layout an installed asset has, so a tree copied from another
         machine can be supplied unchanged. Each file is opened once and
         verified against the manifest's own size and digest before and after
-        it is copied (`SuppliedFile`), and the staged tree is then verified
+        it is copied (`SuppliedFile.open_beneath`, which follows no symlink
+        at any depth below `supplied`), and the staged tree is then verified
         again as a whole by the caller. Notices are written from the packaged
         licence authority, never from the supplied directory, so a supplier
         cannot substitute the licence text.
@@ -1341,7 +1404,7 @@ class Installer:
             raise InstallError("this asset has no files that can be supplied")
         report(f"reading {len(wanted)} supplied file(s) for {spec.asset_id} …")
         for item in wanted:
-            with SuppliedFile.open(os.path.join(source, item.path)) as handle:
+            with SuppliedFile.open_beneath(source, item.path) as handle:
                 if handle.bytes != item.bytes or handle.sha256 != item.sha256:
                     raise InstallError(
                         f"supplied file does not match the manifest: {item.path}"

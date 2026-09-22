@@ -41,6 +41,9 @@ pre-1.0.
 
 ### Fixed
 
+- A supplied install follows no symlink below the supplied directory: every
+  path component is opened relative to its parent without following links,
+  where only the last one was before.
 - Advance `kilix-tui-utils` to relocatable runtime launchers so atomic package
   selection does not leave Start-menu applications pointing at staging paths.
 

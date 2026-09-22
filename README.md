@@ -157,9 +157,11 @@ no connection. Nothing else about it is different. The licence screen, the
 typed agreement, the receipt and the coverage check are the same code the
 downloading path runs, and the bytes get the same verification:
 
-- every file is opened once, with `O_NOFOLLOW`, and checked against the
-  manifest's size and digest through a descriptor that is never reopened, so a
-  file swapped or rewritten between the check and the copy is refused;
+- every file is opened once, walking each path component below the supplied
+  directory relative to its parent with `O_NOFOLLOW` (so no symlink beneath
+  it is followed, at any depth), and checked against the manifest's size and
+  digest through a descriptor that is never reopened, so a file swapped or
+  rewritten between the check and the copy is refused;
 - the licence notices are written from the packaged licence authority, never
   from the supplied directory, so a supplier cannot substitute the text that
   was agreed to;

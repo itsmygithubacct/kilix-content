@@ -757,6 +757,109 @@ class SuppliedInstallTests(unittest.TestCase):
             )
         self.assertIn("not a regular file", str(raised.exception))
 
+    # ---- no symlink below the supplied root (F6) ---------------------------
+
+    def nested_asset(self) -> tuple[AssetSpec, dict]:
+        payloads = {
+            "weights/model.bin": b"nested-weights-are-fixture-bytes",
+            "config.json": b"{}\n",
+        }
+        mapping = make_files_asset(
+            asset_id="supplied-nested",
+            files={
+                name: (f"{HOST}/{name}", payload)
+                for name, payload in payloads.items()
+            },
+            license_record=self.record,
+            notice=self.notice,
+            licensors=["Alpha Cephei Inc."],
+        )
+        return AssetSpec.from_mapping(mapping), payloads
+
+    def test_a_symlinked_directory_below_the_supplied_root_is_refused(self) -> None:
+        """F6: the boundary holds at every depth, not only at the leaf.
+
+        The bytes behind the symlink are the **right** ones -- the digest would
+        pass -- so the only thing that can refuse this is the walk. Then the
+        same bytes in a real directory install, so the refusal is about the
+        symlink and nothing else.
+        """
+        spec, payloads = self.nested_asset()
+        supplied = self.supply("nested", {"config.json": payloads["config.json"]})
+        outside = self.scratch / "outside-the-supplied-directory"
+        outside.mkdir()
+        (outside / "model.bin").write_bytes(payloads["weights/model.bin"])
+        (supplied / "weights").symlink_to(outside, target_is_directory=True)
+        self.authorize(spec)
+        with self.assertRaises(InstallError) as raised:
+            self.installer.ensure_supplied_asset(
+                spec,
+                supplied=supplied,
+                store=self.store,
+                records=self.records,
+                notices=self.texts,
+            )
+        self.assertIn("could not open supplied file", str(raised.exception))
+        self.assertFalse(Path(self.installer.asset_destination(spec)).exists())
+
+        (supplied / "weights").unlink()
+        (supplied / "weights").mkdir()
+        (supplied / "weights" / "model.bin").write_bytes(payloads["weights/model.bin"])
+        self.installer.ensure_supplied_asset(
+            spec,
+            supplied=supplied,
+            store=self.store,
+            records=self.records,
+            notices=self.texts,
+        )
+        root = Path(self.installer.asset_destination(spec))
+        self.assertEqual(
+            (root / "weights" / "model.bin").read_bytes(), payloads["weights/model.bin"]
+        )
+
+    def test_the_nominated_root_itself_may_be_a_symlink(self) -> None:
+        """The operator nominated the root; only what is BELOW it is walked."""
+        spec, payloads = self.nested_asset()
+        real = self.supply("nested-real", payloads)
+        link = self.scratch / "nominated-through-a-link"
+        link.symlink_to(real, target_is_directory=True)
+        self.authorize(spec)
+        self.installer.ensure_supplied_asset(
+            spec,
+            supplied=link,
+            store=self.store,
+            records=self.records,
+            notices=self.texts,
+        )
+        root = Path(self.installer.asset_destination(spec))
+        self.assertEqual((root / "config.json").read_bytes(), payloads["config.json"])
+
+    def test_open_beneath_refuses_a_path_that_is_not_plainly_below_the_root(self) -> None:
+        root = self.supply("plain", {"a/b.bin": b"bytes"})
+        (self.scratch / "supplied" / "sibling.bin").write_bytes(b"bytes")
+        for relative in ("../sibling.bin", "a/../a/b.bin", "/etc/hostname", "a//b.bin", "", "a/"):
+            with self.subTest(relative=relative):
+                with self.assertRaises(InstallError):
+                    SuppliedFile.open_beneath(root, relative)
+        with SuppliedFile.open_beneath(root, "a/b.bin") as handle:
+            self.assertEqual(handle.sha256, sha256_bytes(b"bytes"))
+            self.assertEqual(handle.path, os.path.join(str(root), "a/b.bin"))
+
+    def test_open_beneath_refuses_a_symlinked_leaf_and_open_does_not_walk(self) -> None:
+        """The two entry points are different guards, and the tests say which."""
+        root = self.supply("leafs", {"real/file.bin": b"bytes"})
+        (root / "leaf.bin").symlink_to(root / "real" / "file.bin")
+        (root / "via").symlink_to(root / "real", target_is_directory=True)
+        with self.assertRaises(InstallError):
+            SuppliedFile.open_beneath(root, "leaf.bin")
+        with self.assertRaises(InstallError):
+            SuppliedFile.open_beneath(root, "via/file.bin")
+        # `open` guards the leaf only: the directory symlink above it is followed.
+        with self.assertRaises(InstallError):
+            SuppliedFile.open(root / "leaf.bin")
+        with SuppliedFile.open(root / "via" / "file.bin") as handle:
+            self.assertEqual(handle.sha256, sha256_bytes(b"bytes"))
+
     # ---- the held descriptor ----------------------------------------------
 
     def test_a_file_rewritten_in_place_after_the_check_is_refused(self) -> None:
