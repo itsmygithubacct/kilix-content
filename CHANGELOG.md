@@ -9,14 +9,9 @@ pre-1.0.
 
 - Render every packaged first-use screen through the consumer's terminal
   guard, so a licence text that a `kilix models install` would refuse to
-  print fails here instead of at a user's terminal. One does today:
-  `bonsai-8b`'s screen carries three CR characters, inside a byte-exact
-  upstream `NOTICE.txt` quotation that the pinned licence authority keeps
-  CRLF on purpose, so `kilix models install bonsai-8b` refuses before the
-  prompt and the asset cannot be installed. The authority's vendored bytes
-  are hash-chained to its pinned commit and cannot be corrected from here;
-  the exception is declared, pinned to the exact text blob, and asserted by
-  set equality so it has to be removed when the authority is re-vendored.
+  print fails here instead of at a user's terminal. All 27 pass.
+- `verified_catalog_bytes()`: the packaged catalog bytes, read once and
+  returned only after they match the pinned digest.
 - Catalog Kilix Land, the cross-game conversation room and training range,
   at an immutable commit with the shared `make all` game build.
 - Catalog the Tmux Sessions manager as a system entry dispatched through
@@ -41,6 +36,19 @@ pre-1.0.
 
 ### Fixed
 
+- `bonsai-8b` can be installed. Its attribution statement is a byte-exact
+  quotation of an upstream `NOTICE.txt` written with CRLF line ends, and the
+  consumer refuses to print a carriage return during consent. CRLF is now
+  normalised to LF where the first-use screen is rendered; the stored
+  quotation and every digest are unchanged, and a bare carriage return is
+  still refused.
+- `verified_packaged_catalog()` parses the bytes it verified. It used to
+  verify one read of the file and parse a second, cached one, so a catalog
+  changed between the two reads -- or parsed earlier by an unverified caller
+  -- was returned without a refusal.
+- A supplied install whose final verification fails now removes what it
+  selected before refusing, so nothing that does not match the manifest is
+  left at the installed path.
 - A supplied install follows no symlink below the supplied directory: every
   path component is opened relative to its parent without following links,
   where only the last one was before.

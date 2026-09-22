@@ -891,6 +891,9 @@ class SuppliedInstallTests(unittest.TestCase):
             with self.subTest(control=control):
                 supplied = str(self.scratch / f"sup{control}plied")
                 screen = io.BytesIO()
+                # Each arm is judged against its own starting state, so one
+                # arm that wrongly gets through cannot fail the ones after it.
+                receipts_before = sorted(self.store.root.glob("*.json"))
                 with self.assertRaises(InstallError) as raised:
                     install_with_agreement(
                         spec,
@@ -903,7 +906,7 @@ class SuppliedInstallTests(unittest.TestCase):
                         supplied=supplied,
                     )
                 self.assertEqual(screen.getvalue(), b"")
-                self.assertEqual(list(self.store.root.glob("*.json")), [])
+                self.assertEqual(sorted(self.store.root.glob("*.json")), receipts_before)
                 self.assertFalse(Path(self.installer.asset_destination(spec)).exists())
                 message = str(raised.exception)
                 self.assertIn("terminal control", message)
