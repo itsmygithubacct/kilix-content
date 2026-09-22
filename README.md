@@ -188,10 +188,21 @@ from kilix_content import verified_packaged_catalog
 catalog = verified_packaged_catalog()   # refuses unless the bytes are pinned
 ```
 
-It runs `verify_packaged_catalog()` first, which compares the packaged catalog
-against `_CATALOG_SHA256` and the frozen asset/v3 schema against
-`_ASSET_V3_SCHEMA_SHA256`, and raises `RuntimeError` on either mismatch; only
-then does it parse.
+It reads `catalog/plebian.json` **once**, compares those bytes against
+`_CATALOG_SHA256` and the frozen asset/v3 schema against
+`_ASSET_V3_SCHEMA_SHA256`, raises `RuntimeError` on either mismatch, and then
+parses **the bytes it just verified** — it does not re-open the file.
+
+That distinction is the whole value of the entry point, and it is not
+theoretical. An earlier shape verified one read and parsed a second, and it
+could return a tampered catalog two ways: a tamper landing between the two
+reads was never noticed, and because `default_catalog()` is `lru_cache`d, a
+caller that had already parsed a tampered file got that **cached** parse back
+with no race at all. So `verified_packaged_catalog()` does not call
+`default_catalog()` and is deliberately not cached: a cache here is a parse
+that can pre-date its own check. `default_catalog()` remains the unverified,
+cached parse for callers that only read metadata — never for one that acts on
+the catalog.
 
 Both names are part of a **cross-repository contract**: consumers verify the
 catalog through this repository and refuse to run when they cannot find the
