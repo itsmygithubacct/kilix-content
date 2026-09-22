@@ -27,6 +27,12 @@ from live_store_guard import live_root
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# The guard states its own coverage in every message it prints (F1), so a
+# refusal quoted in a report carries the limit with it. Built from the
+# module constant rather than retyped: tests/test_network_guard_coverage.py
+# is what pins the constant's content.
+_SCOPE = f" [{network_guard.COVERAGE}]"
+
 # Every variable that could route a fetch around the audit hook, or satisfy a
 # refusal test by accident: a dead proxy, or a certificate path left behind
 # by an earlier FakeUpstream (ssl.create_default_context then raises OSError).
@@ -153,9 +159,11 @@ class HarnessTests(unittest.TestCase):
         #    process; nothing is resolved or connected. Without the hook the
         #    test fails here, before any fetch is attempted.
         self.assertTrue(network_guard.installed())
-        with self.assertRaisesRegex(OSError, "^non-loopback DNS refused: alphacephei.com$"):
+        dns_refusal = "non-loopback DNS refused: alphacephei.com" + _SCOPE
+        connect_refusal = "non-loopback connect refused: 192.0.2.1" + _SCOPE
+        with self.assertRaisesRegex(OSError, f"^{re.escape(dns_refusal)}$"):
             sys.audit("socket.getaddrinfo", "alphacephei.com", 443, 0, 0, 0)
-        with self.assertRaisesRegex(OSError, "^non-loopback connect refused: 192.0.2.1$"):
+        with self.assertRaisesRegex(OSError, f"^{re.escape(connect_refusal)}$"):
             sys.audit("socket.connect", None, ("192.0.2.1", 443))
         # 2. fetch_exact meets the hook, not a dead proxy or a stale
         #    certificate path: both are removed for the attempt.
@@ -177,7 +185,7 @@ class HarnessTests(unittest.TestCase):
             for item in _exception_chain(raised.exception)
             if type(item) is OSError and str(item).startswith("non-loopback ")
         ]
-        self.assertEqual(refusals, ["non-loopback DNS refused: alphacephei.com"])
+        self.assertEqual(refusals, ["non-loopback DNS refused: alphacephei.com" + _SCOPE])
         self.assertFalse(destination.exists())
         self.assertEqual(list(self.scratch.iterdir()), [])
 
@@ -214,7 +222,7 @@ class HarnessTests(unittest.TestCase):
         for label, (call, message) in calls.items():
             with self.subTest(call=label):
                 with _network_backstop():
-                    with self.assertRaisesRegex(OSError, f"^{re.escape(message)}$"):
+                    with self.assertRaisesRegex(OSError, f"^{re.escape(message + _SCOPE)}$"):
                         call()
         # Control: loopback passes the guard, so the backstop is what stops it.
         for host in ("127.0.0.1", b"127.0.0.1"):
@@ -254,7 +262,7 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(result.stderr, "")
         loaded, refused = result.stdout.splitlines()
         self.assertEqual(Path(loaded).resolve(), ROOT / "tests" / "support" / "sitecustomize.py")
-        self.assertEqual(refused, "non-loopback DNS refused: alphacephei.com")
+        self.assertEqual(refused, "non-loopback DNS refused: alphacephei.com" + _SCOPE)
 
     def test_only_the_test_recipe_puts_tests_support_on_pythonpath(self) -> None:
         """No other recipe loads the test sitecustomize (C2E-FIX-VERIFY R4)."""

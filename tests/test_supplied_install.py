@@ -13,6 +13,16 @@ tests below hold it to that. The air-gapped claim is measured, not asserted:
 the network audit hook records *every* socket event it sees, allowed or
 refused, and a supplied install must produce **zero** lines in it -- with a
 control in the same process that does produce one.
+
+**What that zero is worth (F1).** The hook sees seven CPython socket audit
+events in this interpreter. `ctypes`/FFI, child processes, `bash`'s `/dev/tcp`
+and AF_UNIX escape it, and `tests/test_network_guard_coverage.py` measures
+three of them reaching a real listener while the log stays empty. So a zero
+here means "the supplied install raised none of those seven events", which is
+the right measurement for this path -- it is Python, it calls no converter and
+spawns no child -- and it is not, by itself, proof that no socket was used.
+What excludes the rest is the namespace the suite runs in: `unshare -cn`, and
+for the standalone evidence run `lo` DOWN with no routes.
 """
 
 from __future__ import annotations
@@ -222,11 +232,18 @@ class SuppliedInstallTests(unittest.TestCase):
         return [line for line in after[len(before):].splitlines() if line]
 
     def test_a_supplied_install_makes_no_network_request_at_all(self) -> None:
-        """Zero socket events, not merely zero fetches -- with a live control.
+        """Zero hooked socket events, not merely zero fetches -- with a control.
 
-        The audit hook logs allowed loopback events as well as refused ones,
-        so an empty log is the absence of every name lookup, connection and
-        datagram this process could have made, not the absence of one kind.
+        The audit hook logs allowed loopback events as well as refused ones, so
+        an empty log is the absence of every name lookup, connect and datagram
+        **that reaches those seven CPython audit events** -- not the absence of
+        every socket operation a process could perform. Named limits, measured
+        in `tests/test_network_guard_coverage.py`: `ctypes`/FFI, child
+        processes, `bash` `/dev/tcp` and AF_UNIX raise none of them. This path
+        uses none of those -- no `ctypes`, no `subprocess`, no AF_UNIX -- which
+        is why the measurement is the right one for it, and the namespace is
+        what excludes the rest.
+
         The control below runs through the same hook, in the same process,
         under the same log, and does produce a line: so the emptiness above is
         evidence about the install, not about a hook that was not listening.
