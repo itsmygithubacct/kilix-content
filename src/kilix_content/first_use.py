@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from typing import BinaryIO
 
@@ -51,6 +52,7 @@ def present_asset(
     *,
     receipts: ReceiptStore,
     records: RecordIndex,
+    supplied: str | os.PathLike[str] | None = None,
 ) -> bytes:
     """Identity, source, size, licence, changed texts and the verbatim text.
 
@@ -58,6 +60,10 @@ def present_asset(
     every bound text that changed since an earlier acceptance in `receipts`,
     and `records` resolves the identities of receipts written for sibling
     records or before LIC4.
+
+    `supplied` adds one header line naming the directory the bytes will be
+    read from, so a user-supplied install (OD-BO) shows the same licence
+    screen as every other install and still says where its bytes come from.
     """
     licence_ids = ", ".join(row.license_id for row in spec.licenses)
     licensors = ", ".join(
@@ -75,7 +81,13 @@ def present_asset(
         f"licence: {licence_ids}\n"
         f"licensors: {licensors}\n"
         f"decision: {spec.licenses[0].decision}\n"
-    ).encode("utf-8")
+    )
+    if supplied is not None:
+        header += (
+            f"supplied: {os.path.abspath(os.fspath(supplied))}\n"
+            "download: none (every file is verified against the manifest)\n"
+        )
+    header = header.encode("utf-8")
     return header + b"\n" + render_screen(
         record, texts, receipts=receipts, records=records
     )
@@ -94,10 +106,20 @@ def install_with_agreement(
     report: Report = lambda _message: None,
     cancelled: Callable[[], bool] | None = None,
     deadline: float | None = None,
+    supplied: str | os.PathLike[str] | None = None,
 ) -> tuple[str, ...] | None:
-    """Render the screen, record a receipt on accept, then fetch. Decline writes nothing."""
+    """Render the screen, record a receipt on accept, then fetch. Decline writes nothing.
+
+    With `supplied` the bytes are read from a directory the user already holds
+    instead of fetched (OD-BO). Only the last step changes: the screen, the
+    typed agreement, the receipt and the coverage check above it are the same
+    code, so the air-gapped path cannot drift away from the licence discipline
+    of the downloading one.
+    """
     record = license_record_for(spec, records)
-    payload = present_asset(spec, record, texts, receipts=store, records=records)
+    payload = present_asset(
+        spec, record, texts, receipts=store, records=records, supplied=supplied
+    )
     if screen is not None:
         screen.write(payload)
         screen.flush()
@@ -113,6 +135,17 @@ def install_with_agreement(
     )
     store.write(receipt)
     require(_asset_ref(spec), records=records, store=store)
+    if supplied is not None:
+        return installer.ensure_supplied_asset(
+            spec,
+            supplied=supplied,
+            store=store,
+            records=records,
+            report=report,
+            cancelled=cancelled,
+            deadline=deadline,
+            notices=texts,
+        )
     return installer.ensure_upstream_asset(
         spec,
         store=store,

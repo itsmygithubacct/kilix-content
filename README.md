@@ -124,6 +124,57 @@ parent-path escapes before any installation begins. JSON input is limited to
 1 MiB and to 4,096 package/content records apiece. The packaged catalog is
 immutable and cached after its first validated load.
 
+## Installing a model asset from bytes you already hold
+
+Model assets are normally fetched from upstream on first use, after their
+licence screen has been shown and a typed agreement recorded. On an air-gapped
+or metered machine, or when the same model is already installed on another
+machine, the bytes can be supplied instead of fetched:
+
+```python
+from kilix_content import Installer, verified_packaged_catalog
+from kilix_content.first_use import install_with_agreement
+
+spec = verified_packaged_catalog().require_asset("vosk-model-small-en-us-0.15")
+installed = install_with_agreement(
+    spec,
+    installer=Installer("/absolute/user/data/models"),
+    store=receipt_store, records=records, texts=texts,
+    typed_text=typed_line,          # the same agreement every install needs
+    screen=sys.stdout.buffer,
+    supplied="/media/usb/vosk-model-small-en-us-0.15",
+)
+```
+
+`supplied` is a directory holding the asset's installed files **at their
+manifest paths** — the layout an installed asset already has, so a tree copied
+from another machine can be handed over unchanged. For an archive-sourced
+asset that is the extracted archive root; for a converted asset it is the
+conversion's output.
+
+This path makes **no network request of any kind**: no fetch, no name lookup,
+no connection. Nothing else about it is different. The licence screen, the
+typed agreement, the receipt and the coverage check are the same code the
+downloading path runs, and the bytes get the same verification:
+
+- every file is opened once, with `O_NOFOLLOW`, and checked against the
+  manifest's size and digest through a descriptor that is never reopened, so a
+  file swapped or rewritten between the check and the copy is refused;
+- the licence notices are written from the packaged licence authority, never
+  from the supplied directory, so a supplier cannot substitute the text that
+  was agreed to;
+- the staged tree must match the manifest exactly before it is selected — a
+  file the manifest does not list is not installed.
+
+`Installer.ensure_supplied_asset(spec, supplied=..., store=..., records=...,
+notices=...)` is the same install without the screen, for a caller that
+already holds a covering receipt.
+
+There is no `user-supplied` *source mode* in the catalog, and adding one back
+is not how this works: at asset/v3 the manifest determines the installed tree
+for every mode alike, so supply is an acquisition available for **all** of
+them rather than a record shape that marks a few.
+
 ## Packaged catalog verification
 
 `default_catalog()` parses the packaged `plebian.json` without comparing it to

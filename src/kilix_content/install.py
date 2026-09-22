@@ -53,6 +53,110 @@ class InstallError(RuntimeError):
     """A content install failed without selecting a partial result."""
 
 
+class SuppliedFile:
+    """One exact file the user already holds, held open across verification.
+
+    Restores the F100 `VerifiedInput` discipline for asset/v3 (OD-BO). The
+    path is opened **once**, with `O_NOFOLLOW` so a symlinked leaf is refused
+    and `O_NONBLOCK` so a FIFO cannot block the open, and it is never reopened
+    by name: the size and digest are read through that descriptor, the staged
+    copy is written from it, and `revalidate()` re-reads it afterwards. A file
+    that is truncated or rewritten in place between the check and the copy
+    therefore fails, and a path swapped for a different file cannot change
+    what was copied -- neither of which reopening by name can tell you.
+    """
+
+    def __init__(
+        self, path: str, descriptor: int, info: os.stat_result, digest: str
+    ) -> None:
+        self.path = path
+        self._descriptor = descriptor
+        self._device = info.st_dev
+        self._inode = info.st_ino
+        self.bytes = info.st_size
+        self.sha256 = digest
+
+    @classmethod
+    def open(cls, path: str | os.PathLike[str]) -> SuppliedFile:
+        try:
+            resolved = os.path.abspath(os.fspath(path))
+            descriptor = os.open(
+                resolved,
+                os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW | os.O_CLOEXEC,
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            raise InstallError(f"could not open supplied file: {path}") from exc
+        try:
+            info = os.fstat(descriptor)
+            if not stat.S_ISREG(info.st_mode):
+                raise InstallError(f"supplied file is not a regular file: {resolved}")
+            return cls(resolved, descriptor, info, cls._digest(descriptor))
+        except BaseException:
+            os.close(descriptor)
+            raise
+
+    @staticmethod
+    def _digest(descriptor: int) -> str:
+        digest = hashlib.sha256()
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        while True:
+            try:
+                block = os.read(descriptor, 1024 * 1024)
+            except InterruptedError:
+                continue
+            if not block:
+                break
+            digest.update(block)
+        os.lseek(descriptor, 0, os.SEEK_SET)
+        return digest.hexdigest()
+
+    def revalidate(self) -> None:
+        try:
+            info = os.fstat(self._descriptor)
+        except OSError as exc:
+            raise InstallError("supplied file is no longer open") from exc
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_dev != self._device
+            or info.st_ino != self._inode
+            or info.st_size != self.bytes
+            or self._digest(self._descriptor) != self.sha256
+        ):
+            raise InstallError(f"supplied file changed after it was opened: {self.path}")
+
+    def copy_to(self, target: str) -> None:
+        """Write the held bytes to a new private file, from the descriptor."""
+        os.lseek(self._descriptor, 0, os.SEEK_SET)
+        handle = os.open(
+            target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC, 0o600
+        )
+        try:
+            while True:
+                try:
+                    block = os.read(self._descriptor, 1024 * 1024)
+                except InterruptedError:
+                    continue
+                if not block:
+                    break
+                offset = 0
+                while offset < len(block):
+                    offset += os.write(handle, block[offset:])
+        finally:
+            os.close(handle)
+        os.lseek(self._descriptor, 0, os.SEEK_SET)
+
+    def close(self) -> None:
+        descriptor, self._descriptor = self._descriptor, -1
+        if descriptor >= 0:
+            os.close(descriptor)
+
+    def __enter__(self) -> SuppliedFile:  # noqa: PYI034 -- Python 3.10 support
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.close()
+
+
 _held_install_locks = threading.local()
 
 
@@ -1204,6 +1308,53 @@ class Installer:
         self._write_notices(spec, output, notices)
         return output
 
+    def _populate_supplied_asset(
+        self,
+        spec: AssetSpec,
+        stage: str,
+        report: Report,
+        notices: TextStore,
+        *,
+        supplied: str | os.PathLike[str],
+    ) -> str:
+        """Stage the asset from bytes the user already holds (OD-BO).
+
+        Every installed file except the licence notices is read from
+        `<supplied>/<path>`, where `path` is exactly the manifest path -- the
+        same layout an installed asset has, so a tree copied from another
+        machine can be supplied unchanged. Each file is opened once and
+        verified against the manifest's own size and digest before and after
+        it is copied (`SuppliedFile`), and the staged tree is then verified
+        again as a whole by the caller. Notices are written from the packaged
+        licence authority, never from the supplied directory, so a supplier
+        cannot substitute the licence text.
+        """
+        source = os.path.abspath(os.fspath(supplied))
+        if not os.path.isdir(source):
+            raise InstallError(f"supplied directory does not exist: {source}")
+        output = os.path.join(stage, "content")
+        os.makedirs(output, mode=0o700, exist_ok=True)
+        wanted = [
+            item for item in spec.files if not item.path.startswith("notices/")
+        ]
+        if not wanted:
+            raise InstallError("this asset has no files that can be supplied")
+        report(f"reading {len(wanted)} supplied file(s) for {spec.asset_id} …")
+        for item in wanted:
+            with SuppliedFile.open(os.path.join(source, item.path)) as handle:
+                if handle.bytes != item.bytes or handle.sha256 != item.sha256:
+                    raise InstallError(
+                        f"supplied file does not match the manifest: {item.path}"
+                    )
+                target = os.path.join(output, item.path)
+                os.makedirs(os.path.dirname(target), mode=0o700, exist_ok=True)
+                handle.copy_to(target)
+                # The bytes were read from the held descriptor, so this proves
+                # the file was not rewritten underneath the copy.
+                handle.revalidate()
+        self._write_notices(spec, output, notices)
+        return output
+
     @contextmanager
     def _asset_lock(
         self,
@@ -1276,6 +1427,74 @@ class Installer:
                 os.close(descriptor)
             return  # pragma: no cover
 
+    def _select_asset(
+        self,
+        spec: AssetSpec,
+        populate: Callable[[str], str],
+        *,
+        store: ReceiptStore,
+        records: RecordIndex,
+        report: Report,
+        cancelled: Callable[[], bool] | None,
+        deadline: float | None,
+        progress: Callable[[Progress], None] | None,
+        installed_by_other: list[bool] | None,
+        covered_message: str,
+    ) -> tuple[str, ...]:
+        """Licence, lock, stage, verify, select -- whatever produced the bytes.
+
+        `populate(stage)` is the only difference between an upstream download
+        and a user-supplied install (OD-BO), so both get the same discipline by
+        construction rather than by two implementations that agree today: a
+        covering receipt is required before staging, again under the lock,
+        and again after the staged tree has been verified against the
+        manifest, and a tree that does not match its manifest is never
+        selected.
+        """
+        self._ensure_root()
+        asset = AssetRef(
+            id=spec.asset_id,
+            record_digest=spec.licenses[0].record_digest,
+            manifest_digest=spec.manifest_digest,
+        )
+        require_license(asset, records=records, store=store)
+        ready = self._asset_integrity_ready(spec)
+        if ready is not None:
+            if installed_by_other is not None:
+                installed_by_other.append(True)
+            return ready
+        destination = self.asset_destination(spec)
+        parent = self._ensure_asset_parent(spec)
+        with self._asset_lock(
+            spec, parent, cancelled=cancelled, deadline=deadline, progress=progress
+        ):
+            require_license(asset, records=records, store=store)
+            ready = self._asset_integrity_ready(spec)
+            if ready is not None:
+                if installed_by_other is not None:
+                    installed_by_other.append(True)
+                report(covered_message)
+                return ready
+            if os.path.lexists(destination):
+                raise InstallError("refusing to replace an unverified asset selection")
+            stage = tempfile.mkdtemp(prefix=".asset-install-", dir=parent)
+            try:
+                output = populate(stage)
+                if self._verify_asset_directory(spec, output) is None:
+                    raise InstallError("staged asset tree does not match its manifest")
+                require_license(asset, records=records, store=store)
+                self._replace_stage(output, destination)
+            except (InstallError, DownloadError):
+                raise
+            except (OSError, tarfile.TarError, zipfile.BadZipFile, RuntimeError) as exc:
+                raise InstallError("asset installation failed") from exc
+            finally:
+                shutil.rmtree(stage, ignore_errors=True)
+        selected = self._asset_integrity_ready(spec)
+        if selected is None:
+            raise InstallError("installed asset failed final verification")
+        return selected
+
     def ensure_upstream_asset(
         self,
         spec: AssetSpec,
@@ -1290,77 +1509,75 @@ class Installer:
         installed_by_other: list[bool] | None = None,
     ) -> tuple[str, ...]:
         """Install one exact upstream asset after a covering licence receipt exists."""
-        self._ensure_root()
-        require_license(
-            AssetRef(
-                id=spec.asset_id,
-                record_digest=spec.licenses[0].record_digest,
-                manifest_digest=spec.manifest_digest,
-            ),
-            records=records,
-            store=store,
-        )
-        ready = self._asset_integrity_ready(spec)
-        if ready is not None:
-            if installed_by_other is not None:
-                installed_by_other.append(True)
-            return ready
-        destination = self.asset_destination(spec)
-        parent = self._ensure_asset_parent(spec)
-        with self._asset_lock(
-            spec, parent, cancelled=cancelled, deadline=deadline, progress=progress
-        ):
-            require_license(
-                AssetRef(
-                    id=spec.asset_id,
-                    record_digest=spec.licenses[0].record_digest,
-                    manifest_digest=spec.manifest_digest,
-                ),
-                records=records,
+        return self._select_asset(
+            spec,
+            lambda stage: self._populate_upstream_asset(
+                spec,
+                stage,
+                report,
+                notices,
                 store=store,
-            )
-            ready = self._asset_integrity_ready(spec)
-            if ready is not None:
-                if installed_by_other is not None:
-                    installed_by_other.append(True)
-                report("Installed by another process; nothing downloaded")
-                return ready
-            if os.path.lexists(destination):
-                raise InstallError("refusing to replace an unverified asset selection")
-            stage = tempfile.mkdtemp(prefix=".asset-install-", dir=parent)
-            try:
-                output = self._populate_upstream_asset(
-                    spec,
-                    stage,
-                    report,
-                    notices,
-                    store=store,
-                    cancelled=cancelled,
-                    deadline=deadline,
-                    progress=progress,
-                )
-                if self._verify_asset_directory(spec, output) is None:
-                    raise InstallError("staged asset tree does not match its manifest")
-                require_license(
-                    AssetRef(
-                        id=spec.asset_id,
-                        record_digest=spec.licenses[0].record_digest,
-                        manifest_digest=spec.manifest_digest,
-                    ),
-                    records=records,
-                    store=store,
-                )
-                self._replace_stage(output, destination)
-            except (InstallError, DownloadError):
-                raise
-            except (OSError, tarfile.TarError, zipfile.BadZipFile, RuntimeError) as exc:
-                raise InstallError("asset installation failed") from exc
-            finally:
-                shutil.rmtree(stage, ignore_errors=True)
-        selected = self._asset_integrity_ready(spec)
-        if selected is None:
-            raise InstallError("installed asset failed final verification")
-        return selected
+                cancelled=cancelled,
+                deadline=deadline,
+                progress=progress,
+            ),
+            store=store,
+            records=records,
+            report=report,
+            cancelled=cancelled,
+            deadline=deadline,
+            progress=progress,
+            installed_by_other=installed_by_other,
+            covered_message="Installed by another process; nothing downloaded",
+        )
+
+    def ensure_supplied_asset(
+        self,
+        spec: AssetSpec,
+        *,
+        supplied: str | os.PathLike[str],
+        store: ReceiptStore,
+        records: RecordIndex,
+        notices: TextStore,
+        report: Report = lambda _message: None,
+        cancelled: Callable[[], bool] | None = None,
+        deadline: float | None = None,
+        progress: Callable[[Progress], None] | None = None,
+        installed_by_other: list[bool] | None = None,
+    ) -> tuple[str, ...]:
+        """Install one exact asset from bytes the user already holds (OD-BO).
+
+        The air-gapped and metered-connection path: `supplied` is a directory
+        holding the asset's installed files at their manifest paths, and this
+        makes **no network request of any kind** -- no fetch, no name lookup,
+        no connection. Everything else is the upstream path's discipline,
+        unchanged: the same covering receipt is required at the same three
+        points, every file is verified against the manifest by size and digest
+        through a descriptor that is never reopened, the licence notices are
+        written from the packaged authority rather than from the supplied
+        directory, and the staged tree must match the manifest exactly -- an
+        extra file in it is refused -- before it is selected.
+
+        It is available for every source mode, because at asset/v3 the
+        manifest, not the mode, is what determines the installed tree. For an
+        `upstream-convert` record the supplied tree is the conversion's output;
+        the converter's own gate binds the same record and manifest digests
+        this call requires, so nothing is skipped by supplying them.
+        """
+        return self._select_asset(
+            spec,
+            lambda stage: self._populate_supplied_asset(
+                spec, stage, report, notices, supplied=supplied
+            ),
+            store=store,
+            records=records,
+            report=report,
+            cancelled=cancelled,
+            deadline=deadline,
+            progress=progress,
+            installed_by_other=installed_by_other,
+            covered_message="Installed by another process; nothing was read",
+        )
 
     def ensure_asset(
         self,
