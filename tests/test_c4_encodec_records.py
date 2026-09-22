@@ -102,6 +102,33 @@ def source_keys_in(value: object) -> list[str]:
     return found
 
 
+# This module is the one tracked file that legitimately holds the superseded
+# digests as literals (SUPERSEDED_MANIFESTS below), so the scan excludes it by
+# pathspec rather than by hand-reading its hits.
+SELF_PATHSPEC = ":!tests/test_c4_encodec_records.py"
+
+
+def tracked_files_holding(*patterns: str) -> tuple[list[str], int]:
+    """Tracked files holding any of `patterns`, and git's own exit status.
+
+    One `-e` per pattern (C4-VERIFY F1): with two bare patterns after `--`,
+    git reads the second as a revision and dies `rc 128` with empty stdout, so
+    an unchecked returncode makes the *error* read as a clean tree. The status
+    is returned, not swallowed, and every caller asserts it is 0 or 1 — the
+    absent/invisible distinction, decided by the command rather than assumed.
+    """
+    arguments = ["git", "grep", "-lF"]
+    for pattern in patterns:
+        arguments.extend(["-e", pattern])
+    arguments.extend(["--", SELF_PATHSPEC])
+    completed = subprocess.run(
+        arguments, cwd=ROOT, capture_output=True, text=True
+    )
+    return [line for line in completed.stdout.splitlines() if line], (
+        completed.returncode
+    )
+
+
 class CatalogWideEncodecGuardTests(unittest.TestCase):
     """The R4-068 acceptance guard, over every record in the catalog."""
 
@@ -751,22 +778,40 @@ class PackagedEncodecRecordTests(unittest.TestCase):
 
     def test_no_superseded_population_survives_as_a_live_pin(self) -> None:
         """02201a5a (24 kHz) and 844d8fcf (48 kHz) are gone from the tree."""
-        tracked = subprocess.run(
-            ["git", "grep", "-lF", "--"] + list(SUPERSEDED_MANIFESTS),
+        hits, code = tracked_files_holding(*SUPERSEDED_MANIFESTS)
+        # 0 = a hit, 1 = no hit. Anything else is git failing, and a git
+        # failure must never be read as an absence (C4-VERIFY F1).
+        self.assertIn(code, (0, 1), f"git grep exited {code}")
+        self.assertEqual(hits, [], hits)
+        # Visibility control, in the SAME two-pattern shape the guard uses:
+        # two digests that really are in the tree are found by it.
+        seen, seen_code = tracked_files_holding(
+            ACCEPTED_MANIFESTS["encodec-24khz-stateful"][0],
+            ACCEPTED_MANIFESTS["encodec-48khz-frame"][0],
+        )
+        self.assertIn(seen_code, (0, 1), f"git grep exited {seen_code}")
+        self.assertNotEqual(seen, [])
+
+    def test_the_superseded_scan_refuses_a_git_failure(self) -> None:
+        """A guard that cannot fail is worse than no guard (C4-VERIFY F1).
+
+        The old command shape — two bare patterns after `--` — is what dies
+        `rc 128` with empty stdout. Run it here on purpose: the status is not
+        in (0, 1), which is exactly what the guard above now asserts, so the
+        error cannot pass for a clean tree.
+        """
+        broken = subprocess.run(
+            ["git", "grep", "-lF", "--", *SUPERSEDED_MANIFESTS],
             cwd=ROOT,
             capture_output=True,
             text=True,
         )
-        self.assertEqual(tracked.stdout.strip(), "", tracked.stdout)
-        # Visibility control: the same search does find the accepted ones.
-        control = subprocess.run(
-            ["git", "grep", "-lF", "--",
-             ACCEPTED_MANIFESTS["encodec-24khz-stateful"][0]],
-            cwd=ROOT,
-            capture_output=True,
-            text=True,
-        )
-        self.assertNotEqual(control.stdout.strip(), "")
+        self.assertEqual(broken.stdout.strip(), "")
+        self.assertNotIn(broken.returncode, (0, 1))
+        self.assertIn("ambiguous argument", broken.stderr)
+        # The corrected shape runs: it answers 0 or 1, never 128. What its
+        # answer IS belongs to the guard above, not here.
+        self.assertIn(tracked_files_holding(*SUPERSEDED_MANIFESTS)[1], (0, 1))
 
     def test_the_24khz_input_is_the_upstream_download(self) -> None:
         """Never user-supplied: the exact checkpoint, from Meta's own host."""
