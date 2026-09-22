@@ -21,6 +21,40 @@ from .receipt import _CATALOG_SHA256, release_digest
 
 Report = Callable[[str], None]
 
+_CRLF = b"\r\n"
+_LF = b"\n"
+
+
+def crlf_to_lf(payload: bytes) -> bytes:
+    """CRLF to LF, at render only, for the bytes a terminal will be given (OD-BT).
+
+    The authority quotes upstream notices byte-exactly, and one of them -- the
+    `bonsai-8b` attribution statement, whose own determination note says
+    "uses CRLF line ends (kept)" -- is a verbatim span of a `NOTICE.txt` written
+    with CRLF. The consumer refuses to write any CR to a terminal during
+    consent. Both rules are right, and they collide on exactly that quotation.
+
+    OD-BT resolves it here, in the renderer, and nowhere else. Nothing on disk
+    changes: the stored quotation stays byte-exact, no digest moves and nothing
+    is re-vendored. A line ending changes; not a word.
+
+    **A bare CR is deliberately left in place.** A lone carriage return returns
+    the cursor and lets what follows overwrite the line the reader just read,
+    which is the attack the consumer's guard exists to stop. Normalising CRLF
+    must not become a licence to pass any CR, so this is one left-to-right pass
+    over non-overlapping matches and never a repeated one: `\\r\\r\\n` becomes
+    `\\r\\n`, which still carries a CR and is still refused, where a repeated
+    substitution would collapse it to `\\n` and admit exactly the byte the rule
+    exists to keep out.
+
+    Working on bytes rather than on decoded text is safe and is not an
+    approximation: UTF-8 is self-synchronising, and `0x0D`/`0x0A` can never
+    appear inside a multi-byte sequence, so this is the same substitution the
+    decoded form would make. `tests/test_screen_presentability.py` asserts that
+    equivalence rather than assuming it.
+    """
+    return payload.replace(_CRLF, _LF)
+
 
 def license_record_for(spec: AssetSpec, records: RecordIndex) -> LicenseRecord:
     return records.by_digest(spec.licenses[0].record_digest)
@@ -64,6 +98,11 @@ def present_asset(
     `supplied` adds one header line naming the directory the bytes will be
     read from, so a user-supplied install (OD-BO) shows the same licence
     screen as every other install and still says where its bytes come from.
+
+    The returned bytes are CRLF-normalised (OD-BT, `crlf_to_lf` above). This is
+    the only place a first-use screen is rendered, so the bytes returned here
+    are exactly the bytes the consumer checks and exactly the bytes it writes:
+    there is no second copy to normalise in one place and check in another.
     """
     licence_ids = ", ".join(row.license_id for row in spec.licenses)
     licensors = ", ".join(
@@ -88,8 +127,10 @@ def present_asset(
             "download: none (every file is verified against the manifest)\n"
         )
     header = header.encode("utf-8")
-    return header + b"\n" + render_screen(
-        record, texts, receipts=receipts, records=records
+    return crlf_to_lf(
+        header
+        + b"\n"
+        + render_screen(record, texts, receipts=receipts, records=records)
     )
 
 
