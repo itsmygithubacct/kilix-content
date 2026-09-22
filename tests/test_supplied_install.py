@@ -545,6 +545,39 @@ class SuppliedInstallTests(unittest.TestCase):
         self.assertEqual(target.read_bytes(), b"original-bytes")
         self.assertEqual(path.read_bytes(), b"attacker-bytes")
 
+    def test_an_install_whose_source_changes_under_the_copy_is_refused(self) -> None:
+        """The post-copy re-read is load-bearing, through the real install.
+
+        Planted where it actually matters: the file is rewritten in place after
+        the staged copy has been taken, so the staged bytes are still the
+        correct ones and the staged-tree verification passes. Only the re-read
+        of the held descriptor can see it, and the install must refuse.
+        """
+        spec, payloads = self.files_asset()
+        supplied = self.supply("mutating", payloads)
+        self.authorize(spec)
+        original = SuppliedFile.copy_to
+
+        def copy_then_rewrite(handle, target):
+            original(handle, target)
+            with open(handle.path, "r+b") as writer:
+                writer.write(b"X" * min(4, handle.bytes))
+
+        try:
+            SuppliedFile.copy_to = copy_then_rewrite
+            with self.assertRaises(InstallError) as raised:
+                self.installer.ensure_supplied_asset(
+                    spec,
+                    supplied=supplied,
+                    store=self.store,
+                    records=self.records,
+                    notices=self.texts,
+                )
+        finally:
+            SuppliedFile.copy_to = original
+        self.assertIn("changed after it was opened", str(raised.exception))
+        self.assertFalse(Path(self.installer.asset_destination(spec)).exists())
+
     def test_a_truncated_file_is_refused(self) -> None:
         path = self.scratch / "truncated.bin"
         path.write_bytes(b"0123456789")
