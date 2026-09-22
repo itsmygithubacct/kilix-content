@@ -18,6 +18,12 @@ pre-1.0.
 
 ### Changed
 
+- Advance the `kilix-amp` and `kilix-tui-utils` selections to the EnCodec
+  playback wave, and select `make all ENCODEC=1` for Amp. Both values were
+  older here than on the line the release currently pins, so advancing the
+  content gitlink would have rolled them backwards -- Amp silently, because no
+  consumer test bound its build arguments. The catalog digest changes; no asset
+  record, licence record or receipt byte does.
 - Advance `kilix-tui-utils` to the desktop wave that derives the Games place
   from the host catalog, remembers recent and pinned Home rows, adds the
   Launchers and Manual places, and gives the Tmux manager row a `kilix`

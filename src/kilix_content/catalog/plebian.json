@@ -6,7 +6,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-tui-utils",
-        "ref": "dc462372aa7417fa9bfccd82b8312d62d1077f82"
+        "ref": "af7e8481588c090fd703be51aa4dddf597b07ef8"
       },
       "build": [
         "make",
@@ -1127,12 +1127,13 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-amp",
-        "ref": "2bcb035dadf30b3d619d4fc00e8f84bca8b554f8"
+        "ref": "e876632e4aef73b2db301ea30bd27f8dfec73781"
       },
       "binary": "kilix-amp",
       "build": [
         "make",
-        "all"
+        "all",
+        "ENCODEC=1"
       ],
       "dependency_hint": "needs SDL2, SDL2_image, libsndfile, zlib, and FluidSynth development files",
       "capabilities": [

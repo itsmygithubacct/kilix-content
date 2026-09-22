@@ -84,8 +84,10 @@ class ContentTests(unittest.TestCase):
         system = catalog.require("kilix-system-center")
         self.assertEqual(files.install_id, "kilix-tui-utils")
         self.assertEqual(system.install_id, "kilix-tui-utils")
+        # The Music playback wave (OD-BN). tests/test_consumer_selection.py
+        # says why this value moved and what a re-pin does if it does not.
         self.assertEqual(
-            files.ref, "dc462372aa7417fa9bfccd82b8312d62d1077f82"
+            files.ref, "af7e8481588c090fd703be51aa4dddf597b07ef8"
         )
         self.assertEqual(files.require_action("open").argv, ("--open",))
         self.assertIn("application/pdf", pdf_conversion.accepts)
@@ -107,13 +109,21 @@ class ContentTests(unittest.TestCase):
             if entry.source_type == "git":
                 self.assertEqual(len(entry.ref), 40)
             if entry.build[:1] == ("make",):
-                expected_target = (
-                    "runtime"
-                    if entry.content_id == "kilix-pdf-conversion"
+                # Every make-built entry is `make <target>` and nothing else,
+                # with exactly one declared exception: Amp carries ENCODEC=1
+                # (OD-BN). Spelling the exception out rather than admitting any
+                # trailing argument keeps this a whitelist -- a flag added to
+                # some other entry still fails here.
+                if entry.content_id == "kilix-amp":
+                    expected_build = ("make", "all", "ENCODEC=1")
+                elif (
+                    entry.content_id == "kilix-pdf-conversion"
                     or entry.install_id == "kilix-tui-utils"
-                    else "all"
-                )
-                self.assertEqual(entry.build, ("make", expected_target))
+                ):
+                    expected_build = ("make", "runtime")
+                else:
+                    expected_build = ("make", "all")
+                self.assertEqual(entry.build, expected_build)
         with self.assertRaises(TypeError):
             catalog._by_id["replacement"] = catalog.require("kilix-jpak")
 

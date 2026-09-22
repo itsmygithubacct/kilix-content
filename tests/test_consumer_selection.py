@@ -1,0 +1,111 @@
+"""The two component selections a gitlink re-pin would otherwise roll back.
+
+This repository's shared catalog is the single place that says which commit of
+`kilix-amp` and `kilix-tui-utils` a release builds, and with which build
+arguments. kilix reads those values out of the catalog it has pinned as a
+submodule, so advancing that gitlink replaces kilix's answers wholesale.
+
+Two of those answers were older on this line than on the one the release
+currently pins, because this line branched at `07431765` and the bumps landed
+afterwards, at `c275334f`, on the F100 authority line that OD-BM discarded:
+
+* `kilix-tui-utils` `dc462372` -> `af7e8481` -- the Music playback wave.
+* `kilix-amp` `2bcb035d` -> `e876632e` with `make all ENCODEC=1` -- EnCodec
+  playback and the installed-content admission it needs.
+
+The `kilix-tui-utils` half was at least loud: kilix's own
+`test_component_pin_delivery.CatalogPinTests.test_tui_utils_pin_matches_the_shared_catalog`
+compares `scripts/install-kilix-tui-utils.sh`'s pinned default against this
+catalog and fails on a mismatch. **The `kilix-amp` half was silent.** Nothing in
+kilix binds the Amp selection to a value it did not itself read out of this
+catalog -- `test_consumer_selection.ConsumerSelectionTests` there asserts that
+`install-kilix-amp.py --resolve` relays `amp.ref` and `amp.build`, which is true
+whatever they are -- so dropping `ENCODEC=1` would have come off in a green
+suite, reversing OD-BN (0.2.2 **does** ship EnCodec playback in Amp and Music)
+without anyone seeing it.
+
+So the values are typed here, as literals, in the repository that owns them.
+A test that recomputed them from the catalog would restate the catalog rather
+than bind it, which is the shape that let the flag disappear in the first place.
+"""
+
+import json
+from pathlib import Path
+import unittest
+
+from kilix_content import verified_packaged_catalog
+
+ROOT = Path(__file__).resolve().parents[1]
+CATALOG = ROOT / "src" / "kilix_content" / "catalog" / "plebian.json"
+
+# The selections a re-pin must deliver, typed rather than derived.
+TUI_UTILS_REF = "af7e8481588c090fd703be51aa4dddf597b07ef8"
+AMP_REF = "e876632e4aef73b2db301ea30bd27f8dfec73781"
+AMP_BUILD = ("make", "all", "ENCODEC=1")
+
+
+class ConsumerSelectionTests(unittest.TestCase):
+    """Read through the verified entry point: unpinned bytes are never asserted on."""
+
+    def test_amp_selects_the_encodec_playback_source_and_build(self) -> None:
+        amp = verified_packaged_catalog().require("kilix-amp")
+        self.assertEqual(amp.ref, AMP_REF)
+        self.assertEqual(amp.build, AMP_BUILD)
+        self.assertEqual(amp.binary, "kilix-amp")
+
+    def test_amp_build_carries_the_encodec_flag(self) -> None:
+        """OD-BN, stated on its own so a build-list edit cannot pass quietly.
+
+        The previous test would also fail if the build list were reordered or
+        re-spelled; this one fails only on the thing OD-BN decided, and says so
+        in its name, so the failure message names the decision that was reversed.
+        """
+        amp = verified_packaged_catalog().require("kilix-amp")
+        self.assertIn(
+            "ENCODEC=1",
+            amp.build,
+            "OD-BN: 0.2.2 ships EnCodec playback in Amp and Music; the Amp "
+            "build must carry ENCODEC=1",
+        )
+
+    def test_tui_utils_package_selects_the_music_playback_wave(self) -> None:
+        catalog = verified_packaged_catalog()
+        package = catalog.require_package("kilix-tui-utils")
+        self.assertEqual(package.ref, TUI_UTILS_REF)
+        self.assertEqual(package.build, ("make", "runtime"))
+
+    def test_every_entry_the_tui_package_supplies_reports_the_selected_ref(self) -> None:
+        """kilix asks `--print-ref` and compares it with a content entry's ref.
+
+        kilix's `test_consumer_selection.test_tui_print_ref_equals_catalog_package_selection`
+        reads `kilix-file`, not the package, so the inherited value is the one
+        that has to be right. Every entry the package supplies is checked, not
+        just the one kilix happens to read today.
+        """
+        catalog = verified_packaged_catalog()
+        supplied = catalog.provided_by("kilix-tui-utils")
+        self.assertGreater(len(supplied), 1)
+        for entry in supplied:
+            with self.subTest(content_id=entry.content_id):
+                self.assertEqual(entry.ref, TUI_UTILS_REF)
+
+    def test_the_selections_are_the_catalog_file_s_own_bytes(self) -> None:
+        """The parsed answers above are what the shipped JSON actually says.
+
+        `verified_packaged_catalog()` already refuses bytes that do not match
+        `_CATALOG_SHA256`; this reads the file a second way, without the model
+        layer, so a parsing bug could not satisfy every assertion above while
+        the shipped file said something else.
+        """
+        raw = json.loads(CATALOG.read_text(encoding="utf-8"))
+        package = next(
+            entry for entry in raw["packages"] if entry["id"] == "kilix-tui-utils"
+        )
+        amp = next(entry for entry in raw["content"] if entry["id"] == "kilix-amp")
+        self.assertEqual(package["source"]["ref"], TUI_UTILS_REF)
+        self.assertEqual(amp["source"]["ref"], AMP_REF)
+        self.assertEqual(tuple(amp["build"]), AMP_BUILD)
+
+
+if __name__ == "__main__":
+    unittest.main()
