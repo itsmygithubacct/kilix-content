@@ -8,9 +8,15 @@ record becomes a first-use download from the upstream pin (OD-U)".
 
 The catalogue-wide guard below is the acceptance line "no record names a
 Kilix-hosted URL, and no mode user-supplied or mirrored remains for EnCodec".
-It is written over the whole catalog, not over this wave's two records, so a
-later merge of the 0.2.1 EnCodec lineage (which carried both defects) cannot
-re-introduce either one silently.
+It is written over the whole catalog, not over this wave's two records.
+
+Its worth is narrower than "the net that catches a bad merge" (C4-VERIFY F3):
+`model.py` refuses each of those shapes at parse time, so on a real merge of
+the 0.2.1 EnCodec lineage the parser fails first and the guard never sees the
+catalog. What the guard adds is that it reads the raw JSON — so it survives a
+future *relaxation* of the parser, and it sees keys the parser stops looking
+at — and that a parse failure now makes it fail by naming the defect instead
+of erroring out of `setUpClass`.
 
 The two defects it pins are the concrete ones R0-INV found:
 
@@ -130,12 +136,48 @@ def tracked_files_holding(*patterns: str) -> tuple[list[str], int]:
 
 
 class CatalogWideEncodecGuardTests(unittest.TestCase):
-    """The R4-068 acceptance guard, over every record in the catalog."""
+    """The R4-068 acceptance guard, over every record in the catalog.
+
+    **What this guard is worth, stated narrowly (C4-VERIFY F3).** It is not
+    "the net that catches a bad merge". `model.py` refuses every shape a
+    verifier could plant — a Kilix-hosted URL, an `official_url` or `mirrors`
+    source key, `launch.mode: mirrored`, a licence row with no `record_digest`
+    — at parse time, and a real bad merge therefore fails in the parser, not
+    here. Its genuine value is narrower and worth stating so R4-180 does not
+    over-rely on it: the guards below read the **raw JSON**, so they still act
+    if the parser is ever relaxed, and they cover keys the parser never looks
+    at once a record stops carrying them.
+
+    Because the parser fires first, it must not be able to take this class
+    down with it. `setUpClass` used to call `default_catalog()` directly, so an
+    unparseable catalog **errored out of setUpClass** and the guard's
+    diagnostic on a real bad merge was a traceback rather than "record X
+    carries mode mirrored". The parse is attempted, its failure is held, the
+    raw-JSON guards run regardless, and the two guards that genuinely need the
+    parsed catalog fail with the parser's own message — which names the
+    offending record.
+    """
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.catalog = default_catalog()
         cls.raw = json.loads(CATALOG_JSON.read_text(encoding="utf-8"))
+        try:
+            cls.catalog = default_catalog()
+        except Exception as error:  # CatalogError, and anything else
+            cls.catalog = None
+            cls.catalog_error = error
+        else:
+            cls.catalog_error = None
+
+    def parsed_catalog(self):
+        """The parsed catalog, or a failure naming why it could not be read."""
+        if self.catalog_error is None:
+            return self.catalog
+        self.fail(
+            "the packaged catalog does not parse, so the parsed-spec guards "
+            "cannot run; the raw-JSON guards in this class still did. "
+            f"{type(self.catalog_error).__name__}: {self.catalog_error}"
+        )
 
     def records(self) -> list[tuple[str, str, dict]]:
         rows: list[tuple[str, str, dict]] = []
@@ -169,7 +211,7 @@ class CatalogWideEncodecGuardTests(unittest.TestCase):
     def test_no_parsed_asset_url_is_kilix_hosted(self) -> None:
         """The same guard through the parsed specs, for every source mode."""
         seen = 0
-        for spec in self.catalog.assets:
+        for spec in self.parsed_catalog().assets:
             for url in (spec.url, spec.convert_url, spec.manifest_url):
                 if url:
                     seen += 1
@@ -200,7 +242,7 @@ class CatalogWideEncodecGuardTests(unittest.TestCase):
 
     def test_every_encodec_asset_record_is_an_upstream_convert_download(self) -> None:
         """Whatever EnCodec records the catalog holds, they are first-use downloads."""
-        for spec in self.catalog.assets:
+        for spec in self.parsed_catalog().assets:
             if "encodec" not in spec.asset_id:
                 continue
             with self.subTest(asset=spec.asset_id):
@@ -246,6 +288,97 @@ class CatalogWideGuardPlantedDefectTests(unittest.TestCase):
             if _is_kilix_hosted(url)
         ]
         self.assertEqual(offenders, [self.MIRROR_URL])
+
+    BAD_MERGE_ID = "encodec-48khz-frame-from-a-bad-merge"
+
+    def bad_merge(self) -> dict:
+        """The real 48 kHz record, carrying the 0.2.1 mode and mirror again.
+
+        Copied from the live record rather than written out, so the planted
+        record is well-formed everywhere except the defect: a hand-written
+        stub fails on a missing field first and proves nothing about the
+        defect's diagnostic.
+        """
+        record = json.loads(
+            json.dumps(
+                next(
+                    item
+                    for item in self.raw["assets"]
+                    if item["id"] == "encodec-48khz-frame"
+                )
+            )
+        )
+        record["id"] = self.BAD_MERGE_ID
+        record["source"] = {
+            "mode": "mirrored",
+            "mirrors": [self.MIRROR_URL],
+            "provenance": record["source"]["provenance"],
+        }
+        return record
+
+    def test_an_unparseable_merge_is_named_not_tracebacked(self) -> None:
+        """C4-VERIFY F3: the diagnostic on a real bad merge names the record.
+
+        A merged 0.2.1 record fails in `model.py`, not in the guards. What the
+        guard class owes is that the failure a reader sees identifies the
+        record instead of being a traceback out of `setUpClass`.
+        """
+        from kilix_content.model import Catalog
+
+        planted = self.planted(self.bad_merge())
+        with self.assertRaises(CatalogError) as raised:
+            Catalog.loads(json.dumps(planted), label="planted catalog")
+        message = str(raised.exception)
+        self.assertIn(self.BAD_MERGE_ID, message)
+        # And that message is what the guard class reports: parsed_catalog()
+        # carries it into the failure text rather than letting setUpClass die.
+        guard = CatalogWideEncodecGuardTests(
+            "test_the_catalog_sections_are_all_scanned"
+        )
+        guard.catalog = None
+        guard.catalog_error = raised.exception
+        with self.assertRaises(guard.failureException) as failed:
+            guard.parsed_catalog()
+        self.assertIn(self.BAD_MERGE_ID, str(failed.exception))
+        self.assertIn(
+            "raw-JSON guards in this class still did", str(failed.exception)
+        )
+
+    def test_the_raw_guards_still_act_when_the_parser_refuses(self) -> None:
+        """The narrow claim, made concrete: the raw scan needs no parser.
+
+        The same three raw guards the class runs, over the same planted
+        catalog the parser above refuses, scoped exactly as the class scopes
+        them: the host guard over asset records (content and package records
+        legitimately name Kilix's own repositories), the mode and source-key
+        guards over every section.
+        """
+        planted = self.planted(self.bad_merge())
+        rows = [
+            (section, record.get("id", "<no id>"), record)
+            for section in ("assets", "content", "packages")
+            for record in planted.get(section, [])
+        ]
+        self.assertGreater(len(rows), 60, "the scan must see the whole catalog")
+        by_mode = {
+            record_id
+            for _s, record_id, record in rows
+            if set(modes_in(record)) & set(REFUSED_MODES)
+        }
+        by_key = {
+            record_id
+            for _s, record_id, record in rows
+            if set(source_keys_in(record)) & set(REFUSED_SOURCE_KEYS)
+        }
+        by_host = {
+            record_id
+            for section, record_id, record in rows
+            if section == "assets"
+            and any(_is_kilix_hosted(url) for url in urls_in(record))
+        }
+        self.assertEqual(by_mode, {self.BAD_MERGE_ID})
+        self.assertEqual(by_key, {self.BAD_MERGE_ID})
+        self.assertEqual(by_host, {self.BAD_MERGE_ID})
 
     def test_the_mirror_url_is_kilix_hosted_on_its_own(self) -> None:
         """Control: the helper's verdict, independent of the scan."""
@@ -1172,6 +1305,151 @@ class ConverterToolRecordTests(unittest.TestCase):
                 # No literal digest may stand in for the record's own.
                 for argument in argv:
                     self.assertNotRegex(argument, r"^[0-9a-f]{64}$")
+
+
+def _pin_generator():
+    """tools/generate_encodec_pins.py, loaded by path (tools/ is not a package)."""
+    import importlib.util
+
+    path = ROOT / "tools" / "generate_encodec_pins.py"
+    spec = importlib.util.spec_from_file_location("generate_encodec_pins", path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module
+
+
+class EncodecPinGeneratorTests(unittest.TestCase):
+    """The committed pin generator (C4-VERIFY F6), with planted controls.
+
+    C4-IMPL generated `tools/upstream-pins/encodec-*.json` with a script it did
+    not commit, so the pins were not re-derivable here. The script is now in
+    the tree. It reads the other repository with `git show` only, so it needs
+    that repository to run end to end; what the suite can do offline is exercise
+    its guards on planted upstream data, and each guard is planted with the
+    exact shape it claims to refuse. A generator whose refusals are never
+    exercised is a generator with no refusals.
+    """
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.generator = _pin_generator()
+
+    def upstream(self) -> tuple[dict, dict]:
+        """The two upstream sources, rebuilt from the committed pins.
+
+        Built from this repository's own pins so the fixture needs no other
+        repository; the controls below then diverge one field at a time.
+        """
+        profiles: dict[str, dict] = {}
+        native: dict[str, tuple[str, int, dict]] = {}
+        for name, authored in self.generator.PROFILES.items():
+            pin = json.loads(
+                (ROOT / "tools" / "upstream-pins" / f"{authored['id']}.json")
+                .read_text(encoding="utf-8")
+            )
+            inputs = {
+                Path(pin["input"].get("path", pin["provenance"]["original_url"])).name: {
+                    "bytes": pin["input"]["bytes"],
+                    "sha256": pin["input"]["sha256"],
+                    "url": pin["input"]["url"],
+                }
+            }
+            for item in pin.get("inputs", []):
+                inputs[item["path"]] = {
+                    "bytes": item["bytes"],
+                    "sha256": item["sha256"],
+                    "url": item["url"],
+                }
+            outputs = {
+                item["path"]: {"bytes": item["bytes"], "sha256": item["sha256"]}
+                for item in pin["outputs"]
+            }
+            profile = {
+                "command": authored["tool_asset_id"],
+                "inputs": inputs,
+                "outputs": outputs,
+            }
+            if name == "48khz":
+                profile["revision"] = pin["provenance"]["revision"]
+            profiles[name] = profile
+            native[authored["id"]] = (
+                pin["version"],
+                sum(item["bytes"] for item in outputs.values()) + 1,
+                # A deep copy, so a control that diverges one source really
+                # does diverge it: sharing the dicts makes every "disagree"
+                # control agree with itself and pass for the wrong reason.
+                json.loads(json.dumps(outputs)),
+            )
+        return profiles, native
+
+    def build(self, profiles: dict, native: dict, name: str = "24khz") -> dict:
+        return self.generator.build_pin(
+            name, profiles[name], native[self.generator.PROFILES[name]["id"]]
+        )
+
+    def test_the_fixture_reproduces_the_committed_pins(self) -> None:
+        """Control: with nothing planted, the generator rebuilds both pins."""
+        profiles, native = self.upstream()
+        for name, authored in self.generator.PROFILES.items():
+            with self.subTest(profile=name):
+                rendered = self.generator.render(self.build(profiles, native, name))
+                committed = (
+                    ROOT / "tools" / "upstream-pins" / f"{authored['id']}.json"
+                ).read_text(encoding="utf-8")
+                self.assertEqual(rendered, committed)
+
+    def test_a_superseded_population_is_refused(self) -> None:
+        """The refusal is positive: the manifest must be the accepted one."""
+        profiles, native = self.upstream()
+        # Neither superseded digest is written here; any other digest is
+        # refused, which is the property, and a stronger one.
+        profiles["24khz"]["outputs"]["manifest.json"]["sha256"] = "a" * 64
+        native["encodec-24khz-stateful"][2]["manifest.json"]["sha256"] = "a" * 64
+        with self.assertRaises(self.generator.PinError) as raised:
+            self.build(profiles, native)
+        self.assertIn("not the accepted population", str(raised.exception))
+
+    def test_the_two_upstream_sources_must_agree(self) -> None:
+        profiles, native = self.upstream()
+        profiles["24khz"]["outputs"]["encoder_stateful_op17.onnx"]["bytes"] += 1
+        with self.assertRaises(self.generator.PinError) as raised:
+            self.build(profiles, native)
+        message = str(raised.exception)
+        self.assertIn("disagree about", message)
+        self.assertIn("encoder_stateful_op17.onnx", message)
+
+    def test_a_version_that_does_not_name_its_population_is_refused(self) -> None:
+        profiles, native = self.upstream()
+        version, budget, population = native["encodec-24khz-stateful"]
+        native["encodec-24khz-stateful"] = (version + "x", budget, population)
+        with self.assertRaises(self.generator.PinError) as raised:
+            self.build(profiles, native)
+        self.assertIn("first eight hex characters", str(raised.exception))
+
+    def test_a_population_over_the_native_budget_is_refused(self) -> None:
+        profiles, native = self.upstream()
+        version, _budget, population = native["encodec-24khz-stateful"]
+        native["encodec-24khz-stateful"] = (version, 1, population)
+        with self.assertRaises(self.generator.PinError) as raised:
+            self.build(profiles, native)
+        self.assertIn("over the native", str(raised.exception))
+
+    def test_an_unpinned_digest_in_the_rendered_pin_is_refused(self) -> None:
+        profiles, native = self.upstream()
+        pin = self.build(profiles, native)
+        pin["label"] = pin["label"] + " " + "b" * 64
+        with self.assertRaises(self.generator.PinError) as raised:
+            self.generator.check_no_stand_in(pin, self.generator.render(pin))
+        self.assertIn("unpinned 64-hex", str(raised.exception))
+
+    def test_the_generator_holds_no_superseded_digest(self) -> None:
+        """It must not: the tree-wide scan would find it (F1's pathspec)."""
+        text = (ROOT / "tools" / "generate_encodec_pins.py").read_text(
+            encoding="utf-8"
+        )
+        for digest in SUPERSEDED_MANIFESTS:
+            self.assertNotIn(digest, text)
 
 
 if __name__ == "__main__":
