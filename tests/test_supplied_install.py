@@ -13,6 +13,16 @@ tests below hold it to that. The air-gapped claim is measured, not asserted:
 the network audit hook records *every* socket event it sees, allowed or
 refused, and a supplied install must produce **zero** lines in it -- with a
 control in the same process that does produce one.
+
+**What that zero is worth (F1).** The hook sees seven CPython socket audit
+events in this interpreter. `ctypes`/FFI, child processes, `bash`'s `/dev/tcp`
+and AF_UNIX escape it, and `tests/test_network_guard_coverage.py` measures
+three of them reaching a real listener while the log stays empty. So a zero
+here means "the supplied install raised none of those seven events", which is
+the right measurement for this path -- it is Python, it calls no converter and
+spawns no child -- and it is not, by itself, proof that no socket was used.
+What excludes the rest is the namespace the suite runs in: `unshare -cn`, and
+for the standalone evidence run `lo` DOWN with no routes.
 """
 
 from __future__ import annotations
@@ -222,11 +232,18 @@ class SuppliedInstallTests(unittest.TestCase):
         return [line for line in after[len(before):].splitlines() if line]
 
     def test_a_supplied_install_makes_no_network_request_at_all(self) -> None:
-        """Zero socket events, not merely zero fetches -- with a live control.
+        """Zero hooked socket events, not merely zero fetches -- with a control.
 
-        The audit hook logs allowed loopback events as well as refused ones,
-        so an empty log is the absence of every name lookup, connection and
-        datagram this process could have made, not the absence of one kind.
+        The audit hook logs allowed loopback events as well as refused ones, so
+        an empty log is the absence of every name lookup, connect and datagram
+        **that reaches those seven CPython audit events** -- not the absence of
+        every socket operation a process could perform. Named limits, measured
+        in `tests/test_network_guard_coverage.py`: `ctypes`/FFI, child
+        processes, `bash` `/dev/tcp` and AF_UNIX raise none of them. This path
+        uses none of those -- no `ctypes`, no `subprocess`, no AF_UNIX -- which
+        is why the measurement is the right one for it, and the namespace is
+        what excludes the rest.
+
         The control below runs through the same hook, in the same process,
         under the same log, and does produce a line: so the emptiness above is
         evidence about the install, not about a hook that was not listening.
@@ -419,6 +436,127 @@ class SuppliedInstallTests(unittest.TestCase):
         self.assertEqual(installed.read_bytes(), self.notice)
         self.assertNotEqual(installed.read_bytes(), b"not the licence")
 
+    # ---- the three receipt checks, one test each (F3) ----------------------
+
+    def revoke(self) -> None:
+        """Remove every receipt, as a revocation or a cleared store would.
+
+        `ReceiptStore.lookup` reads the store from disk on every call and
+        caches nothing, so this is a real mid-install revocation and not a
+        simulated one.
+        """
+        for path in self.store.root.glob("*.json"):
+            path.unlink()
+        self.assertEqual(list(self.store.root.glob("*.json")), [])
+
+    def test_the_receipt_is_required_before_anything_is_staged(self) -> None:
+        """Check 1 of 3, bound: refused before the lock is even taken.
+
+        "A covering receipt is required three times" was prose no test held:
+        each of the three calls could be deleted on its own with the whole
+        suite green, because the other two still refused
+        (C-V3-EXTEND-VERIFY F3, and the first call too -- the verifier tried
+        only the last two). These three tests distinguish *which* check
+        refused, by what had already happened when it did.
+        """
+        spec, payloads = self.files_asset()
+        supplied = self.supply("check-one", payloads)
+        parents: list[str] = []
+        original = Installer._ensure_asset_parent
+
+        def watched(installer, asset):
+            parents.append(asset.asset_id)
+            return original(installer, asset)
+
+        try:
+            Installer._ensure_asset_parent = watched
+            with self.assertRaises(CoverageRefused):
+                self.installer.ensure_supplied_asset(
+                    spec,
+                    supplied=supplied,
+                    store=self.store,
+                    records=self.records,
+                    notices=self.texts,
+                )
+        finally:
+            Installer._ensure_asset_parent = original
+        # Nothing was prepared: the refusal is the first check, not the second.
+        self.assertEqual(parents, [])
+        self.assertFalse(Path(self.installer.asset_destination(spec)).exists())
+
+    def test_the_receipt_is_required_again_under_the_lock(self) -> None:
+        """Check 2 of 3, bound: revoked after check 1, nothing is staged.
+
+        This is the case the repeat exists for -- a receipt removed while an
+        install is in flight -- and it is where the second check is the only
+        one that can see it: the first has already passed, and the third runs
+        after the bytes have been read.
+        """
+        spec, payloads = self.files_asset()
+        supplied = self.supply("check-two", payloads)
+        self.authorize(spec)
+        staged: list[str] = []
+        parent = Installer._ensure_asset_parent
+        populate = Installer._populate_supplied_asset
+
+        def revoke_between_the_first_and_second_check(installer, asset):
+            result = parent(installer, asset)
+            self.revoke()
+            return result
+
+        def watched(installer, *args, **kwargs):
+            staged.append(args[0].asset_id)
+            return populate(installer, *args, **kwargs)
+
+        try:
+            Installer._ensure_asset_parent = revoke_between_the_first_and_second_check
+            Installer._populate_supplied_asset = watched
+            with self.assertRaises(CoverageRefused):
+                self.installer.ensure_supplied_asset(
+                    spec,
+                    supplied=supplied,
+                    store=self.store,
+                    records=self.records,
+                    notices=self.texts,
+                )
+        finally:
+            Installer._ensure_asset_parent = parent
+            Installer._populate_supplied_asset = populate
+        # Not one supplied byte was read: the refusal is under the lock.
+        self.assertEqual(staged, [])
+        self.assertFalse(Path(self.installer.asset_destination(spec)).exists())
+
+    def test_the_receipt_is_required_again_after_the_tree_is_verified(self) -> None:
+        """Check 3 of 3, bound: revoked during staging, nothing is selected.
+
+        The staged tree is complete and matches the manifest; only the third
+        check stands between it and the installed path. Without it the asset
+        is published under a receipt that no longer exists.
+        """
+        spec, payloads = self.files_asset()
+        supplied = self.supply("check-three", payloads)
+        self.authorize(spec)
+        populate = Installer._populate_supplied_asset
+
+        def revoke_after_staging(installer, *args, **kwargs):
+            output = populate(installer, *args, **kwargs)
+            self.revoke()
+            return output
+
+        try:
+            Installer._populate_supplied_asset = revoke_after_staging
+            with self.assertRaises(CoverageRefused):
+                self.installer.ensure_supplied_asset(
+                    spec,
+                    supplied=supplied,
+                    store=self.store,
+                    records=self.records,
+                    notices=self.texts,
+                )
+        finally:
+            Installer._populate_supplied_asset = populate
+        self.assertFalse(Path(self.installer.asset_destination(spec)).exists())
+
     # ---- the manifest check -----------------------------------------------
 
     def test_one_wrong_byte_is_refused_and_nothing_is_installed(self) -> None:
@@ -482,6 +620,108 @@ class SuppliedInstallTests(unittest.TestCase):
         self.assertEqual(
             sorted(str(path.relative_to(root)) for path in root.rglob("*") if path.is_file()),
             sorted(item.path for item in spec.files),
+        )
+
+    def test_a_staged_tree_that_does_not_match_the_manifest_reaches_nothing(self) -> None:
+        """F4: the staged-tree check, bound on the supplied path at last.
+
+        `_verify_asset_directory`'s refusal made a no-op survives every other
+        test in this module; it was killed only by a pre-existing download
+        test, while this module's report listed it as discipline the supplied
+        install *gets*. So the defect is planted where it decides the outcome:
+        the staged copy is corrupted **after** it is written, so the supplied
+        file's own descriptor still revalidates and the per-file check still
+        passes. Only the staged-tree check can see it, and nothing may reach
+        the installed path.
+        """
+        spec, payloads = self.files_asset()
+        supplied = self.supply("staged-corrupt", payloads)
+        self.authorize(spec)
+        original = SuppliedFile.copy_to
+
+        def copy_then_corrupt_the_stage(handle, target):
+            original(handle, target)
+            if target.endswith("model.bin"):
+                # The stage, not the source: same size, different bytes.
+                with open(target, "r+b") as writer:
+                    writer.write(b"X" * min(8, handle.bytes))
+
+        try:
+            SuppliedFile.copy_to = copy_then_corrupt_the_stage
+            with self.assertRaises(InstallError) as raised:
+                self.installer.ensure_supplied_asset(
+                    spec,
+                    supplied=supplied,
+                    store=self.store,
+                    records=self.records,
+                    notices=self.texts,
+                )
+        finally:
+            SuppliedFile.copy_to = original
+        self.assertIn(
+            "staged asset tree does not match its manifest", str(raised.exception)
+        )
+        destination = Path(self.installer.asset_destination(spec))
+        self.assertFalse(destination.exists())
+        self.assertFalse(destination.is_symlink())
+
+    def test_a_refusal_after_publication_leaves_nothing_installed(self) -> None:
+        """F4, the other half: the last refusal must withdraw what it refuses.
+
+        With the staged-tree check a no-op the corrupt tree was published at
+        the installed path and only the final verification refused -- after
+        the bytes had moved, and leaving them there. That is the shape
+        C-MIGRATE-KILIX-VERIFY V3 recorded for kilix, reproduced here on the
+        supplied path.
+
+        The no-op is planted deliberately below, on the *staged* tree only, so
+        the final verification stays real. The property being held is not "the
+        first guard catches it" -- it is "a refusal leaves nothing behind",
+        which must be true however the install got there.
+        """
+        spec, payloads = self.files_asset()
+        supplied = self.supply("published-then-refused", payloads)
+        self.authorize(spec)
+        destination = Path(self.installer.asset_destination(spec))
+        copy = SuppliedFile.copy_to
+        verify = Installer._verify_asset_directory
+
+        def copy_then_corrupt_the_stage(handle, target):
+            copy(handle, target)
+            if target.endswith("model.bin"):
+                with open(target, "r+b") as writer:
+                    writer.write(b"X" * min(8, handle.bytes))
+
+        def accept_any_staged_tree(installer, asset, directory):
+            if Path(directory) == destination:
+                return verify(installer, asset, directory)   # the final check is real
+            return directory                                 # the staged check is a no-op
+
+        try:
+            SuppliedFile.copy_to = copy_then_corrupt_the_stage
+            Installer._verify_asset_directory = accept_any_staged_tree
+            with self.assertRaises(InstallError) as raised:
+                self.installer.ensure_supplied_asset(
+                    spec,
+                    supplied=supplied,
+                    store=self.store,
+                    records=self.records,
+                    notices=self.texts,
+                )
+        finally:
+            SuppliedFile.copy_to = copy
+            Installer._verify_asset_directory = verify
+        # It really did get past the staged-tree check and reach publication:
+        # this is the *final* refusal, not the earlier one.
+        self.assertIn(
+            "installed asset failed final verification", str(raised.exception)
+        )
+        self.assertFalse(destination.exists())
+        self.assertFalse(destination.is_symlink())
+        self.assertEqual(
+            [path.name for path in destination.parent.iterdir()
+             if not path.name.startswith(".")],
+            [],
         )
 
     def test_a_symlinked_supplied_file_is_refused(self) -> None:
