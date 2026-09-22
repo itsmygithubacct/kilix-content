@@ -7,6 +7,16 @@ pre-1.0.
 
 ### Added
 
+- Render every packaged first-use screen through the consumer's terminal
+  guard, so a licence text that a `kilix models install` would refuse to
+  print fails here instead of at a user's terminal. One does today:
+  `bonsai-8b`'s screen carries three CR characters, inside a byte-exact
+  upstream `NOTICE.txt` quotation that the pinned licence authority keeps
+  CRLF on purpose, so `kilix models install bonsai-8b` refuses before the
+  prompt and the asset cannot be installed. The authority's vendored bytes
+  are hash-chained to its pinned commit and cannot be corrected from here;
+  the exception is declared, pinned to the exact text blob, and asserted by
+  set equality so it has to be removed when the authority is re-vendored.
 - Catalog Kilix Land, the cross-game conversation room and training range,
   at an immutable commit with the shared `make all` game build.
 - Catalog the Tmux Sessions manager as a system entry dispatched through
