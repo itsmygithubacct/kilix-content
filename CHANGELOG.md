@@ -15,6 +15,20 @@ pre-1.0.
   `_CATALOG_SHA256` and the weights digest list gained the new asset. The
   vendored kilix-license moves to `24bc70fd` (129 files to 133), by
   `tools/vendored_kilix_license.py --repin` under its old-value guard.
+- Catalog `needle2-runtime` and `needle2-train` for kilix-needle, both
+  `upstream-files` at revision `32e9e3a9`. `needle2-runtime` is the
+  manylinux x86_64 wheel byte-exact (13,283,977 bytes), because Hugging Face
+  publishes `libneedle.so` (the library that can load a fine-tuned model) only
+  inside it, and archive mode needs a single top-level root that a wheel does
+  not have; a consumer reads `needle/libneedle.so` out of the verified wheel
+  bytes. `needle2-train` is the base checkpoint `checkpoints/needle2.pkl` (a
+  pickle: verify it against this manifest before loading it) and the two
+  tokenizer files. Each has its own application licence record with
+  `needle2`'s licence text and licensor. `_CATALOG_SHA256` moves
+  `2a788ee4` -> `a5aafcd6` for the two assets only; the other 28 assets are
+  byte-identical; the weights digest list gains the four new files (190 ->
+  194). The vendored kilix-license moves `24bc70fd` -> `50bdf72a` (133 files
+  to 135) by `--repin` under its old-value guard.
 - Catalog Kilix Land, the cross-game conversation room and training range,
   at an immutable commit with the shared `make all` game build.
 - Catalog the Tmux Sessions manager as a system entry dispatched through

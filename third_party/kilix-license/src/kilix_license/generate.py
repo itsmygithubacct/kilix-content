@@ -99,6 +99,11 @@ APP_RECORD_IDS = (
     # Owner direction 2026-09-22 (licence-evidence-needle2-2026-09-22): the
     # kilix-needle engine. Not a release model.
     "needle2",
+    # Owner direction 2026-09-22 (OWNER-DIRECTION-R2.md in the same packet): the
+    # runtime library that loads a fine-tuned model, and the base checkpoint and
+    # tokenizer the fine-tuning starts from. Not release models.
+    "needle2-runtime",
+    "needle2-train",
 )
 # SR-4 (C2E-VERIFY F2): the identity of each agreement-required binding text,
 # keyed by the determinations quote_id. The value names the document the text
@@ -137,8 +142,11 @@ BINDING_TEXT_IDS = {
 # Licence text identities of application records. The same rules hold across
 # both tables: one text, one identity (check_app_licence_text_ids).
 APP_LICENCE_TEXT_IDS = {
-    # Cactus-Compute/needle2 LICENSE is byte-identical to the cfc7749b text.
+    # Cactus-Compute/needle2 LICENSE is byte-identical to the cfc7749b text; the
+    # runtime and training assets show that same text, so they share its identity.
     "needle2": "debian/common-licenses/Apache-2.0",
+    "needle2-runtime": "debian/common-licenses/Apache-2.0",
+    "needle2-train": "debian/common-licenses/Apache-2.0",
 }
 LICENCE_TEXT_IDS = {
     # "Apache-2.0 text (Debian common-licenses copy, cfc7749b)": the Vosk models,

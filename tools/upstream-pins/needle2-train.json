@@ -1,0 +1,34 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "needle2-train",
+  "mode": "upstream-files",
+  "license_record_id": "needle2-train",
+  "provider": "kilix-needle",
+  "consumer_schema": "kilix.needle.train",
+  "version": "32e9e3a93b205f786929697446ae669cf0a84579",
+  "provenance": {
+    "project": "Cactus-Compute/needle2",
+    "revision": "32e9e3a93b205f786929697446ae669cf0a84579",
+    "original_url": "https://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/checkpoints/needle2.pkl"
+  },
+  "members": [
+    {
+      "path": "checkpoints/needle2.pkl",
+      "url": "https://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/checkpoints/needle2.pkl",
+      "bytes": 90426504,
+      "sha256": "4b0a972d163ffc7678fb3c36bace508114872e9d2ce9e10f225825752d3795bc"
+    },
+    {
+      "path": "tokenizer/tokenizer.model",
+      "url": "https://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/tokenizer/tokenizer.model",
+      "bytes": 132396,
+      "sha256": "0871b8e3df78e0dd7ccc236e187fc055f75cd57ebe3bec76ca8103030b8fe659"
+    },
+    {
+      "path": "tokenizer/tokenizer.vocab",
+      "url": "https://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/tokenizer/tokenizer.vocab",
+      "bytes": 113001,
+      "sha256": "ed835aff5b2a3ca67b5896906dd471ab0ce12626d699d90e736e3c7e4ba9b1e3"
+    }
+  ]
+}

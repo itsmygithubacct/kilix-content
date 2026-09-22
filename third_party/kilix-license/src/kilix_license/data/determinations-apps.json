@@ -294,6 +294,628 @@
    ],
    "drift": [],
    "notice_file": null
+  },
+  {
+   "entry_id": "needle2-runtime",
+   "title": "Cactus Compute Needle 2, libneedle.so (model built in) as the manylinux x86_64 wheel",
+   "status": "DETERMINED",
+   "fetched_by": "kilix-needle (kilix-needle install / tune)",
+   "upstream": {
+    "mode": "upstream-files",
+    "project": "Cactus-Compute/needle2",
+    "revision": "32e9e3a93b205f786929697446ae669cf0a84579",
+    "url_base": "https://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579",
+    "files": [
+     {
+      "path": "python/cactus_needle-2.0.4-py3-none-manylinux2014_x86_64.whl",
+      "bytes": 13283977,
+      "sha256": "13a84e6c73095fd175b11d46a30a984b62123d94421b769c107074aff7f65c2b",
+      "installed_as": "cactus_needle-2.0.4-py3-none-manylinux2014_x86_64.whl"
+     }
+    ],
+    "pins": [
+     {
+      "label": "revision",
+      "value": "32e9e3a93b205f786929697446ae669cf0a84579",
+      "cited": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log-r2.tsv",
+       "sha256": "d66d8b291cde6cdb2ee2462ab286955ed082ac1573ceb617185635f97600224c",
+       "line": 2
+      }
+     },
+     {
+      "label": "python/cactus_needle-2.0.4-py3-none-manylinux2014_x86_64.whl sha256",
+      "value": "13a84e6c73095fd175b11d46a30a984b62123d94421b769c107074aff7f65c2b",
+      "cited": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log-r2.tsv",
+       "sha256": "d66d8b291cde6cdb2ee2462ab286955ed082ac1573ceb617185635f97600224c",
+       "line": 3
+      }
+     },
+     {
+      "label": "python/cactus_needle-2.0.4-py3-none-manylinux2014_x86_64.whl bytes",
+      "value": "13283977 B",
+      "cited": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log-r2.tsv",
+       "sha256": "d66d8b291cde6cdb2ee2462ab286955ed082ac1573ceb617185635f97600224c",
+       "line": 3
+      }
+     }
+    ]
+   },
+   "licence": {
+    "spdx": [
+     "Apache-2.0"
+    ],
+    "spdx_quotes": [
+     {
+      "quote_id": "needle2-card-licence-field",
+      "kind": "upstream-licence-statement",
+      "source": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/README.md",
+       "sha256": "a2d5a9af24c63e5bb592e2317eb13a60b6864ae1ac3db2ca1f3feaf7c6a07452",
+       "bytes": 17197
+      },
+      "line_start": 4,
+      "line_end": 4,
+      "byte_start_in_first_line": 0,
+      "byte_end_in_last_line": 19,
+      "text": "license: apache-2.0",
+      "text_sha256": "f3cae36c4cdc3eb2e8a8d88ad4f1462364f750a68b490ba70821491d55f8de9e",
+      "retrieved": {
+       "method": "packet retrieval-log.tsv row",
+       "value": "2026-09-22T16:57:45Z",
+       "record": {
+        "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log.tsv",
+        "sha256": "c08ea7eebb14e202d9070f43dd5d8bf020e174ab7345c4bd1f88b3f8a515afd6",
+        "line": 3,
+        "text": "2026-09-22T16:57:45Z\tgit blob of the clone at 32e9e3a93b205f786929697446ae669cf0a84579\thttps://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/README.md\tpresent\t17197\ta2d5a9af24c63e5bb592e2317eb13a60b6864ae1ac3db2ca1f3feaf7c6a07452\tsources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/README.md"
+       }
+      }
+     }
+    ],
+    "label": null
+   },
+   "licensors": [
+    {
+     "name": "Cactus Compute, Inc.",
+     "record_quote": {
+      "quote_id": "needle2-card-organization",
+      "kind": "upstream-attribution",
+      "source": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/README.md",
+       "sha256": "a2d5a9af24c63e5bb592e2317eb13a60b6864ae1ac3db2ca1f3feaf7c6a07452",
+       "bytes": 17197
+      },
+      "line_start": 337,
+      "line_end": 337,
+      "byte_start_in_first_line": 18,
+      "byte_end_in_last_line": 38,
+      "text": "Cactus Compute, Inc.",
+      "text_sha256": "7c3fcc8ea6bb04afe8bfb5df6a8f94aad77af760c936e30bde3a1c81a8bad5bc",
+      "retrieved": {
+       "method": "packet retrieval-log.tsv row",
+       "value": "2026-09-22T16:57:45Z",
+       "record": {
+        "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log.tsv",
+        "sha256": "c08ea7eebb14e202d9070f43dd5d8bf020e174ab7345c4bd1f88b3f8a515afd6",
+        "line": 3,
+        "text": "2026-09-22T16:57:45Z\tgit blob of the clone at 32e9e3a93b205f786929697446ae669cf0a84579\thttps://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/README.md\tpresent\t17197\ta2d5a9af24c63e5bb592e2317eb13a60b6864ae1ac3db2ca1f3feaf7c6a07452\tsources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/README.md"
+       }
+      }
+     }
+    }
+   ],
+   "components": [],
+   "binding_conditions": [],
+   "advisories": [],
+   "statements": [],
+   "notes": [],
+   "attribution": [
+    {
+     "quote_id": "needle2-card-built-by",
+     "kind": "upstream-attribution",
+     "source": {
+      "path": "licence-evidence-needle2-2026-09-22/sources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/README.md",
+      "sha256": "a2d5a9af24c63e5bb592e2317eb13a60b6864ae1ac3db2ca1f3feaf7c6a07452",
+      "bytes": 17197
+     },
+     "line_start": 329,
+     "line_end": 329,
+     "byte_start_in_first_line": 0,
+     "byte_end_in_last_line": 45,
+     "text": "Needle 2 is built by the Cactus Compute team.",
+     "text_sha256": "c3392969bcd4e8ec618ef92c399680479754d2130cd613ef1d4d85f20bc884b6",
+     "retrieved": {
+      "method": "packet retrieval-log.tsv row",
+      "value": "2026-09-22T16:57:45Z",
+      "record": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log.tsv",
+       "sha256": "c08ea7eebb14e202d9070f43dd5d8bf020e174ab7345c4bd1f88b3f8a515afd6",
+       "line": 3,
+       "text": "2026-09-22T16:57:45Z\tgit blob of the clone at 32e9e3a93b205f786929697446ae669cf0a84579\thttps://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/README.md\tpresent\t17197\ta2d5a9af24c63e5bb592e2317eb13a60b6864ae1ac3db2ca1f3feaf7c6a07452\tsources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/README.md"
+      }
+     }
+    }
+   ],
+   "licence_texts": [
+    {
+     "path": "licence-evidence-needle2-2026-09-22/sources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/LICENSE",
+     "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+     "bytes": 11358,
+     "label": "Apache-2.0 LICENSE of Cactus-Compute/needle2 at 32e9e3a9, byte-identical to the canonical Apache-2.0 text cfc7749b",
+     "retrieved": {
+      "method": "packet retrieval-log.tsv row",
+      "value": "2026-09-22T16:57:45Z",
+      "record": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log.tsv",
+       "sha256": "c08ea7eebb14e202d9070f43dd5d8bf020e174ab7345c4bd1f88b3f8a515afd6",
+       "line": 4,
+       "text": "2026-09-22T16:57:45Z\tgit blob of the clone at 32e9e3a93b205f786929697446ae669cf0a84579\thttps://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/LICENSE\tpresent\t11358\tcfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30\tsources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/LICENSE"
+      }
+     },
+     "role": "licence"
+    }
+   ],
+   "owner_decision": {
+    "id": "owner-direction-needle2-runtime-2026-09-22",
+    "record": {
+     "path": "licence-evidence-needle2-2026-09-22/OWNER-DIRECTION-R2.md",
+     "sha256": "e04a1f30da23378dd479ced510e40a4bad96e2f70d4260ff006e92e23fe0c18c",
+     "bytes": 1255
+    },
+    "log_heading": null,
+    "owner_words": {
+     "quote_id": "needle2-runtime-owner-words",
+     "kind": "owner-words",
+     "source": {
+      "path": "licence-evidence-needle2-2026-09-22/OWNER-DIRECTION-R2.md",
+      "sha256": "e04a1f30da23378dd479ced510e40a4bad96e2f70d4260ff006e92e23fe0c18c",
+      "bytes": 1255
+     },
+     "line_start": 12,
+     "line_end": 12,
+     "byte_start_in_first_line": 0,
+     "byte_end_in_last_line": 160,
+     "text": "\"the user would lazy-install this on first use, it would pull the source and fine tune it according to the documents / files in the kilix-needle-tuning library\"",
+     "text_sha256": "d59d15865369b28ee8832ca22693f03827f05e3c7ece871d750ccd0366ba0573",
+     "retrieved": {
+      "method": "local record (not an upstream retrieval)",
+      "value": null,
+      "record": null
+     }
+    },
+    "basis": "owner-direction-kilix-needle"
+   },
+   "accepted_gaps": [],
+   "basis_quotes": [
+    {
+     "quote_id": "needle2-card-licence-field",
+     "kind": "upstream-licence-statement",
+     "source": {
+      "path": "licence-evidence-needle2-2026-09-22/sources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/README.md",
+      "sha256": "a2d5a9af24c63e5bb592e2317eb13a60b6864ae1ac3db2ca1f3feaf7c6a07452",
+      "bytes": 17197
+     },
+     "line_start": 4,
+     "line_end": 4,
+     "byte_start_in_first_line": 0,
+     "byte_end_in_last_line": 19,
+     "text": "license: apache-2.0",
+     "text_sha256": "f3cae36c4cdc3eb2e8a8d88ad4f1462364f750a68b490ba70821491d55f8de9e",
+     "retrieved": {
+      "method": "packet retrieval-log.tsv row",
+      "value": "2026-09-22T16:57:45Z",
+      "record": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log.tsv",
+       "sha256": "c08ea7eebb14e202d9070f43dd5d8bf020e174ab7345c4bd1f88b3f8a515afd6",
+       "line": 3,
+       "text": "2026-09-22T16:57:45Z\tgit blob of the clone at 32e9e3a93b205f786929697446ae669cf0a84579\thttps://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/README.md\tpresent\t17197\ta2d5a9af24c63e5bb592e2317eb13a60b6864ae1ac3db2ca1f3feaf7c6a07452\tsources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/README.md"
+      }
+     }
+    },
+    {
+     "quote_id": "needle2-runtime-owner-choice",
+     "kind": "owner-words",
+     "source": {
+      "path": "licence-evidence-needle2-2026-09-22/OWNER-DIRECTION-R2.md",
+      "sha256": "e04a1f30da23378dd479ced510e40a4bad96e2f70d4260ff006e92e23fe0c18c",
+      "bytes": 1255
+     },
+     "line_start": 10,
+     "line_end": 10,
+     "byte_start_in_first_line": 0,
+     "byte_end_in_last_line": 36,
+     "text": "\"lets develop a fine-tuning program\"",
+     "text_sha256": "8e37c396ed63646d601a6c0081d053b82ddadfadf5370d5febaf18073cc494a1",
+     "retrieved": {
+      "method": "local record (not an upstream retrieval)",
+      "value": null,
+      "record": null
+     }
+    }
+   ],
+   "receipt_binds": {
+    "od_ai_binding_fields": [
+     "record_sha256",
+     "manifest_sha256",
+     "licence_id"
+    ],
+    "od_ai_basis": "od-ai-binding",
+    "known_now": {
+     "licence_id": [
+      "Apache-2.0"
+     ],
+     "licence_text_sha256": [
+      "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+     ],
+     "decision": "affirmative",
+     "licensors": [
+      "Cactus Compute, Inc."
+     ]
+    },
+    "generated_at_landing": [
+     "record_sha256",
+     "manifest_sha256"
+    ],
+    "acceptance_context_not_coverage": [
+     "release id",
+     "catalogue sha256"
+    ],
+    "determination_specific": []
+   },
+   "agreement": {
+    "decision_class": "affirmative",
+    "decision_class_basis": "plan-decision-class-rule (generated, not chosen)",
+    "explicit_acceptance_before_download": true,
+    "explicit_acceptance_basis": "od-s-first-use-screen",
+    "typed_accept_per_licence": true,
+    "binding_conditions_require_agreement": false,
+    "prompt_template": "Type accept to accept <id> from <licensors> and download <size> from <host>, or press Enter to decline",
+    "prompt_template_basis": "plan-presenter-prompt"
+   },
+   "open_items": [
+    "Owner direction recorded by the builder from the owner's messages (OWNER-DIRECTION-R2.md); not a 0.2.2 release decision.",
+    "HF publishes libneedle.so only inside this wheel; the asset is the wheel byte-exact, and kilix-needle reads needle/libneedle.so out of the verified wheel bytes into a sealed memfd before dlopen.",
+    "The upstream LICENSE is the stock Apache-2.0 text with no copyright line and no NOTICE file; the licensor name comes from the model card's citation block."
+   ],
+   "drift": [],
+   "notice_file": null
+  },
+  {
+   "entry_id": "needle2-train",
+   "title": "Cactus Compute Needle 2 base checkpoint and tokenizer, for local fine-tuning",
+   "status": "DETERMINED",
+   "fetched_by": "kilix-needle (kilix-needle install / tune)",
+   "upstream": {
+    "mode": "upstream-files",
+    "project": "Cactus-Compute/needle2",
+    "revision": "32e9e3a93b205f786929697446ae669cf0a84579",
+    "url_base": "https://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579",
+    "files": [
+     {
+      "path": "checkpoints/needle2.pkl",
+      "bytes": 90426504,
+      "sha256": "4b0a972d163ffc7678fb3c36bace508114872e9d2ce9e10f225825752d3795bc",
+      "installed_as": "checkpoints/needle2.pkl"
+     },
+     {
+      "path": "tokenizer/tokenizer.model",
+      "bytes": 132396,
+      "sha256": "0871b8e3df78e0dd7ccc236e187fc055f75cd57ebe3bec76ca8103030b8fe659",
+      "installed_as": "tokenizer/tokenizer.model"
+     },
+     {
+      "path": "tokenizer/tokenizer.vocab",
+      "bytes": 113001,
+      "sha256": "ed835aff5b2a3ca67b5896906dd471ab0ce12626d699d90e736e3c7e4ba9b1e3",
+      "installed_as": "tokenizer/tokenizer.vocab"
+     }
+    ],
+    "pins": [
+     {
+      "label": "revision",
+      "value": "32e9e3a93b205f786929697446ae669cf0a84579",
+      "cited": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log-r2.tsv",
+       "sha256": "d66d8b291cde6cdb2ee2462ab286955ed082ac1573ceb617185635f97600224c",
+       "line": 2
+      }
+     },
+     {
+      "label": "checkpoints/needle2.pkl sha256",
+      "value": "4b0a972d163ffc7678fb3c36bace508114872e9d2ce9e10f225825752d3795bc",
+      "cited": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log-r2.tsv",
+       "sha256": "d66d8b291cde6cdb2ee2462ab286955ed082ac1573ceb617185635f97600224c",
+       "line": 4
+      }
+     },
+     {
+      "label": "checkpoints/needle2.pkl bytes",
+      "value": "90426504 B",
+      "cited": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log-r2.tsv",
+       "sha256": "d66d8b291cde6cdb2ee2462ab286955ed082ac1573ceb617185635f97600224c",
+       "line": 4
+      }
+     },
+     {
+      "label": "tokenizer/tokenizer.model sha256",
+      "value": "0871b8e3df78e0dd7ccc236e187fc055f75cd57ebe3bec76ca8103030b8fe659",
+      "cited": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log-r2.tsv",
+       "sha256": "d66d8b291cde6cdb2ee2462ab286955ed082ac1573ceb617185635f97600224c",
+       "line": 5
+      }
+     },
+     {
+      "label": "tokenizer/tokenizer.model bytes",
+      "value": "132396 B",
+      "cited": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log-r2.tsv",
+       "sha256": "d66d8b291cde6cdb2ee2462ab286955ed082ac1573ceb617185635f97600224c",
+       "line": 5
+      }
+     },
+     {
+      "label": "tokenizer/tokenizer.vocab sha256",
+      "value": "ed835aff5b2a3ca67b5896906dd471ab0ce12626d699d90e736e3c7e4ba9b1e3",
+      "cited": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log-r2.tsv",
+       "sha256": "d66d8b291cde6cdb2ee2462ab286955ed082ac1573ceb617185635f97600224c",
+       "line": 6
+      }
+     },
+     {
+      "label": "tokenizer/tokenizer.vocab bytes",
+      "value": "113001 B",
+      "cited": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log-r2.tsv",
+       "sha256": "d66d8b291cde6cdb2ee2462ab286955ed082ac1573ceb617185635f97600224c",
+       "line": 6
+      }
+     }
+    ]
+   },
+   "licence": {
+    "spdx": [
+     "Apache-2.0"
+    ],
+    "spdx_quotes": [
+     {
+      "quote_id": "needle2-card-licence-field",
+      "kind": "upstream-licence-statement",
+      "source": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/README.md",
+       "sha256": "a2d5a9af24c63e5bb592e2317eb13a60b6864ae1ac3db2ca1f3feaf7c6a07452",
+       "bytes": 17197
+      },
+      "line_start": 4,
+      "line_end": 4,
+      "byte_start_in_first_line": 0,
+      "byte_end_in_last_line": 19,
+      "text": "license: apache-2.0",
+      "text_sha256": "f3cae36c4cdc3eb2e8a8d88ad4f1462364f750a68b490ba70821491d55f8de9e",
+      "retrieved": {
+       "method": "packet retrieval-log.tsv row",
+       "value": "2026-09-22T16:57:45Z",
+       "record": {
+        "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log.tsv",
+        "sha256": "c08ea7eebb14e202d9070f43dd5d8bf020e174ab7345c4bd1f88b3f8a515afd6",
+        "line": 3,
+        "text": "2026-09-22T16:57:45Z\tgit blob of the clone at 32e9e3a93b205f786929697446ae669cf0a84579\thttps://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/README.md\tpresent\t17197\ta2d5a9af24c63e5bb592e2317eb13a60b6864ae1ac3db2ca1f3feaf7c6a07452\tsources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/README.md"
+       }
+      }
+     }
+    ],
+    "label": null
+   },
+   "licensors": [
+    {
+     "name": "Cactus Compute, Inc.",
+     "record_quote": {
+      "quote_id": "needle2-card-organization",
+      "kind": "upstream-attribution",
+      "source": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/README.md",
+       "sha256": "a2d5a9af24c63e5bb592e2317eb13a60b6864ae1ac3db2ca1f3feaf7c6a07452",
+       "bytes": 17197
+      },
+      "line_start": 337,
+      "line_end": 337,
+      "byte_start_in_first_line": 18,
+      "byte_end_in_last_line": 38,
+      "text": "Cactus Compute, Inc.",
+      "text_sha256": "7c3fcc8ea6bb04afe8bfb5df6a8f94aad77af760c936e30bde3a1c81a8bad5bc",
+      "retrieved": {
+       "method": "packet retrieval-log.tsv row",
+       "value": "2026-09-22T16:57:45Z",
+       "record": {
+        "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log.tsv",
+        "sha256": "c08ea7eebb14e202d9070f43dd5d8bf020e174ab7345c4bd1f88b3f8a515afd6",
+        "line": 3,
+        "text": "2026-09-22T16:57:45Z\tgit blob of the clone at 32e9e3a93b205f786929697446ae669cf0a84579\thttps://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/README.md\tpresent\t17197\ta2d5a9af24c63e5bb592e2317eb13a60b6864ae1ac3db2ca1f3feaf7c6a07452\tsources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/README.md"
+       }
+      }
+     }
+    }
+   ],
+   "components": [],
+   "binding_conditions": [],
+   "advisories": [],
+   "statements": [],
+   "notes": [],
+   "attribution": [
+    {
+     "quote_id": "needle2-card-built-by",
+     "kind": "upstream-attribution",
+     "source": {
+      "path": "licence-evidence-needle2-2026-09-22/sources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/README.md",
+      "sha256": "a2d5a9af24c63e5bb592e2317eb13a60b6864ae1ac3db2ca1f3feaf7c6a07452",
+      "bytes": 17197
+     },
+     "line_start": 329,
+     "line_end": 329,
+     "byte_start_in_first_line": 0,
+     "byte_end_in_last_line": 45,
+     "text": "Needle 2 is built by the Cactus Compute team.",
+     "text_sha256": "c3392969bcd4e8ec618ef92c399680479754d2130cd613ef1d4d85f20bc884b6",
+     "retrieved": {
+      "method": "packet retrieval-log.tsv row",
+      "value": "2026-09-22T16:57:45Z",
+      "record": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log.tsv",
+       "sha256": "c08ea7eebb14e202d9070f43dd5d8bf020e174ab7345c4bd1f88b3f8a515afd6",
+       "line": 3,
+       "text": "2026-09-22T16:57:45Z\tgit blob of the clone at 32e9e3a93b205f786929697446ae669cf0a84579\thttps://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/README.md\tpresent\t17197\ta2d5a9af24c63e5bb592e2317eb13a60b6864ae1ac3db2ca1f3feaf7c6a07452\tsources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/README.md"
+      }
+     }
+    }
+   ],
+   "licence_texts": [
+    {
+     "path": "licence-evidence-needle2-2026-09-22/sources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/LICENSE",
+     "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+     "bytes": 11358,
+     "label": "Apache-2.0 LICENSE of Cactus-Compute/needle2 at 32e9e3a9, byte-identical to the canonical Apache-2.0 text cfc7749b",
+     "retrieved": {
+      "method": "packet retrieval-log.tsv row",
+      "value": "2026-09-22T16:57:45Z",
+      "record": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log.tsv",
+       "sha256": "c08ea7eebb14e202d9070f43dd5d8bf020e174ab7345c4bd1f88b3f8a515afd6",
+       "line": 4,
+       "text": "2026-09-22T16:57:45Z\tgit blob of the clone at 32e9e3a93b205f786929697446ae669cf0a84579\thttps://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/LICENSE\tpresent\t11358\tcfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30\tsources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/LICENSE"
+      }
+     },
+     "role": "licence"
+    }
+   ],
+   "owner_decision": {
+    "id": "owner-direction-needle2-train-2026-09-22",
+    "record": {
+     "path": "licence-evidence-needle2-2026-09-22/OWNER-DIRECTION-R2.md",
+     "sha256": "e04a1f30da23378dd479ced510e40a4bad96e2f70d4260ff006e92e23fe0c18c",
+     "bytes": 1255
+    },
+    "log_heading": null,
+    "owner_words": {
+     "quote_id": "needle2-train-owner-words",
+     "kind": "owner-words",
+     "source": {
+      "path": "licence-evidence-needle2-2026-09-22/OWNER-DIRECTION-R2.md",
+      "sha256": "e04a1f30da23378dd479ced510e40a4bad96e2f70d4260ff006e92e23fe0c18c",
+      "bytes": 1255
+     },
+     "line_start": 12,
+     "line_end": 12,
+     "byte_start_in_first_line": 0,
+     "byte_end_in_last_line": 160,
+     "text": "\"the user would lazy-install this on first use, it would pull the source and fine tune it according to the documents / files in the kilix-needle-tuning library\"",
+     "text_sha256": "d59d15865369b28ee8832ca22693f03827f05e3c7ece871d750ccd0366ba0573",
+     "retrieved": {
+      "method": "local record (not an upstream retrieval)",
+      "value": null,
+      "record": null
+     }
+    },
+    "basis": "owner-direction-kilix-needle"
+   },
+   "accepted_gaps": [],
+   "basis_quotes": [
+    {
+     "quote_id": "needle2-card-licence-field",
+     "kind": "upstream-licence-statement",
+     "source": {
+      "path": "licence-evidence-needle2-2026-09-22/sources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/README.md",
+      "sha256": "a2d5a9af24c63e5bb592e2317eb13a60b6864ae1ac3db2ca1f3feaf7c6a07452",
+      "bytes": 17197
+     },
+     "line_start": 4,
+     "line_end": 4,
+     "byte_start_in_first_line": 0,
+     "byte_end_in_last_line": 19,
+     "text": "license: apache-2.0",
+     "text_sha256": "f3cae36c4cdc3eb2e8a8d88ad4f1462364f750a68b490ba70821491d55f8de9e",
+     "retrieved": {
+      "method": "packet retrieval-log.tsv row",
+      "value": "2026-09-22T16:57:45Z",
+      "record": {
+       "path": "licence-evidence-needle2-2026-09-22/sources/retrieval-log.tsv",
+       "sha256": "c08ea7eebb14e202d9070f43dd5d8bf020e174ab7345c4bd1f88b3f8a515afd6",
+       "line": 3,
+       "text": "2026-09-22T16:57:45Z\tgit blob of the clone at 32e9e3a93b205f786929697446ae669cf0a84579\thttps://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/README.md\tpresent\t17197\ta2d5a9af24c63e5bb592e2317eb13a60b6864ae1ac3db2ca1f3feaf7c6a07452\tsources/hf/Cactus-Compute/needle2@32e9e3a93b205f786929697446ae669cf0a84579/README.md"
+      }
+     }
+    },
+    {
+     "quote_id": "needle2-train-owner-choice",
+     "kind": "owner-words",
+     "source": {
+      "path": "licence-evidence-needle2-2026-09-22/OWNER-DIRECTION-R2.md",
+      "sha256": "e04a1f30da23378dd479ced510e40a4bad96e2f70d4260ff006e92e23fe0c18c",
+      "bytes": 1255
+     },
+     "line_start": 10,
+     "line_end": 10,
+     "byte_start_in_first_line": 0,
+     "byte_end_in_last_line": 36,
+     "text": "\"lets develop a fine-tuning program\"",
+     "text_sha256": "8e37c396ed63646d601a6c0081d053b82ddadfadf5370d5febaf18073cc494a1",
+     "retrieved": {
+      "method": "local record (not an upstream retrieval)",
+      "value": null,
+      "record": null
+     }
+    }
+   ],
+   "receipt_binds": {
+    "od_ai_binding_fields": [
+     "record_sha256",
+     "manifest_sha256",
+     "licence_id"
+    ],
+    "od_ai_basis": "od-ai-binding",
+    "known_now": {
+     "licence_id": [
+      "Apache-2.0"
+     ],
+     "licence_text_sha256": [
+      "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+     ],
+     "decision": "affirmative",
+     "licensors": [
+      "Cactus Compute, Inc."
+     ]
+    },
+    "generated_at_landing": [
+     "record_sha256",
+     "manifest_sha256"
+    ],
+    "acceptance_context_not_coverage": [
+     "release id",
+     "catalogue sha256"
+    ],
+    "determination_specific": []
+   },
+   "agreement": {
+    "decision_class": "affirmative",
+    "decision_class_basis": "plan-decision-class-rule (generated, not chosen)",
+    "explicit_acceptance_before_download": true,
+    "explicit_acceptance_basis": "od-s-first-use-screen",
+    "typed_accept_per_licence": true,
+    "binding_conditions_require_agreement": false,
+    "prompt_template": "Type accept to accept <id> from <licensors> and download <size> from <host>, or press Enter to decline",
+    "prompt_template_basis": "plan-presenter-prompt"
+   },
+   "open_items": [
+    "Owner direction recorded by the builder from the owner's messages (OWNER-DIRECTION-R2.md); not a 0.2.2 release decision.",
+    "checkpoints/needle2.pkl is a Python pickle: a consumer must verify it against this manifest before loading it, and never load an unverified copy.",
+    "The upstream LICENSE is the stock Apache-2.0 text with no copyright line and no NOTICE file; the licensor name comes from the model card's citation block."
+   ],
+   "drift": [],
+   "notice_file": null
   }
  ],
  "not_entries": []

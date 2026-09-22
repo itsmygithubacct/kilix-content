@@ -1,7 +1,7 @@
 {
-  "commit": "tree 8823309e48ad146d3d3f0b77f9e9b52e152193e0\nparent 7104ea5cb2670a9d52c14fcb324c86710e4c2681\nauthor itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1790102030 +0000\ncommitter itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1790102030 +0000\n\nAdd an application authority and the needle2 record\n\nEvery record cites the digest of the determinations file it came from, so an\nentry appended to determinations.json rewrites all 28 release records and\nmoves every record digest a receipt names. Models an application fetches for\nitself now live in determinations-apps.json, with their own pin and their\nown app-records/ directory, so adding one moves no release record.\n\nThe loader serves both. The generator refuses an application id that shadows\na release record, one licence text under two identities across the tables,\nan undeclared record set, and advisory notes, whose table belongs to the\nrelease authority.\n\nFirst application record: needle2, the Cactus Compute Needle 2 engine for\nkilix-needle. Apache-2.0, byte-identical to the canonical cfc7749b text;\nlicensor Cactus Compute, Inc.; owner direction of 2026-09-22, evidence in\nlicence-evidence-needle2-2026-09-22. Not a release model.\n",
+  "commit": "tree 74352815b19b42577bac443d0597ae4aad577033\nparent 24bc70fdfbc232da1a61675b8b20a2439e82fe90\nauthor itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1790103946 +0000\ncommitter itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1790104014 +0000\n\nAdd the needle2-runtime and needle2-train application records\n\nkilix-needle serves a fine-tuned model through libneedle.so (the gen-2\nengine binary cannot load one), and fine-tunes from the base checkpoint and\ntokenizer. Both come from Cactus-Compute/needle2 at 32e9e3a9 under the same\nApache-2.0 text, identity and licensor as needle2; each is its own record,\nas every release asset is. Owner direction of 2026-09-22, round 2, in the\nsame evidence packet (OWNER-DIRECTION-R2.md, retrieval-log-r2.tsv); the\nround-1 files are unchanged.\n\nThe application pin moves 306eca61 -> fa4829c0. The needle2 record file\ncites that pin and moves; its receipt-bound digest does not\n(to_binding_jsonable omits determinations_sha256), so a needle2 receipt\nstill covers it. No release record moves (release pin 2fbea78d unchanged;\n28 records regenerate identical).\nmake test: 192 -> 193 OK (2 skipped), failure sets empty before and after.\n",
   "excluded_top_level": [".gitignore", ".python-version", "Makefile", "PUBLICATION.md", "tests", "tools", "uv.lock"],
-  "pin": "24bc70fdfbc232da1a61675b8b20a2439e82fe90",
+  "pin": "50bdf72ab10c1ce169dc4858155818619d7fcb06",
   "schema": "kilix-content.vendored-git-objects/v1",
   "trees": {
     "16c1d1cfbc97e8c88172b50a5aa32dd9603569e4": [
@@ -84,12 +84,6 @@
       ["100644", "eb08af7e312af21876578253bbb4c184d3f940a9286ef8bf52a801e64c9d9c6d", "9b8a309ba2841babf4b968ff4aa1319787bfe242"],
       ["100644", "fa152afc73238001c008ff67f5b8a3c6d645cfb714a3900a37a2481a8e75d748", "97a2b0bdc0857923eba59279b40f6d0cbbb4a177"]
     ],
-    "50d09d0d5f06065caf435b1800701e07d8445ff0": [
-      ["40000", "kilix_license", "d29a24fa57e70dd6623f966094615ff4981e850d"]
-    ],
-    "5343726f9a8d8bf8100a649fc297fd26914a77e4": [
-      ["100644", "needle2.json", "96da97847a5b4009c1366d463bef6a678fce8758"]
-    ],
     "667af5106c778b20bb09afa69d3e23565febdf52": [
       ["100644", "bitnet-b1.58-2b4t.json", "720307cc1719719fd6dadc183f8e08836f02874d"],
       ["100644", "bonsai-27b.json", "7e01fbc73a2e71c5966f41b296df77731269c28a"],
@@ -120,10 +114,19 @@
       ["100644", "yolox_s.json", "3a7f69e39586be3dcc23028544078db2355c2f31"],
       ["100644", "yolox_tiny.json", "cb8fa44fca2420bea19848d05305f64b87af5b44"]
     ],
-    "8823309e48ad146d3d3f0b77f9e9b52e152193e0": [
+    "724c61345862b74a49c6179a512e5bd3af6588f2": [
+      ["40000", "app-records", "dda9f4c1567ad90e9d875831f733941473e9056f"],
+      ["100644", "determinations-apps.json", "4691eef138a17f8427c2545c4500c1955c1f7da9"],
+      ["100644", "determinations-apps.sha256", "913f4e2fb77b25638a6a1fd50388f104328f9bca"],
+      ["100644", "determinations.json", "bb1ec4f285ea6fa9fdceba14df2f03cca91459ab"],
+      ["100644", "determinations.sha256", "87a389264c02b16bccfe35c3b1ede54f5b2b6e49"],
+      ["40000", "records", "667af5106c778b20bb09afa69d3e23565febdf52"],
+      ["40000", "texts", "16c1d1cfbc97e8c88172b50a5aa32dd9603569e4"]
+    ],
+    "74352815b19b42577bac443d0597ae4aad577033": [
       ["100644", ".gitignore", "7e74013359efce08b816f3b27b6a941e96ce87a2"],
       ["100644", ".python-version", "04e207918ddc86409a934bfdaf92dbbf0f8ac1cc"],
-      ["100644", "CHANGELOG.md", "ede6373439f79a2e6dbda7e3018529350f1170d5"],
+      ["100644", "CHANGELOG.md", "3724251c7c1c2be801f64ee2c32e00fa99a9f7d1"],
       ["100644", "LICENSE", "41c7d40b05d38a4b9dc2f71fab9c1f32a3567734"],
       ["100644", "Makefile", "c3f9f06dc69429ccaed15523608522d110f85e28"],
       ["100644", "NOTICE", "2da879fa9340526fc8c05392d6d0d8b895f1b089"],
@@ -131,30 +134,29 @@
       ["100644", "README.md", "28bd33a9aa5816983a4f43a4670dec714f55b8b8"],
       ["100644", "VERSION", "6e8bf73aa550d4c57f6f35830f1bcdc7a4a62f38"],
       ["100644", "pyproject.toml", "a49c5fad0a4f3d27d57665235b1adee7abdf28c2"],
-      ["40000", "src", "50d09d0d5f06065caf435b1800701e07d8445ff0"],
-      ["40000", "tests", "a57ec1993e133e20f08fffd0196bfb72cd045d9c"],
+      ["40000", "src", "8d44fee8c558217c9585489d5508cab2b28ebd3e"],
+      ["40000", "tests", "b91cf1517399ad5c40a2cbcb3f01d4b1c9981ff6"],
       ["40000", "tools", "a7ca6360a3d4997c26e1c56ef12a9d6f29b3b85a"],
       ["100644", "uv.lock", "43e09590b109b26f4fcbdf9b2ee5428fadfba778"]
     ],
-    "c1da288dffb2ceb9331507aa4e8030ff6e0fe735": [
-      ["40000", "app-records", "5343726f9a8d8bf8100a649fc297fd26914a77e4"],
-      ["100644", "determinations-apps.json", "dfe9a942889be3e28271c463503668733a9d766e"],
-      ["100644", "determinations-apps.sha256", "aae2c4d25f42199c175d2efd18b1767ecef8907e"],
-      ["100644", "determinations.json", "bb1ec4f285ea6fa9fdceba14df2f03cca91459ab"],
-      ["100644", "determinations.sha256", "87a389264c02b16bccfe35c3b1ede54f5b2b6e49"],
-      ["40000", "records", "667af5106c778b20bb09afa69d3e23565febdf52"],
-      ["40000", "texts", "16c1d1cfbc97e8c88172b50a5aa32dd9603569e4"]
+    "8d44fee8c558217c9585489d5508cab2b28ebd3e": [
+      ["40000", "kilix_license", "efe24297c4dacbf351ae84b453fc6dbb094edcee"]
     ],
-    "d29a24fa57e70dd6623f966094615ff4981e850d": [
+    "dda9f4c1567ad90e9d875831f733941473e9056f": [
+      ["100644", "needle2-runtime.json", "c34b36cb1af86fda100e36394d443c13b9d44463"],
+      ["100644", "needle2-train.json", "faefe4807b6b82e6ff0038f3779fe9030e309529"],
+      ["100644", "needle2.json", "758569ca17187f5f9ea8041879d9640492572c83"]
+    ],
+    "efe24297c4dacbf351ae84b453fc6dbb094edcee": [
       ["100644", "__init__.py", "1bdedc091b24d6726f983c6b8d6d29b156fd6456"],
       ["100644", "agreement.py", "65723c54c77b8b48c1c63c102ff9eb3c9371bd59"],
       ["100644", "catalog.py", "c24f9c6f5b0111fbf0d34ab12ad68df9d6ffcee9"],
       ["100644", "changed.py", "6b07ce42c06f786126174bf482b8350ece2823f7"],
       ["100644", "coverage.py", "b2bb74abd04a620961a408cb3b120924f5ffa923"],
-      ["40000", "data", "c1da288dffb2ceb9331507aa4e8030ff6e0fe735"],
+      ["40000", "data", "724c61345862b74a49c6179a512e5bd3af6588f2"],
       ["100644", "digest.py", "fa0e7cc8d0dd8716b57f29309694791dfaef919f"],
       ["100644", "errors.py", "67efed6718ee0fc5d327aa9e8fdc69fc0c3bb5d7"],
-      ["100644", "generate.py", "483d0cef336eb515485bdcbb4f886bdaee9d20ec"],
+      ["100644", "generate.py", "47bcbbda83c1eafdbc4d57f2130640e0194a0a8a"],
       ["100644", "paraphrase.py", "15271885fbe2249b2ef90100734125af1a1dba1f"],
       ["100644", "paths.py", "a5dffb5922ae7af2a5039d15046f6a93196d1307"],
       ["100644", "py.typed", "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"],
