@@ -37,13 +37,40 @@ def asset_v3_schema_bytes() -> bytes:
     return _resource_bytes(_ASSET_V3_SCHEMA_RESOURCE)
 
 
-def _verify_frozen_schema() -> None:
+def verify_packaged_catalog() -> None:
+    """Refuse the packaged catalog unless its bytes are the pinned ones.
+
+    Compares the packaged `catalog/plebian.json` against `_CATALOG_SHA256` and
+    the frozen asset/v3 schema against `_ASSET_V3_SCHEMA_SHA256`, and raises
+    `RuntimeError` on either mismatch. `default_catalog()` parses without this
+    check; `kilix_content.verified_packaged_catalog()` is the production entry
+    point that runs it first.
+
+    **This is a cross-repository contract (OD-BP), not an internal helper.**
+    kilix's `config/content_models.py` verifies the packaged catalog through
+    this repository, fail-closed: it prefers the public
+    `kilix_content.verified_packaged_catalog`, falls back to the private
+    `kilix_content.receipt._verify_frozen_schema`, and **refuses to run
+    `kilix models` at all** if it finds neither. So renaming or removing both
+    names here does not degrade the consumer's verification quietly -- it turns
+    every `kilix models install` into a hard refusal at install time, for a
+    component whose gitlink is pinned and cannot be fixed from this repository.
+    Change the name only together with the consumer, and keep the old name
+    working until every pinned consumer has moved.
+    """
     actual = hashlib.sha256(asset_v3_schema_bytes()).hexdigest()
     if actual != _ASSET_V3_SCHEMA_SHA256:
         raise RuntimeError("asset/v3 schema bytes do not match the frozen digest")
     actual_catalog = catalog_sha256()
     if actual_catalog != _CATALOG_SHA256:
         raise RuntimeError("packaged catalog bytes do not match _CATALOG_SHA256")
+
+
+# Retained for the pinned kilix consumer, which reaches across the repository
+# boundary for this exact name (see the docstring above). It is the same
+# function object, so the two names cannot drift. Remove it only after every
+# consumer has moved to `verify_packaged_catalog` / `verified_packaged_catalog`.
+_verify_frozen_schema = verify_packaged_catalog
 
 
 def release_digest() -> str:

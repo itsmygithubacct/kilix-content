@@ -11,7 +11,11 @@ from fake_store import FakeStore
 from kilix_content import default_catalog
 from kilix_content.first_use import present_asset
 from kilix_content.model import AssetSpec
-from kilix_content.receipt import _CATALOG_SHA256, _verify_frozen_schema, catalog_sha256
+from kilix_content.receipt import (
+    _CATALOG_SHA256,
+    catalog_sha256,
+    verify_packaged_catalog,
+)
 
 
 class VoskAssetTests(unittest.TestCase):
@@ -58,7 +62,7 @@ class VoskAssetTests(unittest.TestCase):
             self.assertNotIn("assets-0.2.2-candidate", str(packed))
 
     def test_catalog_sha_matches_packaged_bytes(self) -> None:
-        _verify_frozen_schema()
+        verify_packaged_catalog()
         self.assertEqual(catalog_sha256(), _CATALOG_SHA256)
 
     def test_first_use_screen_names_model_url_bytes_licence(self) -> None:

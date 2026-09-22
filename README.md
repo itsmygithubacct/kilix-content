@@ -124,6 +124,30 @@ parent-path escapes before any installation begins. JSON input is limited to
 1 MiB and to 4,096 package/content records apiece. The packaged catalog is
 immutable and cached after its first validated load.
 
+## Packaged catalog verification
+
+`default_catalog()` parses the packaged `plebian.json` without comparing it to
+the digest pinned in `kilix_content/receipt.py`. Anything that **acts** on the
+catalog — installing an asset, admitting an installed one — should call the
+verified entry point instead:
+
+```python
+from kilix_content import verified_packaged_catalog
+
+catalog = verified_packaged_catalog()   # refuses unless the bytes are pinned
+```
+
+It runs `verify_packaged_catalog()` first, which compares the packaged catalog
+against `_CATALOG_SHA256` and the frozen asset/v3 schema against
+`_ASSET_V3_SCHEMA_SHA256`, and raises `RuntimeError` on either mismatch; only
+then does it parse.
+
+Both names are part of a **cross-repository contract**: consumers verify the
+catalog through this repository and refuse to run when they cannot find the
+check. `receipt._verify_frozen_schema` is retained as the same function object
+under its old private name for consumers pinned at a gitlink that reaches for
+it; do not remove it until they have moved.
+
 ## Test
 
 ```sh
