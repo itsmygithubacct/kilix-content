@@ -162,6 +162,9 @@ downloading path runs, and the bytes get the same verification:
   it is followed, at any depth), and checked against the manifest's size and
   digest through a descriptor that is never reopened, so a file swapped or
   rewritten between the check and the copy is refused;
+- a supplied directory whose path holds a C0, DEL or C1 control character is
+  refused before the licence screen is written, because that path is printed
+  on the consent screen;
 - the licence notices are written from the packaged licence authority, never
   from the supplied directory, so a supplier cannot substitute the text that
   was agreed to;

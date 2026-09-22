@@ -15,7 +15,7 @@ from kilix_license.screen import render_screen
 from kilix_license.store import ReceiptStore
 from kilix_license.texts import TextStore
 
-from .install import Installer
+from .install import InstallError, Installer
 from .model import AssetSpec
 from .receipt import _CATALOG_SHA256, release_digest
 
@@ -23,6 +23,44 @@ Report = Callable[[str], None]
 
 _CRLF = b"\r\n"
 _LF = b"\n"
+
+# C0, DEL and C1: every code point that is a terminal control on its own.
+_PATH_CONTROLS = frozenset((*range(0x00, 0x20), 0x7F, *range(0x80, 0xA0)))
+
+
+def supplied_path_for_screen(supplied: str | os.PathLike[str]) -> str:
+    """The `supplied:` header value, refused if it carries a terminal control.
+
+    The supplied directory's path is operator input, and it is printed on the
+    **consent screen**. A carriage return there overwrites what the reader has
+    just read, and an escape sequence can repaint it -- a consent defect, not a
+    cosmetic one (C-V3-FIX F5). A newline or tab is refused too: this is a
+    single `key: value` header line, and a newline in it forges a header.
+
+    **Order, relative to OD-BT's CRLF normalisation: this runs first, on the
+    raw absolute path, before the header is assembled and before `crlf_to_lf`
+    sees any byte.** Normalisation is never applied to the path to make it
+    pass: a path holding `\r\n` is refused here, not turned into a forged
+    second header line. (Because LF is itself in the refused set, no order of
+    the two steps could admit a path that this order refuses; the check is
+    placed first so that its verdict never depends on the renderer.)
+
+    Raises `InstallError`, so every caller's existing handler applies, and the
+    message names the path with its controls escaped (`repr`) rather than
+    leaving the consumer's guard to refuse "the screen" for something the
+    operator can fix by renaming a directory.
+    """
+    shown = os.path.abspath(os.fspath(supplied))
+    if isinstance(shown, bytes):
+        shown = os.fsdecode(shown)
+    found = sorted({ord(char) for char in shown if ord(char) in _PATH_CONTROLS})
+    if found:
+        raise InstallError(
+            "supplied directory path contains terminal control characters "
+            f"({', '.join(f'U+{point:04X}' for point in found)}); "
+            f"rename it and try again: {shown!r}"
+        )
+    return shown
 
 
 def crlf_to_lf(payload: bytes) -> bytes:
@@ -98,12 +136,16 @@ def present_asset(
     `supplied` adds one header line naming the directory the bytes will be
     read from, so a user-supplied install (OD-BO) shows the same licence
     screen as every other install and still says where its bytes come from.
+    That path is refused before anything is rendered if it carries a C0, DEL
+    or C1 control (`supplied_path_for_screen`), so nothing is ever written to
+    the screen for it.
 
     The returned bytes are CRLF-normalised (OD-BT, `crlf_to_lf` above). This is
     the only place a first-use screen is rendered, so the bytes returned here
     are exactly the bytes the consumer checks and exactly the bytes it writes:
     there is no second copy to normalise in one place and check in another.
     """
+    shown = None if supplied is None else supplied_path_for_screen(supplied)
     licence_ids = ", ".join(row.license_id for row in spec.licenses)
     licensors = ", ".join(
         dict.fromkeys(
@@ -121,9 +163,9 @@ def present_asset(
         f"licensors: {licensors}\n"
         f"decision: {spec.licenses[0].decision}\n"
     )
-    if supplied is not None:
+    if shown is not None:
         header += (
-            f"supplied: {os.path.abspath(os.fspath(supplied))}\n"
+            f"supplied: {shown}\n"
             "download: none (every file is verified against the manifest)\n"
         )
     header = header.encode("utf-8")

@@ -44,6 +44,10 @@ pre-1.0.
 - A supplied install follows no symlink below the supplied directory: every
   path component is opened relative to its parent without following links,
   where only the last one was before.
+- A supplied directory whose path holds a terminal control character (C0,
+  DEL or C1, including CR, LF, TAB and ESC) is refused before the licence
+  screen is written, naming the path, rather than printed onto the consent
+  screen.
 - Advance `kilix-tui-utils` to relocatable runtime launchers so atomic package
   selection does not leave Start-menu applications pointing at staging paths.
 

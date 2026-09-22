@@ -51,7 +51,11 @@ from first_use_fixture import (
     sha256_bytes,
     vosk_fixture_zip,
 )
-from kilix_content.first_use import install_with_agreement
+from kilix_content.first_use import (
+    install_with_agreement,
+    license_record_for,
+    present_asset,
+)
 from kilix_content.install import InstallError, Installer, SuppliedFile
 from kilix_content.model import AssetSpec
 from kilix_content.receipt import _CATALOG_SHA256, release_digest
@@ -859,6 +863,71 @@ class SuppliedInstallTests(unittest.TestCase):
             SuppliedFile.open(root / "leaf.bin")
         with SuppliedFile.open(root / "via" / "file.bin") as handle:
             self.assertEqual(handle.sha256, sha256_bytes(b"bytes"))
+
+    # ---- the supplied path on the consent screen (F5) ---------------------
+
+    def screen_for(self, spec: AssetSpec, supplied) -> bytes:
+        return present_asset(
+            spec,
+            license_record_for(spec, self.records),
+            self.texts,
+            receipts=self.store,
+            records=self.records,
+            supplied=supplied,
+        )
+
+    def test_a_supplied_path_with_a_terminal_control_is_refused_before_the_screen(
+        self,
+    ) -> None:
+        """F5: nothing is written to the screen, no receipt, nothing installed.
+
+        CR overwrites what the reader just read; ESC and CSI (C1 U+009B) repaint
+        it; LF and TAB forge a header line. `\r\n` is refused, not normalised
+        into a second header: the path check runs before OD-BT's CRLF
+        normalisation ever sees the screen.
+        """
+        spec, _payloads = self.files_asset()
+        for control in ("\r", "\r\n", "\n", "\t", "\x00", "\x1b[2J", "\x7f", "\x85", "\x9b"):
+            with self.subTest(control=control):
+                supplied = str(self.scratch / f"sup{control}plied")
+                screen = io.BytesIO()
+                with self.assertRaises(InstallError) as raised:
+                    install_with_agreement(
+                        spec,
+                        installer=self.installer,
+                        store=self.store,
+                        records=self.records,
+                        texts=self.texts,
+                        typed_text=typed_agreement_line(self.record),
+                        screen=screen,
+                        supplied=supplied,
+                    )
+                self.assertEqual(screen.getvalue(), b"")
+                self.assertEqual(list(self.store.root.glob("*.json")), [])
+                self.assertFalse(Path(self.installer.asset_destination(spec)).exists())
+                message = str(raised.exception)
+                self.assertIn("terminal control", message)
+                self.assertIn(repr(os.path.abspath(supplied)), message)
+                for char in control:
+                    if ord(char) < 0x20 or 0x7F <= ord(char) < 0xA0:
+                        self.assertNotIn(char, message)
+
+    def test_exactly_c0_del_and_c1_are_refused_in_the_supplied_path(self) -> None:
+        """Every code point below U+00A0, decided one by one, plus the neighbours."""
+        spec, _payloads = self.files_asset()
+        for point in range(0x00, 0xA2):
+            char = chr(point)
+            supplied = f"/supplied/a{char}b"
+            refused = point < 0x20 or 0x7F <= point < 0xA0
+            with self.subTest(code_point=f"U+{point:04X}"):
+                if refused:
+                    with self.assertRaises(InstallError):
+                        self.screen_for(spec, supplied)
+                else:
+                    screen = self.screen_for(spec, supplied)
+                    self.assertIn(f"supplied: {supplied}\n".encode("utf-8"), screen)
+        screen = self.screen_for(spec, "/supplied/caf\u00e9-\u4e2d")
+        self.assertIn("supplied: /supplied/caf\u00e9-\u4e2d\n".encode("utf-8"), screen)
 
     # ---- the held descriptor ----------------------------------------------
 
