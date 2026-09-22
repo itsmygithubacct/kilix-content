@@ -8,7 +8,6 @@
   "consumer_schema": "kilix.encodec.graphs/v1",
   "stream": "F101",
   "version": "op17-v1-2ce5225d",
-  "temporary_bytes": 4294967296,
   "provenance": {
     "project": "facebook/encodec_48khz",
     "revision": "c3def8e7185ac8c8efdce6eb8c4a651e487a503e",

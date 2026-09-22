@@ -772,6 +772,56 @@ class PackagedEncodecRecordTests(unittest.TestCase):
                 self.assertGreater(spec.convert_bytes, 0)
                 self.assertTrue(spec.convert_url.startswith("https://"))
 
+    def test_temporary_bytes_is_derived_and_never_below_its_floor(self) -> None:
+        """C4-VERIFY F5: `temporary_bytes` gates a pre-install free-space check.
+
+        Both records carried `4294967296`, which no measurement or derivation
+        in this tree produces: the 24 kHz value was inherited from the E4
+        `user-supplied` record (whose `download_bytes` was 0), and the 48 kHz
+        record was raised 31x by copying it. An over-estimate refuses installs
+        that would have worked.
+
+        E4's 48 kHz `136405425` is *not* an independent measurement either --
+        it is exactly that record's own `download_bytes + installed_bytes` --
+        so carrying it here would put this record below its own floor. For an
+        `upstream-convert` install the fetched inputs and the produced outputs
+        are on disk at the same time, so that sum is the floor, and it is what
+        the generator derives when the pin states nothing. The floor is
+        asserted, not the exact value: a real conversion may measure more (see
+        the converter-scratch caveat in C4-FIX-IMPL) and raise it through the
+        pin's optional `temporary_bytes`.
+        """
+        pins = ROOT / "tools" / "upstream-pins"
+        for asset_id in ACCEPTED_MANIFESTS:
+            spec = self.catalog.require_asset(asset_id)
+            raw = next(
+                item for item in self.raw["assets"] if item["id"] == asset_id
+            )
+            sizes = raw["sizes"]
+            with self.subTest(asset=asset_id):
+                floor = sizes["download_bytes"] + sizes["installed_bytes"]
+                self.assertGreaterEqual(sizes["temporary_bytes"], floor)
+                self.assertEqual(sizes["download_bytes"], spec.download_bytes)
+                # Derived, not declared: the pin states no override, so the
+                # value in the record is the generator's own sum.
+                pin = json.loads(
+                    (pins / f"{asset_id}.json").read_text(encoding="utf-8")
+                )
+                if "temporary_bytes" not in pin:
+                    self.assertEqual(sizes["temporary_bytes"], floor)
+        # Control: the same rule holds for the only other upstream-convert
+        # record, so this is the catalog's convention and not a local choice.
+        other = next(
+            item
+            for item in self.raw["assets"]
+            if item["source"]["mode"] == "upstream-convert"
+            and item["id"] not in ACCEPTED_MANIFESTS
+        )
+        self.assertEqual(
+            other["sizes"]["temporary_bytes"],
+            other["sizes"]["download_bytes"] + other["sizes"]["installed_bytes"],
+        )
+
     def test_the_populations_are_the_accepted_manifests(self) -> None:
         for asset_id, (manifest, version, count) in ACCEPTED_MANIFESTS.items():
             spec = self.catalog.require_asset(asset_id)
