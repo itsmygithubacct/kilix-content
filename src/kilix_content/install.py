@@ -1450,6 +1450,16 @@ class Installer:
         and again after the staged tree has been verified against the
         manifest, and a tree that does not match its manifest is never
         selected.
+
+        Each of those three checks has a test of its own that no other check
+        can satisfy, because each is distinguished by what had already
+        happened when it refused (`tests/test_supplied_install.py`). They were
+        stated as discipline before any test held them, and all three could be
+        deleted one at a time with the suite green.
+
+        The final verification runs **under the lock** and withdraws the
+        selection before refusing, so a refusal never leaves non-matching
+        bytes at the installed path.
         """
         self._ensure_root()
         asset = AssetRef(
@@ -1484,16 +1494,48 @@ class Installer:
                     raise InstallError("staged asset tree does not match its manifest")
                 require_license(asset, records=records, store=store)
                 self._replace_stage(output, destination)
+                # Still under the lock, so the tree at `destination` is the one
+                # this call just selected and nobody else's -- which is what
+                # makes withdrawing it safe.
+                selected = self._asset_integrity_ready(spec)
+                if selected is None:
+                    self._withdraw_selection(destination)
+                    raise InstallError("installed asset failed final verification")
             except (InstallError, DownloadError):
                 raise
             except (OSError, tarfile.TarError, zipfile.BadZipFile, RuntimeError) as exc:
                 raise InstallError("asset installation failed") from exc
             finally:
                 shutil.rmtree(stage, ignore_errors=True)
-        selected = self._asset_integrity_ready(spec)
-        if selected is None:
-            raise InstallError("installed asset failed final verification")
         return selected
+
+    def _withdraw_selection(self, destination: str) -> None:
+        """Undo a selection that failed its final verification.
+
+        A refusal must not leave bytes that do not match the manifest at the
+        installed path. The staged-tree check above is what normally makes
+        that impossible -- but when it was made a no-op, the corrupt tree was
+        **published and then refused**, and it stayed there
+        (C-V3-EXTEND-VERIFY F4; the same shape C-MIGRATE-KILIX-VERIFY V3
+        recorded for kilix). Two guards covering each other's blind spots is
+        luck; a refusal that leaves nothing behind is the property.
+
+        Called only under the asset lock, on a destination this call created
+        after finding it absent, so nothing here removes another installer's
+        tree.
+        """
+        try:
+            if os.path.islink(destination) or not os.path.isdir(destination):
+                os.unlink(destination)
+                return
+            shutil.rmtree(destination)
+        except FileNotFoundError:
+            return
+        except OSError as exc:
+            raise InstallError(
+                "installed asset failed final verification and could not be "
+                f"withdrawn: {destination}"
+            ) from exc
 
     def ensure_upstream_asset(
         self,
