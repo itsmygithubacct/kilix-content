@@ -40,6 +40,7 @@ PIN_NAMES = (
     "granite3.2-vision-2b.json",
     "qwen3.5-4b.json",
     "pocket-tts-english-q8_0.json",
+    "pocket-tts-english-python-alba.json",
     "bonsai-image-4b-ternary-gemlite.json",
     "bonsai-image-4b-binary-gemlite.json",
     # OD-AY: the kilix-pdf-conversion [granite] engine models, and only those.
@@ -73,6 +74,7 @@ LICENSORS = {
     "granite3.2-vision:2b": ["IBM"],
     "qwen3.5:4b": ["Alibaba Cloud / Qwen"],
     "pocket-tts-english-q8_0": ["Kyutai"],
+    "pocket-tts-english-python-alba": ["Kyutai"],
     "bonsai-image-4b:ternary-gemlite": ["Prism ML, Inc."],
     "bonsai-image-4b:binary-gemlite": ["Prism ML, Inc."],
     "granite-docling-258m": ["IBM"],

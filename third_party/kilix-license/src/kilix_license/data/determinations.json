@@ -6587,6 +6587,45 @@
    "notice_file": "0.2.2-model-determinations-r3-2026-09-19/notices/pocket-tts-english-q8_0.txt"
   },
   {
+   "entry_id": "pocket-tts-english-python-alba",
+   "title": "Kyutai Pocket TTS English CPU with Alba preset",
+   "status": "DETERMINED",
+   "fetched_by": "kilix-voice first-use Pocket CPU installer",
+   "upstream": {
+    "mode": "upstream-files",
+    "project": "kyutai/pocket-tts-without-voice-cloning",
+    "revision": "d29db7978e464fb90cb3359ee0c69a273b9142cc",
+    "url_base": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc",
+    "files": [
+     {"path":"README.md","bytes":11187,"sha256":"ae2ebac6f8039d761ca90e2b742136dce9d7872ec8dd2105e3b2de1e3021e3aa"},
+     {"path":"languages/english/model.safetensors","bytes":219029196,"sha256":"be9c6b4876d3f30740a8225dfcaa2e43dc4aeb753c15272735bee16bbb4abb0a"},
+     {"path":"languages/english/tokenizer.model","bytes":59339,"sha256":"d461765ae179566678c93091c5fa6f2984c31bbe990bf1aa62d92c64d91bc3f6"},
+     {"path":"languages/english/embeddings/alba.safetensors","bytes":6194424,"sha256":"e4a323e8e771f14fd669428d83e7af6d83b4d6d0f0e282c30122f04824f17b1c"}
+    ],
+    "files_complete": true
+   },
+   "licence": {"spdx":["CC-BY-4.0"]},
+   "licensors": [{"name":"Kyutai"}],
+   "components": [{"name":"Alba MacKenna voice preset","licence_ids":["CC-BY-4.0"],"exception":false}],
+   "binding_conditions": [{
+    "quote_id":"pocket-prohibited-use",
+    "kind":"binding-condition",
+    "source":{"path":"licence-evidence-bonsai-ollama-2026-09-15/sources/hf/pocket-tts/files@d29db797/README.md","sha256":"ae2ebac6f8039d761ca90e2b742136dce9d7872ec8dd2105e3b2de1e3021e3aa","bytes":11187},
+    "line_start":191,"line_end":193,"byte_start_in_first_line":0,"byte_end_in_last_line":644,
+    "text":"## Prohibited use\n\nUse of our model must comply with all applicable laws and regulations and must not result in, involve, or facilitate any illegal, harmful, deceptive, fraudulent, or unauthorized activity. Prohibited uses include, without limitation, voice impersonation or cloning without explicit and lawful consent; misinformation, disinformation, or deception (including fake news, fraudulent calls, or presenting generated content as genuine recordings of real people or events); and the generation of unlawful, harmful, libelous, abusive, harassing, discriminatory, hateful, or privacy-invasive content. We disclaim all liability for any non-compliant use.",
+    "text_sha256":"38ea33043da12f5a67895f9b35ed8776c0869371091a2bf0e4fa96a77db421c1"
+   }],
+   "attribution": [
+    {"quote_id":"pocket-python-alba-actor","kind":"upstream-attribution","source":{"path":"https://huggingface.co/kyutai/tts-voices/resolve/323332d33f997de8394f24a193e1a76df720e01a/README.md","sha256":"47c610f38e0e0bfb4b353a2afa84a5277b748b1b808d5f77fb8ef74fb836689b","bytes":5444},"line_start":93,"line_end":93,"text":"Characters voice-acted by Alba MacKenna:","text_sha256":"84a9c517c431a9f8876523f16624b8295bb3702b0b50889d2be0fdf5b5236a9e"},
+    {"quote_id":"pocket-python-alba-cc-by","kind":"upstream-licence-statement","source":{"path":"https://huggingface.co/kyutai/tts-voices/resolve/323332d33f997de8394f24a193e1a76df720e01a/README.md","sha256":"47c610f38e0e0bfb4b353a2afa84a5277b748b1b808d5f77fb8ef74fb836689b","bytes":5444},"line_start":99,"line_end":99,"text":"Released under the CC BY 4.0 licence.","text_sha256":"937142be7c85220e32bc5757848a63cecd66c9f4030d41f9cb0ff20b32dccf66"}
+   ],
+   "licence_texts": [{"path":"licence-evidence-bonsai-ollama-2026-09-15/sources/cc-by-4.0/legalcode.txt","sha256":"9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411","bytes":18657,"label":"CC BY 4.0 legal code","role":"licence"}],
+   "owner_decision": {"date":"2026-09-23","record":{"path":"pocket-cpu-licence-2026-09-23/OWNER-DETERMINATION.md"},"decision":"Owner approved CC BY 4.0 attribution for the model and Alba voice and binding agreement to the model card's prohibited-use text."},
+   "agreement": {"decision_class":"affirmative","explicit_acceptance_before_download":true,"binding_conditions_require_agreement":true},
+   "open_items": [],
+   "drift": []
+  },
+  {
    "entry_id": "bonsai-image-4b:ternary-gemlite",
    "title": "Bonsai Image 4B, ternary-gemlite variant",
    "status": "DETERMINED",

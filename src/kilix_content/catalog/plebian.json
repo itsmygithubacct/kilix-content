@@ -3490,6 +3490,88 @@
     },
     {
       "compatibility": {
+        "consumer_schema": "kilix.speech.models/v1",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 11187,
+          "path": "model/README.md",
+          "sha256": "ae2ebac6f8039d761ca90e2b742136dce9d7872ec8dd2105e3b2de1e3021e3aa"
+        },
+        {
+          "bytes": 6194424,
+          "path": "model/embeddings/alba.safetensors",
+          "sha256": "e4a323e8e771f14fd669428d83e7af6d83b4d6d0f0e282c30122f04824f17b1c"
+        },
+        {
+          "bytes": 219029196,
+          "path": "model/model.safetensors",
+          "sha256": "be9c6b4876d3f30740a8225dfcaa2e43dc4aeb753c15272735bee16bbb4abb0a"
+        },
+        {
+          "bytes": 59339,
+          "path": "model/tokenizer.model",
+          "sha256": "d461765ae179566678c93091c5fa6f2984c31bbe990bf1aa62d92c64d91bc3f6"
+        },
+        {
+          "bytes": 18657,
+          "path": "notices/LICENSE-cc-by-4.0.txt",
+          "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+        }
+      ],
+      "id": "pocket-tts-english-python-alba",
+      "label": "Pocket TTS English CPU / Alba",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "cc-by-4.0",
+          "licensors": [
+            "Kyutai"
+          ],
+          "record_digest": "c2cbe7d3eba0a58bd43febeddbd0d8982765c1542bdec16c098b8470acae40ed",
+          "text_sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+        }
+      ],
+      "provider": "kilix-voice",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 225294146,
+        "installed_bytes": 225312803,
+        "temporary_bytes": 225312803
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "model/README.md",
+            "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/README.md"
+          },
+          {
+            "path": "model/embeddings/alba.safetensors",
+            "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/languages/english/embeddings/alba.safetensors"
+          },
+          {
+            "path": "model/model.safetensors",
+            "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/languages/english/model.safetensors"
+          },
+          {
+            "path": "model/tokenizer.model",
+            "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/languages/english/tokenizer.model"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "kyutai/pocket-tts-without-voice-cloning",
+          "revision": "d29db7978e464fb90cb3359ee0c69a273b9142cc",
+          "original_url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/README.md"
+        }
+      },
+      "stream": "F104",
+      "version": "d29db7978e464fb90cb3359ee0c69a273b9142cc"
+    },
+    {
+      "compatibility": {
         "consumer_schema": "kilix.bonsai.runtime",
         "maximum": 1,
         "minimum": 1

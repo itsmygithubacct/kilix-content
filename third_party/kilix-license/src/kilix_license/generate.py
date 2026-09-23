@@ -76,6 +76,7 @@ REQUIRED_RECORD_IDS = (
     "nomic-embed-text:v1.5",
     "qwen3.5:4b",
     "pocket-tts-english-q8_0",
+    "pocket-tts-english-python-alba",
     "bonsai-image-4b:ternary-gemlite",
     "bonsai-image-4b:binary-gemlite",
     "encodec-24khz-stateful",
@@ -150,6 +151,7 @@ LICENCE_TEXT_IDS = {
     "bitnet-b1.58-2b4t": "huggingface.co/microsoft/bitnet-b1.58-2B-4T/LICENSE",
     # "CC BY 4.0 legal code".
     "pocket-tts-english-q8_0": "creativecommons.org/licenses/by/4.0/legalcode",
+    "pocket-tts-english-python-alba": "creativecommons.org/licenses/by/4.0/legalcode",
     # "kilix config/model_notices a44a6081 (Apache-2.0 with Alibaba Cloud copyright)".
     "qwen3-tts-0.6b-base": "kilix/config/model_notices#qwen3-tts",
     "qwen3-tts-0.6b-customvoice": "kilix/config/model_notices#qwen3-tts",
@@ -1295,5 +1297,4 @@ def check_records(records: list[LicenseRecord], records_dir: Path) -> None:
             "generator refuses hand-edited or missing records: "
             + ", ".join(mismatches)
         )
-
 

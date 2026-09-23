@@ -1,0 +1,41 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "pocket-tts-english-python-alba",
+  "label": "Pocket TTS English CPU / Alba",
+  "mode": "upstream-files",
+  "license_record_id": "pocket-tts-english-python-alba",
+  "provider": "kilix-voice",
+  "consumer_schema": "kilix.speech.models/v1",
+  "version": "d29db7978e464fb90cb3359ee0c69a273b9142cc",
+  "provenance": {
+    "project": "kyutai/pocket-tts-without-voice-cloning",
+    "revision": "d29db7978e464fb90cb3359ee0c69a273b9142cc",
+    "original_url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/README.md"
+  },
+  "members": [
+    {
+      "path": "model/README.md",
+      "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/README.md",
+      "bytes": 11187,
+      "sha256": "ae2ebac6f8039d761ca90e2b742136dce9d7872ec8dd2105e3b2de1e3021e3aa"
+    },
+    {
+      "path": "model/model.safetensors",
+      "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/languages/english/model.safetensors",
+      "bytes": 219029196,
+      "sha256": "be9c6b4876d3f30740a8225dfcaa2e43dc4aeb753c15272735bee16bbb4abb0a"
+    },
+    {
+      "path": "model/tokenizer.model",
+      "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/languages/english/tokenizer.model",
+      "bytes": 59339,
+      "sha256": "d461765ae179566678c93091c5fa6f2984c31bbe990bf1aa62d92c64d91bc3f6"
+    },
+    {
+      "path": "model/embeddings/alba.safetensors",
+      "url": "https://huggingface.co/kyutai/pocket-tts-without-voice-cloning/resolve/d29db7978e464fb90cb3359ee0c69a273b9142cc/languages/english/embeddings/alba.safetensors",
+      "bytes": 6194424,
+      "sha256": "e4a323e8e771f14fd669428d83e7af6d83b4d6d0f0e282c30122f04824f17b1c"
+    }
+  ]
+}
