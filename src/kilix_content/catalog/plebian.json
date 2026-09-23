@@ -1527,19 +1527,20 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-needle",
-        "ref": "cc46131360fa6b5c7065e10293b894a1195e2540"
+        "ref": "acaf84ffd4fba3e70e4d5b74530d2f14d787eb0a"
       },
       "binary": "kilix-needle",
       "build": [
         "make",
         "all"
       ],
-      "dependency_hint": "needs Python 3.11 or newer and make; the Needle 2 engine (needle2) installs on first use once its Apache-2.0 licence is accepted",
+      "dependency_hint": "needs Python 3.11 or newer and make, on x86-64 Linux; the Needle 2 engine (needle2) installs on first use once its Apache-2.0 licence is accepted; `kilix-needle setup` edits shell, Kilix and agent-harness settings only when run",
       "capabilities": [
         "kilix-control",
         "session-read",
         "network",
-        "model-storage"
+        "model-storage",
+        "settings-write"
       ],
       "actions": {
         "plan": {

@@ -30,6 +30,10 @@ pre-1.0.
   application licence-text identities to every release rule.
   `_CATALOG_SHA256` and the weights digest list (189 -> 194) are regenerated
   by their tools.
+- Re-pin kilix-needle to `acaf84ff`, its fixes for the 0.2.2 review (R1: two
+  High close-target and negation misreads, four Medium). Declare
+  `settings-write` (`kilix-needle setup` edits shell, Kilix and harness
+  settings when run) and x86-64 Linux only.
 - Catalog Kilix Land, the cross-game conversation room and training range,
   at an immutable commit with the shared `make all` game build.
 - Catalog the Tmux Sessions manager as a system entry dispatched through
