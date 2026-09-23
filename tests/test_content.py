@@ -829,6 +829,56 @@ class ContentTests(unittest.TestCase):
         with self.assertRaisesRegex(InstallError, "built only an internal archive"):
             installer._build(spec, str(self.root), lambda _message: None)
 
+    def test_git_build_removes_group_write_created_by_inherited_umask(self) -> None:
+        source, _old_ref = self._git_fixture()
+        nested = source / "nested"
+        nested.mkdir()
+        (nested / "input.txt").write_text("pinned input\n", encoding="utf-8")
+        run("git", "add", "nested/input.txt", cwd=source)
+        run("git", "commit", "--quiet", "-m", "nested input", cwd=source)
+        ref = run("git", "rev-parse", "HEAD", cwd=source)
+        script = """
+import os
+from pathlib import Path
+
+paths = [Path('.')]
+paths.extend(Path('.').rglob('*'))
+unsafe = [str(path) for path in paths
+          if not path.is_symlink() and path.stat().st_mode & 0o022]
+if unsafe:
+    raise SystemExit('group/other writable source: ' + ', '.join(unsafe))
+"""
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {"type": "git", "repository": str(source), "ref": ref},
+                "binary": "fixture",
+                "build": [sys.executable, "-c", script],
+            }
+        )
+        data = self.root / "data"
+        installer = Installer(
+            str(data), env=dict(os.environ, GIT_ALLOW_PROTOCOL="file")
+        )
+        old_umask = os.umask(0o002)
+        try:
+            executable = Path(installer.ensure(spec))
+        finally:
+            os.umask(old_umask)
+
+        self.assertEqual(executable, data / "fixture" / "fixture")
+        selected = executable.parent
+        self.assertFalse(
+            [
+                path
+                for path in (selected, *selected.rglob("*"))
+                if ".git" not in path.relative_to(selected).parts
+                and not path.is_symlink()
+                and path.stat().st_mode & 0o022
+            ]
+        )
+
     def test_build_uses_private_temporary_cache_and_removes_it(self) -> None:
         inherited_cache = self.root / "shared-cache"
         inherited_cache.mkdir(mode=0o775)
