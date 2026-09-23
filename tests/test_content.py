@@ -61,10 +61,14 @@ class ContentTests(unittest.TestCase):
         self.assertIs(catalog, default_catalog())
         self.assertGreaterEqual(len(catalog), 12)
         self.assertEqual(catalog.require("kilix-jpak").launch_mode, "terminal")
-        self.assertEqual(catalog.require("kilix-rancher").binary, "kilix-rancher")
+        rancher = catalog.require("kilix-rancher")
+        self.assertEqual(rancher.binary, "kilix-rancher/kilix-rancher")
+        self.assertEqual(rancher.build, ("make", "-C", "kilix-rancher", "all"))
+        self.assertEqual(rancher.repository,
+                         "https://github.com/itsmygithubacct/kilix-games")
         self.assertEqual(catalog.require("kilix-pong").icon, "pong")
         lights = catalog.require("kilix-lights")
-        self.assertEqual(lights.binary, "bin/kilix-lights")
+        self.assertEqual(lights.binary, "kilix-lights/bin/kilix-lights")
         self.assertIn("kitty-mouse", lights.capabilities)
         self.assertEqual(catalog.require("kilix-amp").launch_mode, "xpane")
         pdf_viewer = catalog.require("kilix-pdf")
@@ -123,6 +127,11 @@ class ContentTests(unittest.TestCase):
                     expected_build = ("make", "runtime")
                 else:
                     expected_build = ("make", "all")
+                if entry.repository == "https://github.com/itsmygithubacct/kilix-games":
+                    # Monorepo games build in their own directory, and must
+                    # launch the binary from that same directory.
+                    game_dir = entry.binary.split("/", 1)[0]
+                    expected_build = ("make", "-C", game_dir) + expected_build[1:]
                 self.assertEqual(entry.build, expected_build)
         with self.assertRaises(TypeError):
             catalog._by_id["replacement"] = catalog.require("kilix-jpak")

@@ -30,6 +30,9 @@ pre-1.0.
   application licence-text identities to every release rule.
   `_CATALOG_SHA256` and the weights digest list (189 -> 194) are regenerated
   by their tools.
+- Catalog Solitaire, the terminal Klondike from the `kilix-games` monorepo
+  (`solitaire-tui/bin/solitaire-tui`, pure Python, no build step), under the
+  shared `solitaire` game id. It replaces kilix's desktop-window Solitaire.
 - Catalog Kilix Land, the cross-game conversation room and training range,
   at an immutable commit with the shared `make all` game build.
 - Catalog the Tmux Sessions manager as a system entry dispatched through
@@ -40,6 +43,15 @@ pre-1.0.
   catalog once its pinned loopback-only launcher is public.
 
 ### Changed
+
+- Move ten games to the kilix-games monorepo at c746a5b: Kilix Lander,
+  Joustix, Kilix Brokeout, Bashed Earth, Kilix Lights, Kilix JPAK, Kilix
+  Pong, Chess Bash, Kilix Rancher and Kilix Fishtank. Each entry keeps its
+  id and label, names `<game>/<binary>`, and builds with `make -C <game>
+  all` against the repository's one shared kilix-game-sdk. This also
+  advances each game from its old pin to its reviewed main (the 0.1.9 SDK
+  stack), and Kilix Pong to its beatable CPU levels and neural player.
+  Solitaire moves to the same commit.
 
 - Type the EnCodec converters' selected kilix-encodec commit, `684b010b`, in
   the consumer-selection tests, as Amp's already is, so rolling either
