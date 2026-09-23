@@ -50,6 +50,13 @@ PIN_NAMES = (
     # under CC BY-NC 4.0 and converted locally (R4-068).
     "encodec-24khz-stateful.json",
     "encodec-48khz-frame.json",
+    # Owner direction 2026-09-22: the kilix-needle engine, an application
+    # record in kilix-license's determinations-apps.json. Not a release model.
+    "needle2.json",
+    # Owner direction 2026-09-22, round 2: the runtime library that loads a
+    # fine-tuned model, and the checkpoint and tokenizer fine-tuning starts from.
+    "needle2-runtime.json",
+    "needle2-train.json",
 )
 
 LICENSORS = {
@@ -80,6 +87,9 @@ LICENSORS = {
     "granite-vision-4.1-4b": ["IBM"],
     "encodec-24khz-stateful": ["Meta Platforms"],
     "encodec-48khz-frame": ["Meta Platforms"],
+    "needle2": ["Cactus Compute, Inc."],
+    "needle2-runtime": ["Cactus Compute, Inc."],
+    "needle2-train": ["Cactus Compute, Inc."],
 }
 
 LICENSE_ROW_IDS = {

@@ -1,0 +1,3 @@
+# sha256 of determinations-apps.json. Application records cite this digest.
+# Do not hand-edit; tools/generate_records.py --check verifies it.
+fa4829c01bfd2034969d514318d48f4e3e2c93f80ed1dc33ab018e3498739401  determinations-apps.json

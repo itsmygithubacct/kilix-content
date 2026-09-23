@@ -12,6 +12,24 @@ pre-1.0.
   print fails here instead of at a user's terminal. All 27 pass.
 - `verified_catalog_bytes()`: the packaged catalog bytes, read once and
   returned only after they match the pinned digest.
+- Offer kilix-needle (OD-BV, 0.2.2 rc2): drive panes and tabs from plain
+  requests with Cactus Compute's Needle 2. The app entry pins
+  `cc461313` with the shared `make all`. Its three first-use assets are
+  `upstream-files` at Hugging Face revision `32e9e3a9`, all Apache-2.0,
+  Cactus Compute, Inc.:
+  - `needle2`: the engine, one 14,888,896-byte executable with the model
+    built in;
+  - `needle2-runtime`: the manylinux x86_64 wheel, byte-exact, which carries
+    `libneedle.so` for a fine-tuned model;
+  - `needle2-train`: the base checkpoint, a pickle to verify against this
+    manifest before loading it, and the two tokenizer files.
+  Each has its own record in kilix-license's application authority, so no
+  release record digest moves. The vendored kilix-license moves `7104ea5c` ->
+  `a1f5d077` (129 files to 135) by `--repin` under its old-value guard. That
+  commit carries the needle2 records and the review fixes that hold
+  application licence-text identities to every release rule.
+  `_CATALOG_SHA256` and the weights digest list (189 -> 194) are regenerated
+  by their tools.
 - Catalog Kilix Land, the cross-game conversation room and training range,
   at an immutable commit with the shared `make all` game build.
 - Catalog the Tmux Sessions manager as a system entry dispatched through
