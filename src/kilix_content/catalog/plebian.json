@@ -158,6 +158,26 @@
       }
     },
     {
+      "id": "solitaire",
+      "label": "Solitaire",
+      "kind": "game",
+      "icon": "cards",
+      "description": "Klondike solitaire in the terminal, with mouse play and auto-place.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-games",
+        "ref": "f5a5fbfda3cbd2f76408904dd1b1c7a648cf8aac"
+      },
+      "binary": "solitaire-tui/bin/solitaire-tui",
+      "dependency_hint": "needs Python 3",
+      "capabilities": [
+        "kitty-mouse"
+      ],
+      "launch": {
+        "mode": "terminal"
+      }
+    },
+    {
       "id": "kilix-lights",
       "label": "Kilix Lights",
       "kind": "game",

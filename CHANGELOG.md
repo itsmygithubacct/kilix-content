@@ -7,6 +7,9 @@ pre-1.0.
 
 ### Added
 
+- Catalog Solitaire, the terminal Klondike from the `kilix-games` monorepo
+  (`solitaire-tui/bin/solitaire-tui`, pure Python, no build step), under the
+  shared `solitaire` game id. It replaces kilix's desktop-window Solitaire.
 - Catalog Kilix Land, the cross-game conversation room and training range,
   at an immutable commit with the shared `make all` game build.
 - Catalog the Tmux Sessions manager as a system entry dispatched through
