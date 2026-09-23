@@ -13,6 +13,11 @@ afterwards, at `c275334f`, on the F100 authority line that OD-BM discarded:
 * `kilix-amp` `2bcb035d` -> `e876632e` with `make all ENCODEC=1` -- EnCodec
   playback and the installed-content admission it needs.
 
+`kilix-amp` has since moved forward once more, `e876632e` -> `92f252b3`, a
+strict descendant whose two commits bring its EnCodec admission fixture and
+README onto asset/v3 and kilix-license receipts. The build stays
+`make all ENCODEC=1`.
+
 The `kilix-tui-utils` half was at least loud: kilix's own
 `test_component_pin_delivery.CatalogPinTests.test_tui_utils_pin_matches_the_shared_catalog`
 compares `scripts/install-kilix-tui-utils.sh`'s pinned default against this
@@ -40,7 +45,7 @@ CATALOG = ROOT / "src" / "kilix_content" / "catalog" / "plebian.json"
 
 # The selections a re-pin must deliver, typed rather than derived.
 TUI_UTILS_REF = "af7e8481588c090fd703be51aa4dddf597b07ef8"
-AMP_REF = "e876632e4aef73b2db301ea30bd27f8dfec73781"
+AMP_REF = "92f252b3cf64ad85c252b7e0ab00c6325ea8442f"
 AMP_BUILD = ("make", "all", "ENCODEC=1")
 
 

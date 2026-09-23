@@ -23,6 +23,12 @@ pre-1.0.
 
 ### Changed
 
+- Advance both EnCodec converters to the kilix-encodec admission fixes and
+  `kilix-amp` to its asset/v3 admission fixture and receipt-store README. Each
+  new commit descends from the one it replaces, Amp keeps
+  `make all ENCODEC=1`, and the converters' upstream pins are unchanged at the
+  new commit. The catalog digest changes; no asset record, licence record or
+  receipt byte does.
 - Advance the `kilix-amp` and `kilix-tui-utils` selections to the EnCodec
   playback wave, and select `make all ENCODEC=1` for Amp. Both values were
   older here than on the line the release currently pins, so advancing the

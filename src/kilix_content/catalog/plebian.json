@@ -1127,7 +1127,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-amp",
-        "ref": "e876632e4aef73b2db301ea30bd27f8dfec73781"
+        "ref": "92f252b3cf64ad85c252b7e0ab00c6325ea8442f"
       },
       "binary": "kilix-amp",
       "build": [
@@ -1469,7 +1469,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-encodec",
-        "ref": "16ad64ce545bd2abb5531439b9bf1b1c28c76767"
+        "ref": "684b010b211470f7c358105d2da453fb7a9d0ec5"
       },
       "binary": "bin/kilix-encodec-convert-24khz",
       "build": [
@@ -1498,7 +1498,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-encodec",
-        "ref": "16ad64ce545bd2abb5531439b9bf1b1c28c76767"
+        "ref": "684b010b211470f7c358105d2da453fb7a9d0ec5"
       },
       "binary": "bin/kilix-encodec-convert-48khz",
       "build": [
