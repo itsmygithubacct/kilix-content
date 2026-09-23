@@ -21,6 +21,15 @@ pre-1.0.
 
 ### Changed
 
+- Move ten games to the kilix-games monorepo at c746a5b: Kilix Lander,
+  Joustix, Kilix Brokeout, Bashed Earth, Kilix Lights, Kilix JPAK, Kilix
+  Pong, Chess Bash, Kilix Rancher and Kilix Fishtank. Each entry keeps its
+  id and label, names `<game>/<binary>`, and builds with `make -C <game>
+  all` against the repository's one shared kilix-game-sdk. This also
+  advances each game from its old pin to its reviewed main (the 0.1.9 SDK
+  stack), and Kilix Pong to its beatable CPU levels and neural player.
+  Solitaire moves to the same commit.
+
 - Advance `kilix-tui-utils` to the desktop wave that derives the Games place
   from the host catalog, remembers recent and pinned Home rows, adds the
   Launchers and Manual places, and gives the Tmux manager row a `kilix`
