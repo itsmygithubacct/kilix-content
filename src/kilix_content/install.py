@@ -1091,12 +1091,22 @@ class Installer:
         if spec.build:
             report(f"building {spec.label} …")
             try:
-                returncode, detail = _run_with_tail(
-                    list(spec.build),
-                    cwd=directory,
-                    env=self.env,
-                    timeout=self.command_timeout,
-                )
+                # Builds may use tools that reject a cache inherited from a
+                # shared or otherwise permissive home directory. Give every
+                # build a private cache outside its install stage, and let the
+                # temporary directory remove it on both success and failure.
+                with tempfile.TemporaryDirectory(
+                    prefix=".build-cache-", dir=self.root
+                ) as cache:
+                    os.chmod(cache, 0o700)
+                    build_env = dict(self.env)
+                    build_env["XDG_CACHE_HOME"] = cache
+                    returncode, detail = _run_with_tail(
+                        list(spec.build),
+                        cwd=directory,
+                        env=build_env,
+                        timeout=self.command_timeout,
+                    )
             except (OSError, ValueError) as exc:
                 hint = f" ({spec.dependency_hint})" if spec.dependency_hint else ""
                 raise InstallError(

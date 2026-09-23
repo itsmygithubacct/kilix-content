@@ -829,6 +829,69 @@ class ContentTests(unittest.TestCase):
         with self.assertRaisesRegex(InstallError, "built only an internal archive"):
             installer._build(spec, str(self.root), lambda _message: None)
 
+    def test_build_uses_private_temporary_cache_and_removes_it(self) -> None:
+        inherited_cache = self.root / "shared-cache"
+        inherited_cache.mkdir(mode=0o775)
+        inherited_cache.chmod(0o775)
+        directory = self.root / "build"
+        directory.mkdir()
+        script = (
+            "import json, os, pathlib, stat\n"
+            "cache = pathlib.Path(os.environ['XDG_CACHE_HOME'])\n"
+            "pathlib.Path('build-env.json').write_text(json.dumps({"
+            "'cache': str(cache), 'mode': stat.S_IMODE(cache.stat().st_mode), "
+            "'preserved': os.environ.get('BUILD_ENV_PRESERVED')}))\n"
+            "pathlib.Path('fixture').write_text('#!/bin/sh\\nexit 0\\n')\n"
+            "pathlib.Path('fixture').chmod(0o755)\n"
+        )
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {"type": "system"},
+                "binary": "fixture",
+                "build": [sys.executable, "-c", script],
+            }
+        )
+        installer = Installer(
+            str(self.root),
+            env={
+                **os.environ,
+                "XDG_CACHE_HOME": str(inherited_cache),
+                "BUILD_ENV_PRESERVED": "yes",
+            },
+        )
+
+        installer._build(spec, str(directory), lambda _message: None)
+
+        result = json.loads((directory / "build-env.json").read_text())
+        self.assertNotEqual(result["cache"], str(inherited_cache))
+        self.assertEqual(Path(result["cache"]).parent, self.root)
+        self.assertEqual(result["mode"], 0o700)
+        self.assertEqual(result["preserved"], "yes")
+        self.assertFalse(Path(result["cache"]).exists())
+        self.assertFalse(
+            any(p.name.startswith(".build-cache-") for p in self.root.iterdir())
+        )
+
+    def test_failed_build_removes_private_cache(self) -> None:
+        spec = ContentSpec.from_mapping(
+            {
+                "id": "fixture",
+                "label": "Fixture",
+                "source": {"type": "system"},
+                "binary": "fixture",
+                "build": [sys.executable, "-c", "raise SystemExit(7)"],
+            }
+        )
+        with self.assertRaisesRegex(InstallError, "build failed"):
+            Installer(str(self.root))._build(
+                spec, str(self.root), lambda _message: None
+            )
+        self.assertFalse(
+            any(p.name.startswith(".build-cache-") for p in self.root.iterdir())
+        )
+
     def test_interrupted_empty_git_init_is_replaced_atomically(self) -> None:
         source, ref = self._git_fixture()
         spec = ContentSpec.from_mapping(
