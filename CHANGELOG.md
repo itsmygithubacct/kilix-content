@@ -23,6 +23,10 @@ pre-1.0.
 
 ### Changed
 
+- Type the EnCodec converters' selected kilix-encodec commit, `684b010b`, in
+  the consumer-selection tests, as Amp's already is, so rolling either
+  converter or both back fails a test. `tools/generate_encodec_pins.py` now
+  defaults to that commit. The catalog and its digest are unchanged.
 - Advance both EnCodec converters to the kilix-encodec admission fixes and
   `kilix-amp` to its asset/v3 admission fixture and receipt-store README. Each
   new commit descends from the one it replaces, Amp keeps

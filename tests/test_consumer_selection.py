@@ -18,6 +18,15 @@ strict descendant whose two commits bring its EnCodec admission fixture and
 README onto asset/v3 and kilix-license receipts. The build stays
 `make all ENCODEC=1`.
 
+The two EnCodec converters, `kilix-encodec-convert-24khz` and
+`kilix-encodec-convert-48khz`, select `kilix-encodec` `684b010b`, the commit
+that carries the asset/v3 migration. Their only other test,
+`test_both_tools_are_pinned_at_the_same_ref_for_c5`, asks that the two agree,
+so rolling both back to `16ad64ce` together passed every test while EnCodec
+playback would break at runtime. Their ref is typed here for the same reason
+Amp's is, and the pin generator's default ref is held to it, so a bare
+`tools/generate_encodec_pins.py --check` checks the commit the catalog selects.
+
 The `kilix-tui-utils` half was at least loud: kilix's own
 `test_component_pin_delivery.CatalogPinTests.test_tui_utils_pin_matches_the_shared_catalog`
 compares `scripts/install-kilix-tui-utils.sh`'s pinned default against this
@@ -47,6 +56,8 @@ CATALOG = ROOT / "src" / "kilix_content" / "catalog" / "plebian.json"
 TUI_UTILS_REF = "af7e8481588c090fd703be51aa4dddf597b07ef8"
 AMP_REF = "92f252b3cf64ad85c252b7e0ab00c6325ea8442f"
 AMP_BUILD = ("make", "all", "ENCODEC=1")
+ENCODEC_CONVERTER_REF = "684b010b211470f7c358105d2da453fb7a9d0ec5"
+ENCODEC_CONVERTERS = ("kilix-encodec-convert-24khz", "kilix-encodec-convert-48khz")
 
 
 class ConsumerSelectionTests(unittest.TestCase):
@@ -72,6 +83,24 @@ class ConsumerSelectionTests(unittest.TestCase):
             "OD-BN: 0.2.2 ships EnCodec playback in Amp and Music; the Amp "
             "build must carry ENCODEC=1",
         )
+
+    def test_each_encodec_converter_selects_the_asset_v3_migration(self) -> None:
+        """Each converter on its own: agreeing with the other is not enough."""
+        catalog = verified_packaged_catalog()
+        for content_id in ENCODEC_CONVERTERS:
+            with self.subTest(content_id=content_id):
+                self.assertEqual(catalog.require(content_id).ref, ENCODEC_CONVERTER_REF)
+
+    def test_the_encodec_pin_generator_defaults_to_the_selected_ref(self) -> None:
+        """A bare `--check` must check the commit the catalog selects."""
+        import importlib.util
+
+        path = ROOT / "tools" / "generate_encodec_pins.py"
+        spec = importlib.util.spec_from_file_location("generate_encodec_pins", path)
+        module = importlib.util.module_from_spec(spec)
+        assert spec.loader is not None
+        spec.loader.exec_module(module)
+        self.assertEqual(module.DEFAULT_REF, ENCODEC_CONVERTER_REF)
 
     def test_tui_utils_package_selects_the_music_playback_wave(self) -> None:
         catalog = verified_packaged_catalog()
@@ -110,6 +139,12 @@ class ConsumerSelectionTests(unittest.TestCase):
         self.assertEqual(package["source"]["ref"], TUI_UTILS_REF)
         self.assertEqual(amp["source"]["ref"], AMP_REF)
         self.assertEqual(tuple(amp["build"]), AMP_BUILD)
+        for content_id in ENCODEC_CONVERTERS:
+            converter = next(
+                entry for entry in raw["content"] if entry["id"] == content_id
+            )
+            with self.subTest(content_id=content_id):
+                self.assertEqual(converter["source"]["ref"], ENCODEC_CONVERTER_REF)
 
 
 if __name__ == "__main__":

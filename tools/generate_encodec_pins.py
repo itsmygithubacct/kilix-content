@@ -58,8 +58,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 PIN_DIR = ROOT / "tools" / "upstream-pins"
 
-# The kilix-encodec release line E1-RV-VERIFY accepted (R4-067 re-pins it).
-DEFAULT_REF = "16ad64ce545bd2abb5531439b9bf1b1c28c76767"
+# The kilix-encodec commit the catalog's two converters select (the asset/v3
+# migration); tests/test_consumer_selection.py holds the two equal.
+DEFAULT_REF = "684b010b211470f7c358105d2da453fb7a9d0ec5"
 
 CONVERTER_INPUTS = "tools/converter-inputs.json"
 GRAPH_POPULATION = "python/graph_population.py"
