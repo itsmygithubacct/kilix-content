@@ -917,6 +917,26 @@ class Installer:
                 f"could not create staging directory in {self.root}"
             ) from exc
 
+    @staticmethod
+    def _harden_git_stage(stage: str) -> None:
+        """Remove group/other write bits created by a permissive umask.
+
+        Build tools may validate every source ancestor before reading pinned
+        inputs. Git honors the caller's umask when it creates checkout paths,
+        so an otherwise private managed stage can contain group-writable
+        directories and files. Preserve owner and executable bits while
+        making the fetched tree safe for those tools.
+        """
+        for directory, names, files in os.walk(stage, followlinks=False):
+            entries = (os.path.join(directory, name) for name in names + files)
+            for path in (directory, *entries):
+                info = os.lstat(path)
+                if stat.S_ISLNK(info.st_mode):
+                    continue
+                mode = stat.S_IMODE(info.st_mode)
+                if mode & 0o022:
+                    os.chmod(path, mode & ~0o022)
+
     def _replace_stage(self, stage: str, destination: str) -> None:
         if not os.path.lexists(destination):
             try:
@@ -1028,11 +1048,19 @@ class Installer:
                         f"source setup failed ({' '.join(argv[:3])}): {detail}"
                     )
             verify_git_checkout(spec.repository, spec.ref, stage, env=self.env)
+            try:
+                self._harden_git_stage(stage)
+            except OSError as exc:
+                raise InstallError("could not harden fetched source permissions") from exc
             self._build(spec, stage, report)
             # A build may create untracked outputs, but it must never rewrite
             # pinned source or move a dependency. Re-check the tracked tree
             # before it can become the selected installation.
             verify_git_checkout(spec.repository, spec.ref, stage, env=self.env)
+            try:
+                self._harden_git_stage(stage)
+            except OSError as exc:
+                raise InstallError("could not harden built source permissions") from exc
             self._replace_stage(stage, destination)
             stage = ""
         finally:
@@ -1091,12 +1119,21 @@ class Installer:
         if spec.build:
             report(f"building {spec.label} …")
             try:
-                returncode, detail = _run_with_tail(
-                    list(spec.build),
-                    cwd=directory,
-                    env=self.env,
-                    timeout=self.command_timeout,
-                )
+                # Build tools may reject a shared or otherwise permissive
+                # inherited cache. Give each build a private temporary cache
+                # and remove it on both success and failure.
+                with tempfile.TemporaryDirectory(
+                    prefix=".build-cache-", dir=self.root
+                ) as cache:
+                    os.chmod(cache, 0o700)
+                    build_env = dict(self.env)
+                    build_env["XDG_CACHE_HOME"] = cache
+                    returncode, detail = _run_with_tail(
+                        list(spec.build),
+                        cwd=directory,
+                        env=build_env,
+                        timeout=self.command_timeout,
+                    )
             except (OSError, ValueError) as exc:
                 hint = f" ({spec.dependency_hint})" if spec.dependency_hint else ""
                 raise InstallError(
