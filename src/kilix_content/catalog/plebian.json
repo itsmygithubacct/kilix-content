@@ -1527,7 +1527,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-needle",
-        "ref": "8073b0103344af9adaa00b041fc5304c7ce93fc5"
+        "ref": "7b19de8602c77418fd16788b851cf7a158eda53e"
       },
       "binary": "kilix-needle",
       "build": [
