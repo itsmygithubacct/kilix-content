@@ -12,6 +12,13 @@ pre-1.0.
   print fails here instead of at a user's terminal. All 27 pass.
 - `verified_catalog_bytes()`: the packaged catalog bytes, read once and
   returned only after they match the pinned digest.
+- Catalog Solitaire, the terminal Klondike from the `kilix-games` monorepo
+  (`solitaire-tui/bin/solitaire-tui`, pure Python, no build step), under the
+  shared `solitaire` game id. It replaces kilix's desktop-window Solitaire.
+- Merge `main` into the 0.2.2 rc2 line. Solitaire is labelled `Solitaire TUI`
+  in the catalog, since Kilix 95 keeps its own built-in Solitaire window; the
+  shared `solitaire` id and settings toggle are unchanged. `kilix-tui-utils`
+  moves to `785a62e`, which descends from both rc1's `af7e848` and its main.
 - Catalog Kilix Land, the cross-game conversation room and training range,
   at an immutable commit with the shared `make all` game build.
 - Catalog the Tmux Sessions manager as a system entry dispatched through
@@ -39,6 +46,15 @@ pre-1.0.
   content gitlink would have rolled them backwards -- Amp silently, because no
   consumer test bound its build arguments. The catalog digest changes; no asset
   record, licence record or receipt byte does.
+- Move ten games to the kilix-games monorepo at c746a5b: Kilix Lander,
+  Joustix, Kilix Brokeout, Bashed Earth, Kilix Lights, Kilix JPAK, Kilix
+  Pong, Chess Bash, Kilix Rancher and Kilix Fishtank. Each entry keeps its
+  id and label, names `<game>/<binary>`, and builds with `make -C <game>
+  all` against the repository's one shared kilix-game-sdk. This also
+  advances each game from its old pin to its reviewed main (the 0.1.9 SDK
+  stack), and Kilix Pong to its beatable CPU levels and neural player.
+  Solitaire moves to the same commit.
+
 - Advance `kilix-tui-utils` to the desktop wave that derives the Games place
   from the host catalog, remembers recent and pinned Home rows, adds the
   Launchers and Manual places, and gives the Tmux manager row a `kilix`
