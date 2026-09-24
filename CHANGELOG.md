@@ -42,8 +42,11 @@ pre-1.0.
   High close-target and negation misreads, four Medium). Declare
   `settings-write` (`kilix-needle setup` edits shell, Kilix and harness
   settings when run) and x86-64 Linux only.
-- Re-pin kilix-needle to `1de6280e` (0.2.2 reviews R2 to R8). Pane and tab
-  names match without regard to case, the current tab first. Every action in a request is resolved
+- Re-pin kilix-needle to `33eea829` (0.2.2 reviews R2 to R9). Pane and tab
+  names match without regard to case. A pane in the current tab is chosen
+  over another tab's pane of the same name, but a yes given in advance does
+  not cover that choice; two tabs of one name are refused, and a pane or tab
+  called "next", "previous" or a side makes that word ambiguous. Every action in a request is resolved
   against the desktop the request was made on and performed by id, so "close
   tab 2 and close tab 3" closes the tabs that were 2 and 3. A yes given in
   advance (`--yes`, MCP `confirm_risky`) covers only a plain instruction, as
