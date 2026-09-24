@@ -19,6 +19,42 @@ pre-1.0.
   in the catalog, since Kilix 95 keeps its own built-in Solitaire window; the
   shared `solitaire` id and settings toggle are unchanged. `kilix-tui-utils`
   moves to `785a62e`, which descends from both rc1's `af7e848` and its main.
+- Offer kilix-needle (OD-BV, 0.2.2 rc2): drive panes and tabs from plain
+  requests with Cactus Compute's Needle 2. The app entry pins
+  `cc461313` with the shared `make all`. Its three first-use assets are
+  `upstream-files` at Hugging Face revision `32e9e3a9`, all Apache-2.0,
+  Cactus Compute, Inc.:
+  - `needle2`: the engine, one 14,888,896-byte executable with the model
+    built in;
+  - `needle2-runtime`: the manylinux x86_64 wheel, byte-exact, which carries
+    `libneedle.so` for a fine-tuned model;
+  - `needle2-train`: the base checkpoint, a pickle to verify against this
+    manifest before loading it, and the two tokenizer files.
+  Each has its own record in kilix-license's application authority, so no
+  release record digest moves. The vendored kilix-license moves `a58c6f4c` ->
+  `78417e40` (132 files to 138) by `--repin` under its old-value guard. That
+  commit merges the Pocket first-use terms (`a58c6f4c`), the needle2 records
+  with the review fixes that hold application licence-text identities to
+  every release rule (`a1f5d077`), and kilix-license's `main`.
+  `_CATALOG_SHA256` and the weights digest list (190 -> 195) are regenerated
+  by their tools.
+- Re-pin kilix-needle to `acaf84ff`, its fixes for the 0.2.2 review (R1: two
+  High close-target and negation misreads, four Medium). Declare
+  `settings-write` (`kilix-needle setup` edits shell, Kilix and harness
+  settings when run) and x86-64 Linux only.
+- Re-pin kilix-needle to `1de6280e` (0.2.2 reviews R2 to R8). Pane and tab
+  names match without regard to case, the current tab first. Every action in a request is resolved
+  against the desktop the request was made on and performed by id, so "close
+  tab 2 and close tab 3" closes the tabs that were 2 and 3. A yes given in
+  advance (`--yes`, MCP `confirm_risky`) covers only a plain instruction, as
+  the kilix-needle README defines it rule by rule; other requests wait for a
+  person who sees the resolved target. When the requester's pane is known,
+  a yes given in advance never closes it or its tab; it never acts on a name
+  found only as a word of a title; a pane is read again before anything is
+  typed into it, and with emacs-style editing a half-typed one-line prompt is
+  cut to the kill ring first. Known issue (named in its README): at a
+  continuation prompt, in vi editing mode or with a reverse search pending,
+  that clear is not enough, and typed text can join what is there.
 - Catalog Kilix Land, the cross-game conversation room and training range,
   at an immutable commit with the shared `make all` game build.
 - Catalog the Tmux Sessions manager as a system entry dispatched through

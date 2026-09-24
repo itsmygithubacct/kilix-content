@@ -1,0 +1,22 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "needle2-runtime",
+  "mode": "upstream-files",
+  "license_record_id": "needle2-runtime",
+  "provider": "kilix-needle",
+  "consumer_schema": "kilix.needle.runtime",
+  "version": "32e9e3a93b205f786929697446ae669cf0a84579",
+  "provenance": {
+    "project": "Cactus-Compute/needle2",
+    "revision": "32e9e3a93b205f786929697446ae669cf0a84579",
+    "original_url": "https://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/python/cactus_needle-2.0.4-py3-none-manylinux2014_x86_64.whl"
+  },
+  "members": [
+    {
+      "path": "cactus_needle-2.0.4-py3-none-manylinux2014_x86_64.whl",
+      "url": "https://huggingface.co/Cactus-Compute/needle2/resolve/32e9e3a93b205f786929697446ae669cf0a84579/python/cactus_needle-2.0.4-py3-none-manylinux2014_x86_64.whl",
+      "bytes": 13283977,
+      "sha256": "13a84e6c73095fd175b11d46a30a984b62123d94421b769c107074aff7f65c2b"
+    }
+  ]
+}

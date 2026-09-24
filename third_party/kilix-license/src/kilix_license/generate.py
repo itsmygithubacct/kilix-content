@@ -35,6 +35,15 @@ DETERMINATIONS_NAME = "determinations.json"
 PIN_NAME = "determinations.sha256"
 TEXTS_DIRNAME = "texts"
 RECORDS_DIRNAME = "records"
+# Application models outside the release authority. Every record cites the
+# digest of the determinations file it came from, so an entry appended to
+# determinations.json moves all of that file's record digests, and receipts
+# name record digests (tests/data/record-digests-fbdfb546.txt). A model an
+# application fetches for itself is determined in its own file, with its own
+# pin and its own records directory, so adding one moves no release record.
+APP_DETERMINATIONS_NAME = "determinations-apps.json"
+APP_PIN_NAME = "determinations-apps.sha256"
+APP_RECORDS_DIRNAME = "app-records"
 CONVERTER_ID = "encodec-converter-runtime-code"
 CONVERTER_TEXT_ROLE = "code-relicensing-notice"
 FORBIDDEN_PREFIXES = ("kilix-llm",)
@@ -85,6 +94,18 @@ REQUIRED_RECORD_IDS = (
     # OD-AY (R4-047): the kilix-pdf-conversion [granite] engine models only.
     *PDF_ENGINE_RECORD_IDS,
 )
+# The application authority's records, in determinations-apps.json. They
+# never share an id with a release record.
+APP_RECORD_IDS = (
+    # Owner direction 2026-09-22 (licence-evidence-needle2-2026-09-22): the
+    # kilix-needle engine. Not a release model.
+    "needle2",
+    # Owner direction 2026-09-22 (OWNER-DIRECTION-R2.md in the same packet): the
+    # runtime library that loads a fine-tuned model, and the base checkpoint and
+    # tokenizer the fine-tuning starts from. Not release models.
+    "needle2-runtime",
+    "needle2-train",
+)
 # SR-4 (C2E-VERIFY F2): the identity of each agreement-required binding text,
 # keyed by the determinations quote_id. The value names the document the text
 # is cut from, without a revision. It is an identifier, not a fetch URL. The
@@ -119,6 +140,15 @@ BINDING_TEXT_IDS = {
 # gives two licence texts one identity, or one licence text two identities.
 # Each comment cites the determinations licence_texts label (or quote) the
 # value is taken from. Not bound (OD-AI): records carry it outside the digest.
+# Licence text identities of application records. The same rules hold across
+# both tables: one text, one identity (check_app_licence_text_ids).
+APP_LICENCE_TEXT_IDS = {
+    # Cactus-Compute/needle2 LICENSE is byte-identical to the cfc7749b text; the
+    # runtime and training assets show that same text, so they share its identity.
+    "needle2": "debian/common-licenses/Apache-2.0",
+    "needle2-runtime": "debian/common-licenses/Apache-2.0",
+    "needle2-train": "debian/common-licenses/Apache-2.0",
+}
 LICENCE_TEXT_IDS = {
     # "Apache-2.0 text (Debian common-licenses copy, cfc7749b)": the Vosk models,
     # and the card-only Apache-2.0 grants (builder reading R3 item 1).
@@ -416,10 +446,10 @@ def record_filename(record_id: str) -> str:
     return record_id.replace(":", "_") + ".json"
 
 
-def load_pin(directory: Path) -> str:
+def load_pin(directory: Path, name: str = PIN_NAME) -> str:
     """The one sha256 pin line. A second pin line is refused (LIC3-2): a stale
     pin appended after the real one must not pass unnoticed."""
-    pin_path = directory / PIN_NAME
+    pin_path = directory / name
     text = pin_path.read_text(encoding="utf-8")
     pins = []
     for line in text.splitlines():
@@ -435,14 +465,18 @@ def load_pin(directory: Path) -> str:
     return digest
 
 
-def load_determinations(directory: Path) -> tuple[bytes, dict[str, Any], str]:
-    path = directory / DETERMINATIONS_NAME
+def load_determinations(
+    directory: Path,
+    name: str = DETERMINATIONS_NAME,
+    pin_name: str = PIN_NAME,
+) -> tuple[bytes, dict[str, Any], str]:
+    path = directory / name
     data = path.read_bytes()
     digest = sha256_hex(data)
-    pinned = load_pin(directory)
+    pinned = load_pin(directory, pin_name)
     if digest != pinned:
         raise TextDigestMismatch(
-            f"{DETERMINATIONS_NAME} sha256 {digest} != pin {pinned}"
+            f"{name} sha256 {digest} != pin {pinned}"
         )
     payload = load_json_object(data, "determinations")
     return data, payload, digest
@@ -661,6 +695,8 @@ def licence_text_id_for(record_id: str) -> str:
     """The declared licence text identity of record_id; a missing one is refused."""
     text_id = LICENCE_TEXT_IDS.get(record_id)
     if text_id is None:
+        text_id = APP_LICENCE_TEXT_IDS.get(record_id)
+    if text_id is None:
         raise ValueError(
             f"record {record_id!r} has no licence text identity in LICENCE_TEXT_IDS "
             "(SR-4); a renamed entry maps to its old identity"
@@ -813,13 +849,23 @@ def check_licence_text_ids(
     """
     if table is None:
         table = LICENCE_TEXT_IDS
-    shown: list[tuple[str, str]] = []
+    shown: list[tuple[str, str, Mapping[str, str]]] = []
     for entry in payload.get("entries") or []:
-        shown.append((str(entry.get("entry_id")), licence_text_digest(entry)))
-    shown.append((CONVERTER_ID, _converter_mit_digest(payload)))
+        shown.append((str(entry.get("entry_id")), licence_text_digest(entry), table))
+    shown.append((CONVERTER_ID, _converter_mit_digest(payload), table))
+    _refuse_shared_text_ids(shown)
+
+
+def _refuse_shared_text_ids(shown: list[tuple[str, str, Mapping[str, str]]]) -> None:
+    """The identity rules both authorities apply, over (record, text digest, table) rows.
+
+    One place, so the application check cannot drift from the release check:
+    it once omitted the converter row and the binding-text refusal (review of
+    the needle2 records, 2026-09-24).
+    """
     digests: dict[str, set[str]] = {}
     identities: dict[str, set[str]] = {}
-    for record_id, digest in shown:
+    for record_id, digest, table in shown:
         text_id = table.get(record_id)
         if text_id is None:
             continue
@@ -1213,6 +1259,67 @@ def generate_records(
     extra_llm = [item.id for item in records if item.id.startswith("kilix-llm")]
     if extra_llm:
         raise ValueError(f"kilix-llm records are out of closure: {extra_llm}")
+    return records
+
+
+def load_app_determinations(directory: Path) -> tuple[bytes, dict[str, Any], str]:
+    return load_determinations(directory, APP_DETERMINATIONS_NAME, APP_PIN_NAME)
+
+
+def check_app_licence_text_ids(
+    app_payload: Mapping[str, Any],
+    release_payload: Mapping[str, Any],
+) -> None:
+    """One licence text, one identity, across the release and application tables.
+
+    The same rules as check_licence_text_ids, over both tables together,
+    including the converter's MIT text and the binding-text refusal.
+    """
+    shown = [(str(e.get("entry_id")), licence_text_digest(e), LICENCE_TEXT_IDS)
+             for e in release_payload.get("entries") or []]
+    shown.append((CONVERTER_ID, _converter_mit_digest(release_payload), LICENCE_TEXT_IDS))
+    shown += [(str(e.get("entry_id")), licence_text_digest(e), APP_LICENCE_TEXT_IDS)
+              for e in app_payload.get("entries") or []]
+    _refuse_shared_text_ids(shown)
+
+
+def generate_app_records(
+    payload: Mapping[str, Any],
+    *,
+    pin: str,
+    texts_dir: Path,
+    release_payload: Mapping[str, Any],
+) -> list[LicenseRecord]:
+    """Records of the application authority; each cites that file's pin."""
+    check_binding_text_ids(payload)
+    check_app_licence_text_ids(payload, release_payload)
+    # The advisory replacement table is the release authority's; nothing here
+    # checks an application advisory against it, so none is accepted yet.
+    advised = sorted(str(e.get("entry_id")) for e in payload.get("entries") or []
+                     if e.get("advisories") or e.get("notes"))
+    if advised:
+        raise ValueError(f"application entries carry advisory notes: {advised}")
+    overlap = sorted(set(APP_LICENCE_TEXT_IDS) & set(LICENCE_TEXT_IDS))
+    if overlap:
+        raise ValueError(f"application records shadow release text identities: {overlap}")
+    release_ids = {str(e.get("entry_id")) for e in release_payload.get("entries") or []}
+    release_ids.update(REQUIRED_RECORD_IDS)
+    records: list[LicenseRecord] = []
+    for entry in payload.get("entries") or []:
+        entry_id = entry.get("entry_id")
+        if not isinstance(entry_id, str):
+            raise ValueError("entry missing entry_id")
+        if any(entry_id.startswith(prefix) for prefix in FORBIDDEN_PREFIXES):
+            raise ValueError(f"kilix-llm entry {entry_id} must not become a record")
+        if entry_id in release_ids:
+            raise ValueError(f"application record {entry_id} collides with a release record")
+        record = record_from_entry(entry, pin=pin, texts_dir=texts_dir)
+        if record.id in {r.id for r in records}:
+            raise ValueError(f"duplicate record id {record.id}")
+        records.append(record)
+    ids = sorted(record.id for record in records)
+    if ids != sorted(APP_RECORD_IDS):
+        raise ValueError(f"application records {ids} != APP_RECORD_IDS {sorted(APP_RECORD_IDS)}")
     return records
 
 

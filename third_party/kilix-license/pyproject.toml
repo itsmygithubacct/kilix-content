@@ -23,7 +23,7 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-kilix_license = ["py.typed", "data/*", "data/texts/*", "data/records/*"]
+kilix_license = ["py.typed", "data/*", "data/texts/*", "data/records/*", "data/app-records/*"]
 
 [tool.uv]
 package = false

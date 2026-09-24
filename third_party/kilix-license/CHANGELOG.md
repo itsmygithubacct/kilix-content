@@ -4,6 +4,31 @@ All notable changes to `kilix-license` are recorded here.
 
 ## Unreleased
 
+- An **application authority**, `determinations-apps.json` with its own pin
+  and its own `app-records/` directory, for models an application fetches
+  for itself. Every record cites the digest of the determinations file it
+  came from, so an entry appended to `determinations.json` rewrote all 28
+  release records and moved every record digest that a receipt names
+  (`tests/data/record-digests-fbdfb546.txt`, "none may move"). An application
+  record now moves none. The loader serves both; the generator refuses an
+  application id that shadows a release record, a licence text given a
+  second identity across the two tables, an undeclared record set, and
+  advisory notes (the advisory table is the release authority's).
+- First application record: `needle2`, the Cactus Compute Needle 2 engine
+  for kilix-needle, Apache-2.0 (byte-identical to the cfc7749b text),
+  licensor Cactus Compute, Inc., on the owner's direction of 2026-09-22
+  (`licence-evidence-needle2-2026-09-22`). Not a release model.
+- Two further application records for kilix-needle, on the owner's direction
+  of 2026-09-22 (`OWNER-DIRECTION-R2.md`, `sources/retrieval-log-r2.tsv` in
+  the same packet): `needle2-runtime` (the manylinux x86_64 wheel carrying
+  `libneedle.so`, which can load a fine-tuned model) and `needle2-train` (the
+  base checkpoint `needle2.pkl` and the tokenizer). Same upstream revision,
+  licence text, identity and licensor as `needle2`; each its own record, as
+  every release asset is. The application pin moves `306eca61` ->
+  `fa4829c0`; the `needle2` record file moves with it (it cites that pin),
+  but its receipt-bound record digest does not (`to_binding_jsonable` leaves
+  `determinations_sha256` out), so an existing needle2 receipt still covers
+  it. No release record file or digest moves.
 - The authored-text **declaration is itself pinned**, by a digest typed in
   `ADVISORY_NOTE_AUTHORED_PIN` beside it and typed again in the suite. The
   declaration pinned the note; nothing pinned the declaration, so replacing
