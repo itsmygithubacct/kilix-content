@@ -42,7 +42,8 @@ pre-1.0.
   High close-target and negation misreads, four Medium). Declare
   `settings-write` (`kilix-needle setup` edits shell, Kilix and harness
   settings when run) and x86-64 Linux only.
-- Re-pin kilix-needle to `33eea829` (0.2.2 reviews R2 to R9). Pane and tab
+- Re-pin kilix-needle to `ac323a76` (0.2.2 reviews R2 to R9; it builds
+  against this rc2 content, one step behind its own app pin). Pane and tab
   names match without regard to case. A pane in the current tab is chosen
   over another tab's pane of the same name, but a yes given in advance does
   not cover that choice; two tabs of one name are refused, and a pane or tab
