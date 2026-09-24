@@ -34,10 +34,11 @@ pre-1.0.
   High close-target and negation misreads, four Medium). Declare
   `settings-write` (`kilix-needle setup` edits shell, Kilix and harness
   settings when run) and x86-64 Linux only.
-- Re-pin kilix-needle to `2e158097`: a yes given in advance (`--yes`, MCP
-  `confirm_risky`) now covers only a plain instruction, so a condition, a
-  question, a retraction or an unusual word waits for a person who sees the
-  target (0.2.2 review R2).
+- Re-pin kilix-needle to `8073b010`: a yes given in advance (`--yes`, MCP
+  `confirm_risky`) covers only a request whose every clause is a canonical
+  wording of its action ("close tab 2", "run make in the build pane"); any
+  other request waits for a person who sees the resolved target (0.2.2
+  reviews R2 and R3).
 - Catalog Kilix Land, the cross-game conversation room and training range,
   at an immutable commit with the shared `make all` game build.
 - Catalog the Tmux Sessions manager as a system entry dispatched through
