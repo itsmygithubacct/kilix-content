@@ -34,7 +34,7 @@ pre-1.0.
   High close-target and negation misreads, four Medium). Declare
   `settings-write` (`kilix-needle setup` edits shell, Kilix and harness
   settings when run) and x86-64 Linux only.
-- Re-pin kilix-needle to `6915cde0` (0.2.2 reviews R2 to R6). Every action in a request is resolved
+- Re-pin kilix-needle to `a463dbae` (0.2.2 reviews R2 to R7). Every action in a request is resolved
   against the desktop the request was made on and performed by id, so "close
   tab 2 and close tab 3" closes the tabs that were 2 and 3. A yes given in
   advance (`--yes`, MCP `confirm_risky`) covers only a plain instruction, as
@@ -42,7 +42,10 @@ pre-1.0.
   person who sees the resolved target. When the requester's pane is known,
   a yes given in advance never closes it or its tab; it never acts on a name
   found only as a word of a title; a pane is read again before anything is
-  typed into it, and a half-typed line there is cut to the kill ring first.
+  typed into it, and with emacs-style editing a half-typed one-line prompt is
+  cut to the kill ring first. Known issue (named in its README): at a
+  continuation prompt, in vi editing mode or with a reverse search pending,
+  that clear is not enough, and typed text can join what is there.
 - Catalog Kilix Land, the cross-game conversation room and training range,
   at an immutable commit with the shared `make all` game build.
 - Catalog the Tmux Sessions manager as a system entry dispatched through
