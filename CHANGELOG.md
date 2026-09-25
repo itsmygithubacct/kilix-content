@@ -5,6 +5,11 @@ pre-1.0.
 
 ## Unreleased
 
+### Changed
+
+- `kilix-tui-utils` moves to `b74c21f`. Agent installers download the vendor
+  bootstrap, check the sha256 pinned on 2026-09-25, and run that file.
+
 ### Added
 
 - Render every packaged first-use screen through the consumer's terminal

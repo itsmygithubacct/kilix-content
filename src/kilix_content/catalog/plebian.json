@@ -6,7 +6,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-tui-utils",
-        "ref": "785a62e740db231aef663306cbce324c84fa901d"
+        "ref": "b74c21f193eb379e38932f5ad21839f6f2752a39"
       },
       "build": [
         "make",
