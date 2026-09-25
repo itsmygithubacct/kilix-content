@@ -59,6 +59,20 @@ pre-1.0.
   cut to the kill ring first. Known issue (named in its README): at a
   continuation prompt, in vi editing mode or with a reverse search pending,
   that clear is not enough, and typed text can join what is there.
+- Re-pin kilix-needle to `6e40df44` (0.2.2 review R10, five rounds, and
+  its held-out set v9). A program starts only in the kind of open, and on the
+  side, that its own clause asks for: "new tab, then split right with
+  python3" no longer starts python3 in an extra tab, nor "split left with
+  less and split right with watch" watch on the left. One pane described in
+  two calls is one pane, and two panes asked for stay two. A placing,
+  courtesy or repeating word is not a tab or pane name ("close the next tab
+  over"), unless the request introduces it as one. Upstream's tuning runs
+  with telemetry off, now under test, and the tuning library's training
+  environment carries licence records for all 31 locked packages. Known
+  issues (named in its README): a courtesy word the lists miss ("close the
+  tab thanks") is read as a name, held for a person's yes; and a real
+  opening clause that also names an existing pane ("split the window right")
+  can have its pane-with-program refused.
 - Catalog Kilix Land, the cross-game conversation room and training range,
   at an immutable commit with the shared `make all` game build.
 - Catalog the Tmux Sessions manager as a system entry dispatched through
