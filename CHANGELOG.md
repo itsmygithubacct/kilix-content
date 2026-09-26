@@ -78,6 +78,15 @@ pre-1.0.
   tab thanks") is read as a name, held for a person's yes; and a real
   opening clause that also names an existing pane ("split the window right")
   can have its pane-with-program refused.
+- Re-pin kilix-needle to `bfacf6e7` (0.2.2 review R11, six rounds): each job
+  it does has its own selected model, eval sets and gate (panes today). The
+  installed tuned-model selection reads and stays as before, and panes
+  behaves as before. A model gated for one job is never selected for
+  another, selection writes are locked, and a run that exists is never
+  replaced or deleted. It also carries the blind eval sets of the coming
+  apps job. Known issue (named in its README): a selected run resumed by
+  `tune --run` can re-gate, and a failed re-gate is recorded in its report;
+  its model bytes are never rewritten.
 - Catalog Kilix Land, the cross-game conversation room and training range,
   at an immutable commit with the shared `make all` game build.
 - Catalog the Tmux Sessions manager as a system entry dispatched through
