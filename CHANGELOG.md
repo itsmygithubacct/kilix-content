@@ -87,6 +87,10 @@ pre-1.0.
   apps job. Known issue (named in its README): a selected run resumed by
   `tune --run` can re-gate, and a failed re-gate is recorded in its report;
   its model bytes are never rewritten.
+- Re-pin the camera stack: kilix-rtsp `dc83447` (the view keeps a rolling
+  history behind the live picture with replay keys, and has a detector
+  button), kilix-object-detect `096dd5a` and kilix-nvr `25497a6`, which carry
+  that kilix-rtsp. Library interfaces the two apps use are unchanged.
 - Catalog Kilix Land, the cross-game conversation room and training range,
   at an immutable commit with the shared `make all` game build.
 - Catalog the Tmux Sessions manager as a system entry dispatched through
