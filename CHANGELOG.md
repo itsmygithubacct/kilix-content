@@ -12,6 +12,18 @@ pre-1.0.
 
 ### Added
 
+- Move the eleven kilix-games entries from c746a5b to 3f81a74 (0.2.2 rc2),
+  and catalog Tic-Tac-Toe (`tictactoe-tui/tictactoe-tui`, `make -C
+  tictactoe-tui all`, terminal, mouse) from the same commit. The games gain
+  trained neural players: Kilix Lander (a neural pilot, 98.4% of held-out
+  levels landed against the autopilot's 55.0%), Kilix Brokeout (a neural
+  player that clears 14.9% of held-out levels in three minutes against 0.4%),
+  Solitaire TUI (neural hint and auto-play) and Tic-Tac-Toe (an opponent
+  proven to play perfectly), plus Kilix Pong's match-options menu and
+  per-hit speed-up. Every changed game leaves through its menus and restores
+  the terminal on any fatal signal. Descriptions for Pong, Solitaire TUI,
+  Kilix Lander and Kilix Brokeout are updated. Independent reviews of the
+  kilix-games range are in the release records.
 - Render every packaged first-use screen through the consumer's terminal
   guard, so a licence text that a `kilix models install` would refuse to
   print fails here instead of at a user's terminal. All 27 pass.

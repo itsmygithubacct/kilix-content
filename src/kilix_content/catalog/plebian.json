@@ -62,7 +62,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "c746a5b28024d6514ff41d713c6028e8e0609684"
+        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
       },
       "binary": "bashed-earth/bashed-earth",
       "build": [
@@ -90,7 +90,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "c746a5b28024d6514ff41d713c6028e8e0609684"
+        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
       },
       "binary": "kilix-jpak/kilix-jpak",
       "build": [
@@ -118,7 +118,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "c746a5b28024d6514ff41d713c6028e8e0609684"
+        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
       },
       "binary": "kilix-rancher/kilix-rancher",
       "build": [
@@ -142,11 +142,11 @@
       "label": "Kilix Pong",
       "kind": "game",
       "icon": "pong",
-      "description": "A deterministic one-player or local two-player paddle-ball game.",
+      "description": "A one-player or local two-player paddle-ball game with match options and a trained neural opponent.",
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "c746a5b28024d6514ff41d713c6028e8e0609684"
+        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
       },
       "binary": "kilix-pong/kilix-pong",
       "build": [
@@ -170,14 +170,40 @@
       "label": "Solitaire TUI",
       "kind": "game",
       "icon": "cards",
-      "description": "Klondike solitaire in the terminal, with mouse play and auto-place.",
+      "description": "Klondike solitaire in the terminal, with mouse play, auto-place and a neural hint and auto-play.",
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "c746a5b28024d6514ff41d713c6028e8e0609684"
+        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
       },
       "binary": "solitaire-tui/bin/solitaire-tui",
       "dependency_hint": "needs Python 3",
+      "capabilities": [
+        "kitty-mouse"
+      ],
+      "launch": {
+        "mode": "terminal"
+      }
+    },
+    {
+      "id": "tictactoe-tui",
+      "label": "Tic-Tac-Toe",
+      "kind": "game",
+      "icon": "games",
+      "description": "Tic-tac-toe in the terminal you start it from, against a trained neural opponent or a friend.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-games",
+        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
+      },
+      "binary": "tictactoe-tui/tictactoe-tui",
+      "build": [
+        "make",
+        "-C",
+        "tictactoe-tui",
+        "all"
+      ],
+      "dependency_hint": "needs a C compiler, make, zlib, libm, and pthreads",
       "capabilities": [
         "kitty-mouse"
       ],
@@ -194,7 +220,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "c746a5b28024d6514ff41d713c6028e8e0609684"
+        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
       },
       "binary": "kilix-lights/bin/kilix-lights",
       "build": [
@@ -249,7 +275,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "c746a5b28024d6514ff41d713c6028e8e0609684"
+        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
       },
       "binary": "joustix/joustix",
       "build": [
@@ -277,7 +303,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "c746a5b28024d6514ff41d713c6028e8e0609684"
+        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
       },
       "binary": "chess-bash/chess-bash",
       "build": [
@@ -305,7 +331,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "c746a5b28024d6514ff41d713c6028e8e0609684"
+        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
       },
       "binary": "kilix-fishtank/kilix-fishtank",
       "build": [
@@ -330,11 +356,11 @@
       "label": "Kilix Lander",
       "kind": "game",
       "icon": "lander",
-      "description": "A Kitty-graphics lunar lander.",
+      "description": "A Kitty-graphics lunar lander with a trained neural pilot you can watch or take over from.",
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "c746a5b28024d6514ff41d713c6028e8e0609684"
+        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
       },
       "binary": "kilix-lander/terminal-lander",
       "build": [
@@ -358,11 +384,11 @@
       "label": "Kilix Brokeout",
       "kind": "game",
       "icon": "brokeout",
-      "description": "A Kitty-graphics brick breaker.",
+      "description": "A Kitty-graphics brick breaker with a trained neural player you can watch or take over from.",
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "c746a5b28024d6514ff41d713c6028e8e0609684"
+        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
       },
       "binary": "kilix-brokeout/kitty-brokeout",
       "build": [
