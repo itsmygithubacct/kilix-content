@@ -62,7 +62,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
+        "ref": "573162bd908122bac6abb7cafe10dac4f1fb1a6a"
       },
       "binary": "bashed-earth/bashed-earth",
       "build": [
@@ -90,7 +90,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
+        "ref": "573162bd908122bac6abb7cafe10dac4f1fb1a6a"
       },
       "binary": "kilix-jpak/kilix-jpak",
       "build": [
@@ -118,7 +118,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
+        "ref": "573162bd908122bac6abb7cafe10dac4f1fb1a6a"
       },
       "binary": "kilix-rancher/kilix-rancher",
       "build": [
@@ -146,7 +146,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
+        "ref": "573162bd908122bac6abb7cafe10dac4f1fb1a6a"
       },
       "binary": "kilix-pong/kilix-pong",
       "build": [
@@ -174,7 +174,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
+        "ref": "573162bd908122bac6abb7cafe10dac4f1fb1a6a"
       },
       "binary": "solitaire-tui/bin/solitaire-tui",
       "dependency_hint": "needs Python 3",
@@ -194,7 +194,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
+        "ref": "573162bd908122bac6abb7cafe10dac4f1fb1a6a"
       },
       "binary": "tictactoe-tui/tictactoe-tui",
       "build": [
@@ -220,7 +220,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
+        "ref": "573162bd908122bac6abb7cafe10dac4f1fb1a6a"
       },
       "binary": "kilix-lights/bin/kilix-lights",
       "build": [
@@ -271,11 +271,11 @@
       "label": "Joustix",
       "kind": "game",
       "icon": "joustix",
-      "description": "A flying-joust arcade game.",
+      "description": "A flying-joust arcade game with a trained neural rider you can watch or take over from.",
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
+        "ref": "573162bd908122bac6abb7cafe10dac4f1fb1a6a"
       },
       "binary": "joustix/joustix",
       "build": [
@@ -303,7 +303,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
+        "ref": "573162bd908122bac6abb7cafe10dac4f1fb1a6a"
       },
       "binary": "chess-bash/chess-bash",
       "build": [
@@ -331,7 +331,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
+        "ref": "573162bd908122bac6abb7cafe10dac4f1fb1a6a"
       },
       "binary": "kilix-fishtank/kilix-fishtank",
       "build": [
@@ -360,7 +360,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
+        "ref": "573162bd908122bac6abb7cafe10dac4f1fb1a6a"
       },
       "binary": "kilix-lander/terminal-lander",
       "build": [
@@ -388,7 +388,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "3f81a74b7299c8fee3a6be29bfccc4ee835f3759"
+        "ref": "573162bd908122bac6abb7cafe10dac4f1fb1a6a"
       },
       "binary": "kilix-brokeout/kitty-brokeout",
       "build": [

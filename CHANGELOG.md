@@ -12,6 +12,13 @@ pre-1.0.
 
 ### Added
 
+- Move the twelve kilix-games entries from 3f81a74 to 573162b (0.2.2 rc2).
+  Joustix gains a trained neural rider (89.3% of held-out waves cleared
+  cleanly, against the autopilot's 1.0%), menus that leave through QUIT, and
+  N to hand the rider over; its description is updated. Kilix Brokeout's
+  storage-sentinel test covers every mode, and Joustix tests pausing in the
+  wave break (both test-only). Reviewed independently (J1 in the release
+  records).
 - Move the eleven kilix-games entries from c746a5b to 3f81a74 (0.2.2 rc2),
   and catalog Tic-Tac-Toe (`tictactoe-tui/tictactoe-tui`, `make -C
   tictactoe-tui all`, terminal, mouse) from the same commit. The games gain
