@@ -6,7 +6,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-tui-utils",
-        "ref": "b74c21f193eb379e38932f5ad21839f6f2752a39"
+        "ref": "c90e37cfd3a040838591adfb49401bd9ba34d2a6"
       },
       "build": [
         "make",
@@ -1589,11 +1589,11 @@
       "label": "Needle",
       "kind": "app",
       "icon": "terminal",
-      "description": "Drive panes, tabs, apps and Kilix settings from plain requests with Needle 2, a small on-device model; every call is checked, and closing, typing, starting a program or changing a setting asks first.",
+      "description": "Drive panes, tabs, apps, settings and coding sessions from plain requests with Needle 2. Every call is checked. Pane and app actions ask first; the agents job treats an explicit request as consent and follows the coding-yolo setting.",
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-needle",
-        "ref": "a42973fae8bb805f2d9c1a5f4f0c33defe2cb48e"
+        "ref": "40a189a815f73fa3615886eebbb9634e48443682"
       },
       "binary": "kilix-needle",
       "build": [

@@ -53,9 +53,10 @@ ROOT = Path(__file__).resolve().parents[1]
 CATALOG = ROOT / "src" / "kilix_content" / "catalog" / "plebian.json"
 
 # The selections a re-pin must deliver, typed rather than derived.
-# b74c21f is 785a62e plus sha256-pinned agent installers. 785a62e merged
+# c90e37c adds Grok/OMP rollout readers and approval/liveness fixes on
+# b74c21f, which is 785a62e plus sha256-pinned agent installers. 785a62e merged
 # rc1's af7e848 with kilix-tui-utils main for 0.2.2 rc2.
-TUI_UTILS_REF = "b74c21f193eb379e38932f5ad21839f6f2752a39"
+TUI_UTILS_REF = "c90e37cfd3a040838591adfb49401bd9ba34d2a6"
 AMP_REF = "92f252b3cf64ad85c252b7e0ab00c6325ea8442f"
 AMP_BUILD = ("make", "all", "ENCODEC=1")
 ENCODEC_CONVERTER_REF = "684b010b211470f7c358105d2da453fb7a9d0ec5"
