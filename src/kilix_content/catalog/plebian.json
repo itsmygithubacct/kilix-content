@@ -1589,11 +1589,11 @@
       "label": "Needle",
       "kind": "app",
       "icon": "terminal",
-      "description": "Drive panes and tabs from plain requests with Needle 2, a small on-device model; every call is checked, and closing, typing or starting a program asks first.",
+      "description": "Drive panes, tabs, apps and Kilix settings from plain requests with Needle 2, a small on-device model; every call is checked, and closing, typing, starting a program or changing a setting asks first.",
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-needle",
-        "ref": "bfacf6e79fb07042239ba9463e697702642a2411"
+        "ref": "a42973fae8bb805f2d9c1a5f4f0c33defe2cb48e"
       },
       "binary": "kilix-needle",
       "build": [

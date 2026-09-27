@@ -99,6 +99,15 @@ pre-1.0.
   apps job. Known issue (named in its README): a selected run resumed by
   `tune --run` can re-gate, and a failed re-gate is recorded in its report;
   its model bytes are never rewritten.
+- Re-pin kilix-needle to `a42973fa` (0.2.2 review R12, eleven rounds, SHIP
+  WITH KNOWN ISSUES): its apps job, `kilix-needle apps "…"` and the MCP tools
+  `kilix_apps_plan` / `kilix_apps_act`, opens Kilix apps and games in a new
+  tab and shows or hides top-bar indicators, pane buttons, pane CPU/memory
+  readouts and games, or opens a settings section. Every launch and setting
+  change asks first; a yes given in advance covers only a plainly worded
+  request, and a launch that may install always waits for a person. Its
+  tuned model passed its gate on a blind held-out set; the base model
+  answers until a tuned one is selected. Panes behaves as before.
 - Re-pin the camera stack: kilix-rtsp `dc83447` (the view keeps a rolling
   history behind the live picture with replay keys, and has a detector
   button), kilix-object-detect `096dd5a` and kilix-nvr `25497a6`, which carry
