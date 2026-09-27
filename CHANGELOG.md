@@ -115,6 +115,26 @@ pre-1.0.
   request, and a launch that may install always waits for a person. Its
   tuned model passed its gate on a blind held-out set; the base model
   answers until a tuned one is selected. Panes behaves as before.
+- Re-pin kilix-needle to `40a189a8` (0.2.2 reviews R13, six rounds, and R14,
+  ten rounds; SHIP WITH KNOWN ISSUES): its agents job, `kilix-needle agents
+  "…"` and the MCP tools `kilix_agents_plan` / `kilix_agents_act`, launches
+  Claude Code, Codex, Grok or qwen-omp in a directory (with a task, a resume,
+  a model or a side), waits for a session to finish or to ask, and messages
+  a session. The request is the consent. Its checks read the request
+  themselves and admit only the model's calls that match that reading
+  exactly; client commands, negations, reports and take-backs are refused,
+  and a message is never typed into an approval dialog or a shell. Folder
+  trust and permissions follow Kilix's agent-control (`--trust-folder`, the
+  coding-yolo setting). Its tuned model passed its gate on a blind held-out
+  set (83/150 against 50/150, 0 unsafe). Known issues: Codex takes messages
+  only when idle; names outside `~/gpu_terminal` need
+  `~/.config/kilix-needle/dirs.json` or a path. Adds `session-write`, which
+  messaging a session needs.
+- Re-pin kilix-tui-utils to `03ffa1f` for the agents job: its session readers
+  report grok and qwen-omp sessions idle, working or waiting (a pending
+  permission or approval is waiting), and the pane center reads both; it
+  also keeps catalog converter tools installable without desktop launch
+  entries.
 - Re-pin the camera stack: kilix-rtsp `dc83447` (the view keeps a rolling
   history behind the live picture with replay keys, and has a detector
   button), kilix-object-detect `096dd5a` and kilix-nvr `25497a6`, which carry

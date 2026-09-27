@@ -1604,6 +1604,7 @@
       "capabilities": [
         "kilix-control",
         "session-read",
+        "session-write",
         "network",
         "model-storage",
         "settings-write"
