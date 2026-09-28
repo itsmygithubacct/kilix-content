@@ -14,6 +14,11 @@ pre-1.0.
 
 ### Added
 
+- Move kilix-needle from b558f1b to 083b9ee (0.2.2 rc2). The apps job gates
+  on a fresh blind held-out set (v4, 146 requests), and kilix-ml moves to
+  5e784b7, whose apps templates train the model the widened app grammar was
+  built for. Its tuned model, apps-qat-3, passed that gate at 93/146 against
+  75/146 for the base model, with no unsafe action.
 - Move the twelve kilix-games entries from 573162b to 53ccef8 (0.2.2 rc2).
   Bashed Earth gains a Neural opponent whose trained network picks weapon,
   angle and power without searching trajectories (1,873 of 2,000 held-out
