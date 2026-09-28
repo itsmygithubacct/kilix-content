@@ -56,7 +56,7 @@ CATALOG = ROOT / "src" / "kilix_content" / "catalog" / "plebian.json"
 # c90e37c adds Grok/OMP rollout readers and approval/liveness fixes on
 # b74c21f, which is 785a62e plus sha256-pinned agent installers. 785a62e merged
 # rc1's af7e848 with kilix-tui-utils main for 0.2.2 rc2.
-TUI_UTILS_REF = "03ffa1f2fbdad39257bb6ca51b9e03bf45ede95d"
+TUI_UTILS_REF = "c33c0ee453dbdb0655c7ade41f86c0ea0d84c4f8"
 AMP_REF = "92f252b3cf64ad85c252b7e0ab00c6325ea8442f"
 AMP_BUILD = ("make", "all", "ENCODEC=1")
 ENCODEC_CONVERTER_REF = "684b010b211470f7c358105d2da453fb7a9d0ec5"
