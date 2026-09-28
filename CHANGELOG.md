@@ -12,6 +12,12 @@ pre-1.0.
 
 ### Added
 
+- Move the twelve kilix-games entries from 573162b to 53ccef8 (0.2.2 rc2).
+  Bashed Earth gains a Neural opponent whose trained network picks weapon,
+  angle and power without searching trajectories (1,873 of 2,000 held-out
+  duels won against the five classic personalities), and a watch mode for
+  Player 1; its description is updated. Its tests no longer write the
+  player's options file.
 - Move the twelve kilix-games entries from 3f81a74 to 573162b (0.2.2 rc2).
   Joustix gains a trained neural rider (89.3% of held-out waves cleared
   cleanly, against the autopilot's 1.0%), menus that leave through QUIT, and
