@@ -6,7 +6,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-tui-utils",
-        "ref": "03ffa1f2fbdad39257bb6ca51b9e03bf45ede95d"
+        "ref": "c33c0ee453dbdb0655c7ade41f86c0ea0d84c4f8"
       },
       "build": [
         "make",
@@ -1589,11 +1589,11 @@
       "label": "Needle",
       "kind": "app",
       "icon": "terminal",
-      "description": "Drive panes, tabs, apps, settings and coding sessions from plain requests with Needle 2. Every call is checked. Pane and app actions ask first; the agents job treats an explicit request as consent and follows the coding-yolo setting.",
+      "description": "Drive panes, tabs, apps, settings and coding sessions from plain requests with Needle 2. Every call is checked. Pane and app actions ask first; the agents job treats an explicit request as consent and follows the coding-yolo setting. Includes a baseline reader for searching and briefing local pane logs.",
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-needle",
-        "ref": "40a189a815f73fa3615886eebbb9634e48443682"
+        "ref": "b558f1bc1c10ffb8c84d20698a443b535e5c3687"
       },
       "binary": "kilix-needle",
       "build": [
@@ -1633,6 +1633,41 @@
       "launch": {
         "mode": "terminal",
         "preferred_size": "800x360"
+      }
+    },
+    {
+      "id": "kilix-help-llm",
+      "label": "Help Search",
+      "kind": "app",
+      "icon": "help",
+      "description": "Search the Kilix, Kitty, Pleb and Plebian-OS documentation locally and show matching passages with source references. No model download is needed.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-help-llm",
+        "ref": "c4bf4367a23fffef6efa941550baf8603424fb2c"
+      },
+      "binary": "kilix-help-llm",
+      "build": [
+        "python3",
+        "-B",
+        "-c",
+        "import help_llm.lookup"
+      ],
+      "dependency_hint": "needs Python 3.11 or newer; lookup uses the standard library and bundled documentation",
+      "capabilities": [
+        "filesystem-read"
+      ],
+      "launch": {
+        "mode": "terminal"
+      },
+      "actions": {
+        "lookup": {
+          "argv": [
+            "lookup"
+          ],
+          "accepts_input": true,
+          "description": "Search documentation for a question"
+        }
       }
     }
   ],

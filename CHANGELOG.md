@@ -1,5 +1,7 @@
 # Changelog
 
+- RC2: integrate the reviewed Needle app grammar and baseline log reader, its rollout adapter, and local documentation search.
+
 All notable user-visible changes are recorded here. The public API remains
 pre-1.0.
 
