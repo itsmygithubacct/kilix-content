@@ -18,6 +18,14 @@ pre-1.0.
 
 ### Added
 
+- Move kilix-needle from 9688501 to 2a5b856 and kilix-tui-utils from 9279f94 to d910110 (0.2.2 rc3).
+  - **Panes:** exact pane commands in agents' wordings (quoted names, "In the pane titled X,
+    type `CMD` and press Enter", "Split right and run bash") skip the model and are checked as the
+    sentence they state; an agents launch sent to the panes CLI runs as the agents job; a tool
+    call may run to 768 tokens, so long paths are no longer cut off.
+  - **MCP:** the logs provider is stated up front, and each plan tool points at its act tool.
+  - **kilix-tui-utils:** a bare `kilix panes` lists the panes without a terminal, `send --enter`
+    sends Enter as a separate write, and `close` says what it closed.
 - Move kilix-needle from 79b9387 to 9688501 (0.2.2 rc3).
   - **Agents:** a request the agents grammar reads completely launches without asking the
     model, so a long directory is never rewritten; "... Do not give it a task. Then stop." reads.
