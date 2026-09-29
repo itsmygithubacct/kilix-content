@@ -14,6 +14,15 @@ pre-1.0.
 
 ### Added
 
+- Move kilix-needle from 083b9ee to 56813ce (0.2.2 rc2). Its apps job no
+  longer loads a model. The request's own reading proposes every call it
+  supports, and the same checks admit them, in the order of the clauses that ask
+  for them. A request takes tens of milliseconds. On the apps eval sets this is
+  80/90 on test and 111/146 on held-out v4, against 73/90 and 93/146 for the
+  tuned model, with no unsafe action. Two holes the checks shared with any
+  caller are closed: "all the time" named the clock, and "I don't want mines;
+  open mines" disabled Minesweeper. Descriptions ("pictures of the clock", "temp
+  files", "clock.png") and file names no longer name a widget.
 - Move the twelve kilix-games entries from 53ccef8 to 668faac (0.2.2 rc2).
   Bashed Earth leaves through menus only (a pause menu and a match-over menu,
   Q no longer quits), keeps a watched game playing between matches, and
