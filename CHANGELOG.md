@@ -18,6 +18,11 @@ pre-1.0.
 
 ### Added
 
+- Move kilix-needle from 79b9387 to 9688501 (0.2.2 rc3).
+  - **Agents:** a request the agents grammar reads completely launches without asking the
+    model, so a long directory is never rewritten; "... Do not give it a task. Then stop." reads.
+  - **Files:** name searches in agents' words ("whose name starts with X under DIR",
+    "find files named X-*") are read; help and a missing scope answer with the accepted form.
 - Move kilix-needle from e962930 to 79b9387 (0.2.2 rc3).
   - **Panes:** a tab rename needs a rename in the clause that holds the name, typed commands
     go into plain `sh` panes, "pane 70" and "pane:70" name a pane, and a yes given in advance
