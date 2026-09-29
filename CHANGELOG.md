@@ -14,6 +14,11 @@ pre-1.0.
 
 ### Added
 
+- Move the twelve kilix-games entries from 53ccef8 to 668faac (0.2.2 rc2).
+  Bashed Earth leaves through menus only (a pause menu and a match-over menu,
+  Q no longer quits), keeps a watched game playing between matches, and
+  hardens its neural lab; Joustix starts the next game by itself when a
+  computer rider loses. Independent review: five rounds, the last SHIP.
 - Move kilix-needle from b558f1b to 083b9ee (0.2.2 rc2). The apps job gates
   on a fresh blind held-out set (v4, 146 requests), and kilix-ml moves to
   5e784b7, whose apps templates train the model the widened app grammar was
