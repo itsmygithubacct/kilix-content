@@ -26,6 +26,9 @@ PIN_NAMES = (
     "qwen3-tts-0.6b-customvoice.json",
     "qwen3-tts-1.7b-voicedesign.json",
     "whisper-tiny-ggml.json",
+    # Owner determination 2026-09-29: the default Kilix dictation model on
+    # capable hardware, run by kilix-whisper-stt (faster-whisper).
+    "faster-whisper-small-en.json",
     "piper-en-us-kristin-medium.json",
     "vibevoice-asr-bitnet.json",
     "yolox_s.json",
@@ -67,6 +70,7 @@ LICENSORS = {
     "qwen3-tts-0.6b-customvoice": ["Alibaba Cloud"],
     "qwen3-tts-1.7b-voicedesign": ["Alibaba Cloud"],
     "whisper-tiny-ggml": ["OpenAI"],
+    "faster-whisper-small-en": ["OpenAI", "SYSTRAN"],
     "piper-en-us-kristin-medium": ["Bryce Beattie"],
     "vibevoice-asr-bitnet": ["Microsoft Corporation"],
     "yolox_s": ["Megvii (Base Detection / Megvii Inc.)"],

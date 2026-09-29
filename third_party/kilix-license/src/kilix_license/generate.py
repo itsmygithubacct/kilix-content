@@ -71,6 +71,9 @@ REQUIRED_RECORD_IDS = (
     "qwen3-tts-0.6b-customvoice",
     "qwen3-tts-1.7b-voicedesign",
     "whisper-tiny-ggml",
+    # Owner determination 2026-09-29 (licence-evidence-whisper-small-en-2026-09-29):
+    # the default Kilix dictation model on capable hardware.
+    "faster-whisper-small-en",
     "piper-en-us-kristin-medium",
     "vibevoice-asr-bitnet",
     "yolox_s",
@@ -188,6 +191,9 @@ LICENCE_TEXT_IDS = {
     "qwen3-tts-1.7b-voicedesign": "kilix/config/model_notices#qwen3-tts",
     # "kilix config/model_notices b5d65a59 (OpenAI Whisper MIT LICENSE)".
     "whisper-tiny-ggml": "kilix/config/model_notices#whisper",
+    # The same OpenAI Whisper MIT LICENSE (b5d65a59); the SYSTRAN conversion
+    # repository carries only the card's `license: mit` tag.
+    "faster-whisper-small-en": "kilix/config/model_notices#whisper",
     # "CC BY-NC 4.0 legal code (creativecommons.org)", both checkpoints (OD-AR).
     "encodec-24khz-stateful": "creativecommons.org/licenses/by-nc/4.0/legalcode",
     "encodec-48khz-frame": "creativecommons.org/licenses/by-nc/4.0/legalcode",
