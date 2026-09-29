@@ -1349,7 +1349,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-object-detect",
-        "ref": "096dd5a8ec265376c090a35456d13f49226c77a1"
+        "ref": "05623f3894e823760519942861515b766a075881"
       },
       "binary": "build/kilix-look",
       "build": [

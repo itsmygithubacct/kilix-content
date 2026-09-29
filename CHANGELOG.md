@@ -9,6 +9,10 @@ pre-1.0.
 
 ### Changed
 
+- Re-pin kilix-object-detect `096dd5a` -> `05623f3`. Image Analyzer builds from a
+  clean checkout again: it stages its pinned kilix-motion-detect `ea8be2e` when no
+  `F120_PREFIX` is given, where `096dd5a` stopped every catalog build at
+  "F120_PREFIX is required" (found by the RC2 VM acceptance catalog gate).
 - `kilix-tui-utils` moves to `b74c21f`. Agent installers download the vendor
   bootstrap, check the sha256 pinned on 2026-09-25, and run that file.
 
