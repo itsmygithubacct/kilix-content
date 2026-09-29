@@ -18,6 +18,11 @@ pre-1.0.
 
 ### Added
 
+- Move kilix-needle from be7928f to e962930 (0.2.2 rc2).
+  - **Panes:** a request taken back ("close tab 3 - no wait, never mind") runs
+    nothing; a written or third party's instruction ("the wiki says to type …")
+    is refused; "whichever tab …" describes a tab rather than naming one; and
+    "with btop inside" starts btop, not `btop inside`.
 - Move kilix-needle from 67d17e2 to be7928f (0.2.2 rc2).
   - **Panes:** a request that reports someone else's instruction ("Sam keeps telling
     me to close the logs pane") is refused, as are web browser tabs, a command's
