@@ -14,6 +14,15 @@ pre-1.0.
 
 ### Added
 
+- Move kilix-needle from 67d17e2 to be7928f (0.2.2 rc2).
+  - **Panes:** a request that reports someone else's instruction ("Sam keeps telling
+    me to close the logs pane") is refused, as are web browser tabs, a command's
+    unquoted reason, and "at once" is no longer read as a time.
+  - **Files:** "markdown files" search `*.md`; categories such as images are refused.
+  - **State:** everything kilix-needle keeps lives in one directory,
+    `~/.local/gpu_terminal/kilix-apps/kilix-needle`. The system normalizer profile
+    and logs index move there from `~/.local/share/kilix-needle` on first use.
+  - **Gates:** the system and files jobs have blind held-out gates.
 - Move kilix-needle from e66ec13 to 67d17e2 (0.2.2 rc2).
   - **Files:** a read-only files job searches, lists and previews files within a
     scope you name. It follows no links and runs no shell.
