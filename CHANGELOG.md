@@ -18,6 +18,17 @@ pre-1.0.
 
 ### Added
 
+- Move kilix-needle from 2a5b856 to 67b97ac (0.2.2 rc3).
+  - **System:** journal, package and process questions are read by their parts in the
+    wordings agents use (levels, program tags, time windows, counts, package commands such as
+    `dpkg-query -W`), and two or three reads of different kinds in one request are read
+    together; a system question sent to another job is answered with the system job's sentence.
+  - **Apps:** a font or text size given as one number, with a result clause or "exactly", sets
+    the size; "Open the game X in Kilix." is a plain opening, and a game already in Kilix's
+    content store is ready to play without a person's yes.
+  - **Agents:** "no task" is read by its structure (a negation whose object is the task), and
+    "leave the session open", "then stop" or "do not wait" say nothing more; a request that
+    opens with a job name runs as that job.
 - Move kilix-needle from 9688501 to 2a5b856 and kilix-tui-utils from 9279f94 to d910110 (0.2.2 rc3).
   - **Panes:** exact pane commands in agents' wordings (quoted names, "In the pane titled X,
     type `CMD` and press Enter", "Split right and run bash") skip the model and are checked as the
