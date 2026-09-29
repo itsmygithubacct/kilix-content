@@ -14,6 +14,16 @@ pre-1.0.
 
 ### Added
 
+- Move kilix-needle from 56813ce to e66ec13 (0.2.2 rc2). Every panes, apps or
+  agents request it answers is added to a local history,
+  `~/.local/gpu_terminal/kilix-apps/kilix-needle/history/requests.jsonl`, to
+  improve its grammar and models. The history holds the request, the proposed
+  calls, what the checks admitted or refused and why, and the outcomes.
+  - It never leaves the machine, and it is private (0700/0600, no links followed).
+  - It is bounded (64 KB entries, 8 MB files, eight kept), and never delays or
+    changes a request.
+  - Pane names and titles, runtime errors and command lines are not kept.
+  - Set `KILIX_NEEDLE_HISTORY=0` to turn it off.
 - Move kilix-needle from 083b9ee to 56813ce (0.2.2 rc2). Its apps job no
   longer loads a model. The request's own reading proposes every call it
   supports, and the same checks admit them, in the order of the clauses that ask
