@@ -14,6 +14,20 @@ pre-1.0.
 
 ### Added
 
+- Move kilix-needle from e66ec13 to 67d17e2 (0.2.2 rc2).
+  - **Files:** a read-only files job searches, lists and previews files within a
+    scope you name. It follows no links and runs no shell.
+  - **System:** a read-only system job reads resources, processes, services, the
+    journal and packages. Its default is a grammar.
+  - **Apps controls:** exact commands set audio volume, mute and default devices,
+    music playback, speech and dictation, voice settings, text size and system status.
+  - **Apps grammar:** a change that gives a purpose is refused, and adverbs are
+    read after on/off.
+  - **Panes:** a request that gives a time or a condition ("if the build fails, close
+    the logs pane", "close it at noon") is refused. Pronouns never name a pane.
+  - **More pane actions:** maximize/restore, rename pane, swap panes and move tab
+    reach the panes model.
+  - **Replies:** an engine reply that is marked as an error or malformed runs nothing.
 - Move kilix-needle from 56813ce to e66ec13 (0.2.2 rc2). Every panes, apps or
   agents request it answers is added to a local history,
   `~/.local/gpu_terminal/kilix-apps/kilix-needle/history/requests.jsonl`, to

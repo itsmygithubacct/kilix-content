@@ -1589,11 +1589,11 @@
       "label": "Needle",
       "kind": "app",
       "icon": "terminal",
-      "description": "Drive panes, tabs, apps, settings and coding sessions from plain requests with Needle 2. Every call is checked. Pane and app actions ask first; the agents job treats an explicit request as consent and follows the coding-yolo setting. Includes a baseline reader for searching and briefing local pane logs. Keeps a private local history of its requests, to improve it (KILIX_NEEDLE_HISTORY=0 turns this off).",
+      "description": "Drive panes, tabs, apps, settings and coding sessions from plain requests with Needle 2, control audio, music, voice and text size, and search files and read system status read-only. Every call is checked. Pane and app actions ask first; the agents job treats an explicit request as consent and follows the coding-yolo setting. Includes a baseline reader for searching and briefing local pane logs. Keeps a private local history of its requests, to improve it (KILIX_NEEDLE_HISTORY=0 turns this off).",
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-needle",
-        "ref": "e66ec13e65e76da92f5db8edae3513198693e0d2"
+        "ref": "67d17e24ef8afe6850680ab900fc39610ceddb4f"
       },
       "binary": "kilix-needle",
       "build": [
