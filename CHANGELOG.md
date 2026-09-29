@@ -18,6 +18,15 @@ pre-1.0.
 
 ### Added
 
+- Move kilix-needle from e962930 to 655c90c (0.2.2 rc3).
+  - **Panes:** a tab rename needs a rename in the clause that holds the name, typed commands
+    go into plain `sh` panes, "pane 70" and "pane:70" name a pane, and a yes given in advance
+    covers the typing wordings agents use.
+  - **Agents:** a launch in an explicit directory, and "do not give it a task", are read.
+  - **Refusals** carry a hint: the job that reads the request, or one accepted phrasing.
+  - **MCP:** shorter tool descriptions and one compact record per result; the Codex entry
+    forwards the whole Kilix environment.
+  - **Panes model:** the tuned qat-9 passed a blind held-out gate (selected per machine).
 - Move kilix-needle from be7928f to e962930 (0.2.2 rc2).
   - **Panes:** a request taken back ("close tab 3 - no wait, never mind") runs
     nothing; a written or third party's instruction ("the wiki says to type …")
