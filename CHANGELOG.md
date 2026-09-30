@@ -9,6 +9,10 @@ pre-1.0.
 
 ### Changed
 
+- Advance kilix-needle from `deb1225` to `083f1fb` for 0.2.2 RC4. It adds
+  a bounded cache within each parser request, preserving the grammar, input
+  limits and refusal rules.
+
 - Advance kilix-needle from `747ae37` to `deb1225` for 0.2.2 RC4. Adds
   deterministic relative navigation and launch/typing forms, journal routing,
   explicit-socket tmux CLI/MCP, structured actions and durable receipts, and
