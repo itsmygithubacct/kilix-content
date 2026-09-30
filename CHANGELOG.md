@@ -18,6 +18,15 @@ pre-1.0.
 
 ### Added
 
+- Move kilix-needle from 67b97ac to 03c3462 (0.2.2 rc3).
+  - **Latency:** a job's engine loads only when a request needs it (CLI and MCP), the base
+    engine may take up to 120 s to start under load, and setup gives Codex's MCP entry a 180 s
+    tool timeout and a 30 s startup timeout. In a mixed-load A/B the CLI went from 46% to 83%
+    success and MCP from 70% to 92%.
+  - **Panes:** opening a shell pane to one side and typing a command into a titled pane skip the
+    model however they are worded; "find the pane titled X and close it" closes X; id questions
+    point at `kilix pane list`.
+  - **Agents:** more no-task shapes, and a program named in its own sentence.
 - Move kilix-needle from 2a5b856 to 67b97ac (0.2.2 rc3).
   - **System:** journal, package and process questions are read by their parts in the
     wordings agents use (levels, program tags, time windows, counts, package commands such as
