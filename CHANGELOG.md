@@ -9,6 +9,11 @@ pre-1.0.
 
 ### Changed
 
+- Advance kilix-needle from `747ae37` to `deb1225` for 0.2.2 RC4. Adds
+  deterministic relative navigation and launch/typing forms, journal routing,
+  explicit-socket tmux CLI/MCP, structured actions and durable receipts, and
+  action guidance with explicit timeout units and an optional focused MCP menu.
+
 - Re-pin kilix-object-detect `096dd5a` -> `05623f3`. Image Analyzer builds from a
   clean checkout again: it stages its pinned kilix-motion-detect `ea8be2e` when no
   `F120_PREFIX` is given, where `096dd5a` stopped every catalog build at
