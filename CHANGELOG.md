@@ -18,6 +18,15 @@ pre-1.0.
 
 ### Added
 
+- Move kilix-needle from 03c3462 to 747ae37 and kilix-rtsp from dc83447 to 74a8eb6 (0.2.2 rc3).
+  - **kilix-needle (journal round 4):** a name given two kinds is read as its tag, and an empty
+    unit read also reads the tag. On held-out agent requests, journal first requests went from
+    58% to 80.6% correct (an independent set: 63% to 89%); end to end, 12/12 on both Needle
+    routes.
+  - **kilix-rtsp:** a camera view or mosaic that stays detached for 30 seconds exits and ends
+    its session (`KILIX_RTSP_DETACHED_EXIT_SECONDS`, 0 = never). A lingering detached view was
+    re-attached by every later kilix start into a hidden tab and decoded again; one camera desk
+    had accumulated 29 copies of a single stream.
 - Move kilix-needle from 67b97ac to 03c3462 (0.2.2 rc3).
   - **Latency:** a job's engine loads only when a request needs it (CLI and MCP), the base
     engine may take up to 120 s to start under load, and setup gives Codex's MCP entry a 180 s

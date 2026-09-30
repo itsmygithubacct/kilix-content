@@ -1301,7 +1301,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-rtsp",
-        "ref": "dc83447a566630a715bb7ac749db4243e9e4b310"
+        "ref": "74a8eb64f8d61ecbbd538fdabd4231b298d8c8e3"
       },
       "binary": "build/kilix-rtsp",
       "build": [
@@ -1593,7 +1593,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-needle",
-        "ref": "03c3462e6ceb11b37d9587e638deb3388e8eff38"
+        "ref": "747ae37460b9bce284216cbe9d06d845319e072c"
       },
       "binary": "kilix-needle",
       "build": [
