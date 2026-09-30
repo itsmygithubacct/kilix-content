@@ -9,6 +9,9 @@ pre-1.0.
 
 ### Changed
 
+- Advance kilix-needle to `12f5f7b` for read-only workflow model readiness
+  and explicit licensed setup of missing assets.
+
 - Advance kilix-needle from `deb1225` to `083f1fb` for 0.2.2 RC4. It adds
   a bounded cache within each parser request, preserving the grammar, input
   limits and refusal rules.
