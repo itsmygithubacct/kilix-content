@@ -257,10 +257,10 @@ def receipt_from_agreement(
     expected = record.agreement_binding_digests()
     if tuple(sorted(agreement.named_binding_ids)) != tuple(sorted(expected)):
         raise AgreementRequired("agreement did not name every binding condition")
-    if agreement.decision == "accept" and agreement.typed_text != typed_agreement_line(
-        record
+    if agreement.decision == "accept" and agreement.typed_text not in (
+        "yes", "y", typed_agreement_line(record)
     ):
-        raise AgreementRequired("accept receipt requires the typed agreement line")
+        raise AgreementRequired("accept receipt requires affirmative agreement")
     if agreement.record_digest is None and agreement.binding_condition_text_digests is None:
         raise AgreementRequired("agreement is not bound to the bytes shown")
     # V-ACC-VERIFY F6. An authority whose receipts optionally record nothing

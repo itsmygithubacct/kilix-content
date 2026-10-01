@@ -1,4 +1,4 @@
-"""Agreement capture. Informational licences need no typed line."""
+"""Agreement capture. Explicit yes/no consent with legacy exact-line support."""
 
 from __future__ import annotations
 
@@ -232,10 +232,10 @@ def capture_agreement(
             acceptance=observed,
         )
     expected = typed_agreement_line(record)
-    if typed_text != expected:
+    if typed_text not in ("yes", "y", expected):
         raise AgreementRequired(
-            "typed agreement must name every binding text shown: "
-            f"expected {expected!r}"
+            "agreement requires an explicit yes after the licence and binding texts "
+            "are shown (the legacy exact agreement line is also accepted)"
         )
     return Agreement(
         record.id,

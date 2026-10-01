@@ -274,3 +274,14 @@ The generator's refusals state those five steps, including the two an editor
 meets first: the digest mismatch before the rename, and the missing file just
 after it. Widening a detector is not an alternative: a sentence absent from
 that declaration never reaches a user.
+
+### Yes/no agreement screens
+
+Consumers may show the full licence and binding conditions, name the affected
+models, then ask for an explicit `yes` or `y` (default No). Pass that actual
+answer to `capture_agreement`; do not manufacture an exact agreement phrase.
+The legacy exact-line API remains supported. Receipts retain their existing
+record, manifest, binding-text and capture-time identities. A batch consumer
+may share one affirmative answer across the records actually presented in
+that group, while emitting a separate receipt for each exact model manifest.
+Declining or closing the screen must not call receipt creation for that group.
