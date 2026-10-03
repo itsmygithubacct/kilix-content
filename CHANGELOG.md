@@ -9,6 +9,9 @@ pre-1.0.
 
 ### Changed
 
+- Advance kilix-tui-utils to `ca12c7c` so the RC5 text desktop exposes the
+  existing cited Help Search lookup from its Programs menu.
+
 - Advance kilix-needle to `12f5f7b` for read-only workflow model readiness
   and explicit licensed setup of missing assets.
 
