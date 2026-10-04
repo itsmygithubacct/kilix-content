@@ -9,6 +9,10 @@ pre-1.0.
 
 ### Changed
 
+- Select `kilix-tui-utils` `8b461045` and `kilix-needle` `7de6417` to restore
+  cited Help Search in the text desktop while retaining the workflow input
+  and detached resume fixes.
+
 - Advance kilix-needle to `12f5f7b` for read-only workflow model readiness
   and explicit licensed setup of missing assets.
 
