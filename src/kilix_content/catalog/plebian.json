@@ -212,6 +212,34 @@
       }
     },
     {
+      "id": "pleb-tower",
+      "label": "Pleb Tower",
+      "kind": "game",
+      "icon": "games",
+      "description": "Defend Maple Loop and Rail Yard against the Array, then switch sides in a second tower-defense campaign.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/pleb-tower",
+        "ref": "9e4595ee1dee699efeb9668b7d96d6ce6cda40da"
+      },
+      "binary": "pleb-tower",
+      "build": [
+        "make",
+        "all"
+      ],
+      "dependency_hint": "needs a C11 compiler, make, Python 3, zlib, libm, and pthreads",
+      "capabilities": [
+        "kitty-graphics",
+        "kitty-keyboard",
+        "kitty-mouse",
+        "audio"
+      ],
+      "launch": {
+        "mode": "terminal",
+        "preferred_size": "960x684"
+      }
+    },
+    {
       "id": "kilix-lights",
       "label": "Kilix Lights",
       "kind": "game",
