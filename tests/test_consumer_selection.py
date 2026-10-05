@@ -15,8 +15,9 @@ afterwards, at `c275334f`, on the F100 authority line that OD-BM discarded:
 
 `kilix-amp` has since moved forward once more, `e876632e` -> `92f252b3`, a
 strict descendant whose two commits bring its EnCodec admission fixture and
-README onto asset/v3 and kilix-license receipts. The build stays
-`make all ENCODEC=1`.
+README onto asset/v3 and kilix-license receipts. It then moved to `e5ce674e`,
+a strict descendant that follows the live header's epoch-start profile (OD-AT)
+and covers the C5 live paths. The build stays `make all ENCODEC=1`.
 
 The two EnCodec converters, `kilix-encodec-convert-24khz` and
 `kilix-encodec-convert-48khz`, select `kilix-encodec` `684b010b`, the commit
@@ -56,8 +57,8 @@ CATALOG = ROOT / "src" / "kilix_content" / "catalog" / "plebian.json"
 # c90e37c adds Grok/OMP rollout readers and approval/liveness fixes on
 # b74c21f, which is 785a62e plus sha256-pinned agent installers. 785a62e merged
 # rc1's af7e848 with kilix-tui-utils main for 0.2.2 rc2.
-TUI_UTILS_REF = "75ce46b57ea45262fd56f87766b24ed6100b0449"
-AMP_REF = "92f252b3cf64ad85c252b7e0ab00c6325ea8442f"
+TUI_UTILS_REF = "8b461045715f176218c57b17ff16ccfd756aace1"
+AMP_REF = "e5ce674e40212b3ca410e430d922926fff770094"
 AMP_BUILD = ("make", "all", "ENCODEC=1")
 ENCODEC_CONVERTER_REF = "684b010b211470f7c358105d2da453fb7a9d0ec5"
 ENCODEC_CONVERTERS = ("kilix-encodec-convert-24khz", "kilix-encodec-convert-48khz")

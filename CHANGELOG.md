@@ -9,6 +9,14 @@ pre-1.0.
 
 ### Changed
 
+- Select `kilix-tui-utils` `8b461045` and `kilix-needle` `53e881e` to restore
+  cited Help Search in the text desktop while keeping the workflow input,
+  detached resume and scrollback-aware transcript replay fixes. `53e881e`
+  merges Help Search (`7de6417`) into Needle main (`ecf5110`).
+- Advance `kilix-amp` from `92f252b3` to `e5ce674e`, which follows the live
+  header's epoch-start profile (OD-AT) and covers the C5 live paths. The build
+  stays `make all ENCODEC=1`.
+
 - Advance kilix-needle to `12f5f7b` for read-only workflow model readiness
   and explicit licensed setup of missing assets.
 
