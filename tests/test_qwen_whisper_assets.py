@@ -44,6 +44,22 @@ class QwenWhisperAssetTests(unittest.TestCase):
         self.catalog = default_catalog()
         self.records = load_determined_records()
 
+    def test_whistle_is_pinned_and_uses_its_own_licence_binding(self) -> None:
+        spec = self.catalog.require_asset("whistle")
+        record = self.records.by_id("whistle")
+        self.assertEqual(spec.provenance_revision, "b358ddadd89b7a713b5aa131f23032d3cca1b251")
+        self.assertEqual(spec.consumer_schema, "kilix.whistle.models/v1")
+        self.assertEqual(spec.licenses[0].record_digest, record.digest)
+        self.assertNotEqual(record.digest, self.records.by_id("needle2").digest)
+        self.assertEqual(spec.licenses[0].licensors, ("Cactus Compute, Inc.",))
+        weights = next(item for item in spec.files if item.path == "whistle.cact")
+        self.assertEqual(weights.bytes, 16919407)
+        self.assertEqual(weights.sha256,
+                         "b6e02f048568ac5d01a2042556c658061e699acbc0aa2a1439f52f3d461dffeb")
+        self.assertEqual({item.path for item in spec.fetch}, {"whistle.cact", "README.md", "LICENSE"})
+        for item in spec.fetch:
+            self.assertIn("/resolve/b358ddadd89b7a713b5aa131f23032d3cca1b251/", item.url)
+
     def test_qwen_records_are_upstream_files_from_huggingface(self) -> None:
         for asset_id in _QWEN_IDS:
             spec = self.catalog.require_asset(asset_id)

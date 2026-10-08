@@ -1702,6 +1702,79 @@
   "assets": [
     {
       "compatibility": {
+        "consumer_schema": "kilix.whistle.models/v1",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 11358,
+          "path": "LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "bytes": 6882,
+          "path": "README.md",
+          "sha256": "7c288d7eded692c795cc932902ee3f7fe6aa7c6417ca28a954088f1aa8a9f8f4"
+        },
+        {
+          "bytes": 11358,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "bytes": 16919407,
+          "path": "whistle.cact",
+          "sha256": "b6e02f048568ac5d01a2042556c658061e699acbc0aa2a1439f52f3d461dffeb"
+        }
+      ],
+      "id": "whistle",
+      "label": "whistle",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "Cactus Compute, Inc."
+          ],
+          "record_digest": "9fc99f4c1e75d83e1f069d82cddf4029ff83bc66287ea39390b52bf946f926f9",
+          "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "provider": "kilix-voice",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 16937647,
+        "installed_bytes": 16949005,
+        "temporary_bytes": 16949005
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "LICENSE",
+            "url": "https://huggingface.co/Cactus-Compute/whistle/resolve/b358ddadd89b7a713b5aa131f23032d3cca1b251/LICENSE"
+          },
+          {
+            "path": "README.md",
+            "url": "https://huggingface.co/Cactus-Compute/whistle/resolve/b358ddadd89b7a713b5aa131f23032d3cca1b251/README.md"
+          },
+          {
+            "path": "whistle.cact",
+            "url": "https://huggingface.co/Cactus-Compute/whistle/resolve/b358ddadd89b7a713b5aa131f23032d3cca1b251/whistle.cact"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "Cactus-Compute/whistle",
+          "revision": "b358ddadd89b7a713b5aa131f23032d3cca1b251",
+          "original_url": "https://huggingface.co/Cactus-Compute/whistle/resolve/b358ddadd89b7a713b5aa131f23032d3cca1b251/whistle.cact"
+        }
+      },
+      "stream": "F104",
+      "version": "b358ddadd89b7a713b5aa131f23032d3cca1b251"
+    },
+    {
+      "compatibility": {
         "consumer_schema": "kilix.speech.models/v1",
         "maximum": 1,
         "minimum": 1

@@ -1,0 +1,35 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "whistle",
+  "mode": "upstream-files",
+  "license_record_id": "whistle",
+  "provider": "kilix-voice",
+  "consumer_schema": "kilix.whistle.models/v1",
+  "version": "b358ddadd89b7a713b5aa131f23032d3cca1b251",
+  "destination": "$KILIX_DATA_HOME/desktop-apps/assets/whistle",
+  "provenance": {
+    "project": "Cactus-Compute/whistle",
+    "revision": "b358ddadd89b7a713b5aa131f23032d3cca1b251",
+    "original_url": "https://huggingface.co/Cactus-Compute/whistle/resolve/b358ddadd89b7a713b5aa131f23032d3cca1b251/whistle.cact"
+  },
+  "members": [
+    {
+      "path": "LICENSE",
+      "url": "https://huggingface.co/Cactus-Compute/whistle/resolve/b358ddadd89b7a713b5aa131f23032d3cca1b251/LICENSE",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "path": "README.md",
+      "url": "https://huggingface.co/Cactus-Compute/whistle/resolve/b358ddadd89b7a713b5aa131f23032d3cca1b251/README.md",
+      "bytes": 6882,
+      "sha256": "7c288d7eded692c795cc932902ee3f7fe6aa7c6417ca28a954088f1aa8a9f8f4"
+    },
+    {
+      "path": "whistle.cact",
+      "url": "https://huggingface.co/Cactus-Compute/whistle/resolve/b358ddadd89b7a713b5aa131f23032d3cca1b251/whistle.cact",
+      "bytes": 16919407,
+      "sha256": "b6e02f048568ac5d01a2042556c658061e699acbc0aa2a1439f52f3d461dffeb"
+    }
+  ]
+}

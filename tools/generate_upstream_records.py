@@ -20,6 +20,7 @@ LICENSE_SRC = ROOT / "third_party" / "kilix-license" / "src"
 TEXTS = LICENSE_SRC / "kilix_license" / "data" / "texts"
 
 PIN_NAMES = (
+    "whistle.json",
     "vosk-model-small-en-us-0.15.json",
     "vosk-model-en-us-0.22-lgraph.json",
     "qwen3-tts-0.6b-base.json",
@@ -64,6 +65,7 @@ PIN_NAMES = (
 )
 
 LICENSORS = {
+    "whistle": ["Cactus Compute, Inc."],
     "small-en-us": ["Alpha Cephei Inc."],
     "lgraph-en-us": ["Appen", "Alpha Cephei"],
     "qwen3-tts-0.6b-base": ["Alibaba Cloud"],

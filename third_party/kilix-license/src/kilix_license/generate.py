@@ -100,6 +100,7 @@ REQUIRED_RECORD_IDS = (
 # The application authority's records, in determinations-apps.json. They
 # never share an id with a release record.
 APP_RECORD_IDS = (
+    "whistle",
     # Owner direction 2026-09-22 (licence-evidence-needle2-2026-09-22): the
     # kilix-needle engine. Not a release model.
     "needle2",
@@ -146,6 +147,7 @@ BINDING_TEXT_IDS = {
 # Licence text identities of application records. The same rules hold across
 # both tables: one text, one identity (check_app_licence_text_ids).
 APP_LICENCE_TEXT_IDS = {
+    "whistle": "debian/common-licenses/Apache-2.0",
     # Cactus-Compute/needle2 LICENSE is byte-identical to the cfc7749b text; the
     # runtime and training assets show that same text, so they share its identity.
     "needle2": "debian/common-licenses/Apache-2.0",
