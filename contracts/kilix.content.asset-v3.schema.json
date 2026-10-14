@@ -118,6 +118,7 @@
             "required": ["path", "url", "bytes", "sha256"],
             "properties": {
               "path": {"$ref": "#/$defs/inputName"},
+              "provenance": {"$ref": "#/$defs/provenance"},
               "url": {"$ref": "#/$defs/httpsUrl"},
               "bytes": {"$ref": "#/$defs/bytes"},
               "sha256": {"$ref": "#/$defs/sha256"}

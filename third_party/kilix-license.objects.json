@@ -1,16 +1,39 @@
 {
-  "commit": "tree 91564242f186959f53322ca8319219664dd49f92\nparent ca8a0f479893ab9c8cd6cadc2716c474aaad2820\nauthor itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1791489298 -0700\ncommitter itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1791489298 -0700\n\nAdd pinned Apache licence record for Whistle speech weights\n",
+  "commit": "tree 35064ccb44bd898382f143bbe061ac0f6cbc9084\nparent 1c6baed8f91d53656355aefc8658f04cfaf11f4a\nauthor itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1792013971 -0700\ncommitter itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1792013971 -0700\n\nSeparate model agreement from conveyed native software notices\n",
   "excluded_top_level": [".gitignore", ".python-version", "Makefile", "PUBLICATION.md", "tests", "tools", "uv.lock"],
-  "pin": "b3d5f52c762d967186bd4d7b63430b057b07aa28",
+  "pin": "3fba5beb741042c6737168e88f44e190814fa56b",
   "schema": "kilix-content.vendored-git-objects/v1",
   "trees": {
-    "52f8cac3ecfd0063397cf85bd9b2141f2867e859": [
+    "0637f9c78d82d43f2dd617530535f0522b6dafe3": [
+      ["100644", "kilix-diarization-cpu.json", "9d11cd3dfb33228f908fca504f61db7dc433fe80"]
+    ],
+    "1e891a67bfb8a4e0f1a8066bd7629afb327bc1b4": [
+      ["40000", "kilix_license", "d1be0ec0dfd829752d302b64a775da63fb9386d1"]
+    ],
+    "35064ccb44bd898382f143bbe061ac0f6cbc9084": [
+      ["100644", ".gitignore", "7e74013359efce08b816f3b27b6a941e96ce87a2"],
+      ["100644", ".python-version", "04e207918ddc86409a934bfdaf92dbbf0f8ac1cc"],
+      ["100644", "CHANGELOG.md", "3724251c7c1c2be801f64ee2c32e00fa99a9f7d1"],
+      ["100644", "LICENSE", "41c7d40b05d38a4b9dc2f71fab9c1f32a3567734"],
+      ["100644", "Makefile", "c3f9f06dc69429ccaed15523608522d110f85e28"],
+      ["100644", "NOTICE", "2da879fa9340526fc8c05392d6d0d8b895f1b089"],
+      ["100644", "PUBLICATION.md", "ad0e4496f9a6bcfde3b260844fa09ad721c1ef1c"],
+      ["100644", "README.md", "e4b05fef12d91fae73e5e9f5be7d33ac9715c740"],
+      ["100644", "VERSION", "6e8bf73aa550d4c57f6f35830f1bcdc7a4a62f38"],
+      ["100644", "pyproject.toml", "a392c0b1bb144030c480b3aa24f36e8ac2ff2917"],
+      ["40000", "src", "1e891a67bfb8a4e0f1a8066bd7629afb327bc1b4"],
+      ["40000", "tests", "d6dc1837313a4d0d0285718616c270fb0f98ae25"],
+      ["40000", "tools", "e17d36783f63a292bc110037d5b2100e0ab8686d"],
+      ["100644", "uv.lock", "43e09590b109b26f4fcbdf9b2ee5428fadfba778"]
+    ],
+    "9c1bf7b44e49bbe0d380825b36603cbfea54f4fb": [
       ["100644", "08279522f2f6866b9a9f9c2da5842200cdc4d44211d835e225c32736bde35c9d", "067a705ee096adb16ccc4717210926c28803537c"],
       ["100644", "0a35a0ec6cc8a56038d2ec1455e2cb5c7a325207f73a541763e96fe398e7bca2", "579c3c71fc108ff6c8d719f2f36ee691a0332822"],
       ["100644", "0c354bf1f47a8a4ffeaeca23eb4b50aedd5f9231fda881694415b53976618c2e", "a03e72e3471eb99d938ddf3b09c313ae9ddb1752"],
       ["100644", "0e9d0d19fa02b8f246d9902d93a2b0b0fac7cb07a518257ffa7d102d1c37c638", "7b0004e8b7f4dfb2cf0861654f3d06f489712a9a"],
       ["100644", "0fe9f7125ca408dde3d5ff1e51b02b13d842eb83c7a48ac369ac716d63e44623", "c44ab41f6b26f73d12fa8390dd059dd61eaa6592"],
       ["100644", "1387be6dde8a9505392ffd3d99b38d370fba373a9de16d99519cc02d2176e0ba", "7aeedfdba5a8dac2d8ead74df865d0f6997a87af"],
+      ["100644", "14d7016ad68e7394d6e6b78d96cc2ae431c905287b89674cfdf021e79e62b8ba", "e5e0c2daded4524693e062d3e4fd016bbfb9a308"],
       ["100644", "1d393eaa991d21987136837a0bff4aeb2ed939b53b7c9aa546ffffdcd494b16a", "af76725dcd39e85540f35cbb941754dddb60d948"],
       ["100644", "1e3921593e2343bbfc7ae02b02be614e099e97e33e115c355171c1523a277ed6", "7201a2ddc01724bdebe37a6bcf34a12fac07bdb9"],
       ["100644", "23387fa902a7fd36d8e9bf72e8ffd1182efac26029e89dd14b16249b0c002573", "70c39f340e391a5ca8ab148c64d0a815bb9410ac"],
@@ -27,9 +50,11 @@
       ["100644", "414eeb93b1f37756c1bbf4cba13265db45f6963184891d280471bce583010432", "11b725d652e51fbba16272e06a2c0724791e9b77"],
       ["100644", "4e0160f02b79f0769f71ea8498d37e1e9cc965365fb545a25573ca2c0dabdf0a", "8f6565c64d945ea0941e5e7fc70a3c9e014828a5"],
       ["100644", "4fa551d4f938f68b8c1e6afa9d28befb70e3f33f75d0753248d530364aeea40f", "1fec50c8afa68c72420930e6712c88780426457b"],
+      ["100644", "54b36539688fe450074a0105a2e43719837c321e4cf0eff8d7884a2d92ad21ad", "86acee9725f7618216f4b48ed8618d35814fe593"],
       ["100644", "577c03d505ec80f667ebf96ebd0cc4f6825c817ca1088ee348c48aaabd51bd92", "cc87e8683f8accf92fb441738e981d6ab8ce7536"],
       ["100644", "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd", "7a4a3ea2424c09fbe48d455aed1eaa94d9124835"],
       ["100644", "595b2755e8b3c1de7a28cda03e9e48c92fb8352fced8e99ebd2a47d552023dc9", "154b0a06f0810e93bd86136ad20ce2f93a395cd8"],
+      ["100644", "598ee20c7456841a757590b5c4ba7ad044893b4df768a3195cf8efe2d036a611", "281ac29f29754bd256014eb4c1afb058f35eba0e"],
       ["100644", "5b17814bf0de8cf65069bc6d7cc38cff19fcaa864d243423ad3ef3db01b52385", "12736ccd678d7be692590dcccf004a26233141df"],
       ["100644", "5e19cce2745134be1b55a8ed6fb87196faceb28927f37d7de262fd4947bf9015", "f9f6d2b3d62901f768782988c3f9c7a4b9da143f"],
       ["100644", "5eccf8aee1482fb695b2ae0c67b33eefcfdb14a43915330453c31f36bb2db3e7", "73294a7bebd8ed5fbd6d386b2a890e6ac97db2f2"],
@@ -50,6 +75,7 @@
       ["100644", "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e", "6634c8cc3133b3848ec74b9f275acaaa1ea618ab"],
       ["100644", "84a9c517c431a9f8876523f16624b8295bb3702b0b50889d2be0fdf5b5236a9e", "5e0875eaf18cdcb165f36c9bbbe549e0befda6f0"],
       ["100644", "876db88f834aa060bf29d405993c3f52011d0ad3f06d3ba28cfb2e459dd79b77", "8d23fd80f5ace532c7848b056ba88e5c144978f5"],
+      ["100644", "8923cff8327b3291650bb1658bb7f3d12dd117a6a66aabaf67926221c19a0439", "3e9a8d2f5c62ca35ca130ff76c728df2031a2cfe"],
       ["100644", "8c5c7d0eee9939c58768ec3b5392997d1c7b89b58cedb52c33ba0937be22774e", "1f50f154a3d863dd51872586680cb17afab918be"],
       ["100644", "8cfc463c41113f776eebc60642a0e4f9841aaff247d9659d8abc466743755260", "353c5b65a82735f26b121d9ad33d557dcc3e26d4"],
       ["100644", "8f95dd82a01add9bfe56c8a06a694d4a7b8e6dce6ec266090f2b6fadad467454", "689087e52af399a8a01d5e5e67a1eadc7d1d70a0"],
@@ -87,32 +113,26 @@
       ["100644", "eb08af7e312af21876578253bbb4c184d3f940a9286ef8bf52a801e64c9d9c6d", "9b8a309ba2841babf4b968ff4aa1319787bfe242"],
       ["100644", "fa152afc73238001c008ff67f5b8a3c6d645cfb714a3900a37a2481a8e75d748", "97a2b0bdc0857923eba59279b40f6d0cbbb4a177"]
     ],
-    "7f9f4669c9d24b91204c95b1e8f4a4d9fde669de": [
-      ["40000", "kilix_license", "be1628efb53bd241fcde9b546c200d9c7c48d3c1"]
+    "b3a902ec3b13c5a910fe5260f0726e483e24f9e2": [
+      ["40000", "app-records", "dadcbb744332fd9c4891dc2272ccdb64320cf52a"],
+      ["100644", "determinations-apps.json", "ccba54ff35066b4a71d5249cec331eb1eefd546f"],
+      ["100644", "determinations-apps.sha256", "f57c2db9b977daba177101c06a1b76846839697c"],
+      ["100644", "determinations-diarization.json", "5f5c1de13d65dfdd7974618ed59d1bb0dc35a308"],
+      ["100644", "determinations-diarization.sha256", "dd468689a996f81edaeb24ff2b25f41fd6d95a91"],
+      ["100644", "determinations.json", "5c9ee66be8ff840cb4f3e041a39548e60189617d"],
+      ["100644", "determinations.sha256", "2182e7f3dc569894f329a70db551876a33c02f25"],
+      ["40000", "diarization-records", "0637f9c78d82d43f2dd617530535f0522b6dafe3"],
+      ["40000", "records", "dcc7e1d280cf3acdf7d72187cc09101bde403e8f"],
+      ["40000", "texts", "9c1bf7b44e49bbe0d380825b36603cbfea54f4fb"]
     ],
-    "91564242f186959f53322ca8319219664dd49f92": [
-      ["100644", ".gitignore", "7e74013359efce08b816f3b27b6a941e96ce87a2"],
-      ["100644", ".python-version", "04e207918ddc86409a934bfdaf92dbbf0f8ac1cc"],
-      ["100644", "CHANGELOG.md", "3724251c7c1c2be801f64ee2c32e00fa99a9f7d1"],
-      ["100644", "LICENSE", "41c7d40b05d38a4b9dc2f71fab9c1f32a3567734"],
-      ["100644", "Makefile", "c3f9f06dc69429ccaed15523608522d110f85e28"],
-      ["100644", "NOTICE", "2da879fa9340526fc8c05392d6d0d8b895f1b089"],
-      ["100644", "PUBLICATION.md", "ad0e4496f9a6bcfde3b260844fa09ad721c1ef1c"],
-      ["100644", "README.md", "e4b05fef12d91fae73e5e9f5be7d33ac9715c740"],
-      ["100644", "VERSION", "6e8bf73aa550d4c57f6f35830f1bcdc7a4a62f38"],
-      ["100644", "pyproject.toml", "a49c5fad0a4f3d27d57665235b1adee7abdf28c2"],
-      ["40000", "src", "7f9f4669c9d24b91204c95b1e8f4a4d9fde669de"],
-      ["40000", "tests", "17d1da8584e967ebab2769681b826411c0741f1b"],
-      ["40000", "tools", "a7ca6360a3d4997c26e1c56ef12a9d6f29b3b85a"],
-      ["100644", "uv.lock", "43e09590b109b26f4fcbdf9b2ee5428fadfba778"]
-    ],
-    "be1628efb53bd241fcde9b546c200d9c7c48d3c1": [
+    "d1be0ec0dfd829752d302b64a775da63fb9386d1": [
       ["100644", "__init__.py", "1bdedc091b24d6726f983c6b8d6d29b156fd6456"],
       ["100644", "agreement.py", "0e88fe63f2a649c9127f2d99a17b0b89ec21c3c2"],
-      ["100644", "catalog.py", "a74d9f4cf42ab7885eb93e7250fa425ad6afb7c3"],
+      ["100644", "catalog.py", "1255bf0c3842455194311e33deb32b636333e944"],
       ["100644", "changed.py", "6b07ce42c06f786126174bf482b8350ece2823f7"],
       ["100644", "coverage.py", "b2bb74abd04a620961a408cb3b120924f5ffa923"],
-      ["40000", "data", "fb949fa9edf97042c937630cfd9184781175f11e"],
+      ["40000", "data", "b3a902ec3b13c5a910fe5260f0726e483e24f9e2"],
+      ["100644", "diarization.py", "345f94472f91631ec566202353fb600354210ce6"],
       ["100644", "digest.py", "fa0e7cc8d0dd8716b57f29309694791dfaef919f"],
       ["100644", "errors.py", "67efed6718ee0fc5d327aa9e8fdc69fc0c3bb5d7"],
       ["100644", "generate.py", "dbb1f06b243a61119fc3803d661be27845092bc0"],
@@ -162,15 +182,6 @@
       ["100644", "yolox_nano.json", "b71319da799cce9b63e7bc08880cde59de0270cd"],
       ["100644", "yolox_s.json", "25c84caa492aa6530741ff8948c11bd2a43121ec"],
       ["100644", "yolox_tiny.json", "044206ccbd28c4848db7bd43edf9839d1ba80489"]
-    ],
-    "fb949fa9edf97042c937630cfd9184781175f11e": [
-      ["40000", "app-records", "dadcbb744332fd9c4891dc2272ccdb64320cf52a"],
-      ["100644", "determinations-apps.json", "ccba54ff35066b4a71d5249cec331eb1eefd546f"],
-      ["100644", "determinations-apps.sha256", "f57c2db9b977daba177101c06a1b76846839697c"],
-      ["100644", "determinations.json", "5c9ee66be8ff840cb4f3e041a39548e60189617d"],
-      ["100644", "determinations.sha256", "2182e7f3dc569894f329a70db551876a33c02f25"],
-      ["40000", "records", "dcc7e1d280cf3acdf7d72187cc09101bde403e8f"],
-      ["40000", "texts", "52f8cac3ecfd0063397cf85bd9b2141f2867e859"]
     ]
   }
 }

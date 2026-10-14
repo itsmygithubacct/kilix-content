@@ -1,0 +1,51 @@
+{
+  "schema": "kilix.license.diarization-determination/v1",
+  "authority": {
+    "weight_determination_sha256": "54b36539688fe450074a0105a2e43719837c321e4cf0eff8d7884a2d92ad21ad",
+    "route": "PR-G-006 English local CAM++ export with pyannote segmentation 3.0",
+    "checkpoint_sha256": "5b1a88b6f8d85826fabef804779c3372b42f3af21457fa48bd5c097c0686b2de",
+    "segmentation_sha256": "220ad67ca923bef2fa91f2390c786097bf305bceb5e261d4af67b38e938e1079",
+    "graph_sha256": "7cfea971b2231ed7d7dd6324de1de33f8f9dbe65bbb30cf64b4b0b203b566292",
+    "native_software_notice_sha256": "8923cff8327b3291650bb1658bb7f3d12dd117a6a66aabaf67926221c19a0439"
+  },
+  "records": [
+    {
+      "id": "kilix-diarization-cpu",
+      "licensor": "IIC / Alibaba Cloud; pyannote contributors; sherpa-onnx and bundled runtime contributors",
+      "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "components": [
+        {
+          "id": "pyannote-segmentation-3-0",
+          "role": "MIT segmentation model",
+          "exception_text_sha256": "14d7016ad68e7394d6e6b78d96cc2ae431c905287b89674cfdf021e79e62b8ba"
+        },
+        {
+          "id": "native-runtime",
+          "role": "Software licences conveyed in notices/native-runtime.txt; no additional model agreement"
+        }
+      ],
+      "binding_conditions": [],
+      "advisories": [],
+      "statements": [
+        {
+          "id": "campp-digest-specific-grant",
+          "text_sha256": "54b36539688fe450074a0105a2e43719837c321e4cf0eff8d7884a2d92ad21ad"
+        },
+        {
+          "id": "local-onnx-modification",
+          "text_sha256": "598ee20c7456841a757590b5c4ba7ad044893b4df768a3195cf8efe2d036a611"
+        }
+      ],
+      "decision_class": "affirmative",
+      "licence_ids": [
+        "Apache-2.0",
+        "MIT",
+        "BSD-2-Clause",
+        "BSD-3-Clause",
+        "MPL-2.0"
+      ],
+      "licence_text_id": "debian/common-licenses/Apache-2.0",
+      "schema": "kilix.license.record/v1"
+    }
+  ]
+}

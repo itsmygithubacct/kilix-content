@@ -31,7 +31,7 @@ def app_records_dir(root: Path | None = None) -> Path:
 def load_determined_records(root: Path | None = None) -> RecordIndex:
     """Release records and application records; an id in both is refused."""
     records = []
-    for directory in (records_dir(root), app_records_dir(root)):
+    for directory in (records_dir(root), app_records_dir(root), data_dir(root)/'diarization-records'):
         for path in sorted(directory.glob("*.json")):
             records.append(LicenseRecord.from_bytes(path.read_bytes()))
     return RecordIndex(records)

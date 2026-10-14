@@ -10,7 +10,7 @@ from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Any
-from urllib.parse import urlsplit
+from urllib.parse import parse_qsl, urlsplit
 
 _ID = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 _PREFERRED_SIZE = re.compile(r"^[1-9][0-9]{0,4}x[1-9][0-9]{0,4}$")
@@ -176,7 +176,7 @@ def _https_url(value: Any, label: str, *, allow_file: bool = False) -> str:
         or parsed.username is not None
         or parsed.password is not None
         or (port is not None and not 1 <= port <= 65535)
-        or parsed.query
+        or (parsed.query and not _pinned_modelscope_query(parsed))
         or parsed.fragment
     ):
         raise CatalogError(f"{label} must be a public HTTPS URL")
@@ -191,6 +191,23 @@ def _https_url(value: Any, label: str, *, allow_file: bool = False) -> str:
         if len(commit) != 40 or any(character not in _HEX for character in commit.lower()):
             raise CatalogError(f"{label} Hugging Face URL must use resolve/<40-hex>")
     return value
+
+
+def _pinned_modelscope_query(parsed) -> bool:
+    """The public ModelScope file API names an exact commit in its query.
+
+    Other query URLs remain refused. Permit only this documented repository
+    endpoint, one exact revision and one plain checkpoint name; no tokens,
+    mutable tags, duplicate keys or path navigation.
+    """
+    if ((parsed.hostname or '').lower() != 'www.modelscope.cn'
+            or not re.fullmatch(r'/api/v1/models/[A-Za-z0-9_-]+/[A-Za-z0-9_.-]+/repo', parsed.path)):
+        return False
+    pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    values = dict(pairs)
+    return (len(pairs) == 2 and set(values) == {'Revision','FilePath'}
+            and bool(re.fullmatch(r'[0-9a-f]{40}',values['Revision']))
+            and bool(re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,127}',values['FilePath'])))
 
 
 def _input_name(value: Any, label: str) -> str:
@@ -699,14 +716,19 @@ class AssetConvertInputSpec:
     url: str
     bytes: int
     sha256: str
+    provenance: tuple[str, str, str] | None = None
 
     def to_mapping(self) -> dict[str, Any]:
-        return {
+        value = {
             "bytes": self.bytes,
             "path": self.path,
             "sha256": self.sha256,
             "url": self.url,
         }
+        if self.provenance is not None:
+            project, revision, original_url = self.provenance
+            value['provenance'] = dict(project=project,revision=revision,original_url=original_url)
+        return value
 
 
 @dataclass(frozen=True)
@@ -1108,19 +1130,31 @@ class AssetSpec:
                     label = f"{asset_id}.source.inputs[{index}]"
                     mapping = _mapping(item, label)
                     _known_keys(
-                        mapping, frozenset(("path", "url", "bytes", "sha256")), label
+                        mapping, frozenset(("path", "url", "bytes", "sha256", "provenance")), label
                     )
                     name = _input_name(mapping.get("path", ""), f"{label}.path")
                     item_url = _https_url(
                         mapping.get("url"), f"{label}.url", allow_file=allow_file_urls
                     )
-                    _require_provenance_host(item_url, provenance_url, f"{label}.url")
+                    own_provenance = None
+                    if 'provenance' in mapping:
+                        own = _mapping(mapping['provenance'], f'{label}.provenance')
+                        _known_keys(own,frozenset(('project','revision','original_url')),f'{label}.provenance')
+                        own_provenance = (
+                            _nonempty_text(own.get('project'),f'{label}.provenance.project'),
+                            _exact_hex(_nonempty_text(own.get('revision'),f'{label}.provenance.revision'),40,
+                                       f'{label}.provenance.revision'),
+                            _https_url(own.get('original_url'),f'{label}.provenance.original_url'))
+                        _require_provenance_host(item_url,own_provenance[2],f'{label}.url')
+                    else:
+                        _require_provenance_host(item_url, provenance_url, f"{label}.url")
                     extra_inputs.append(
                         AssetConvertInputSpec(
                             name,
                             item_url,
                             _byte_count(mapping.get("bytes"), f"{label}.bytes"),
                             _exact_hex(mapping.get("sha256"), 64, f"{label}.sha256"),
+                            own_provenance,
                         )
                     )
                 convert_inputs = tuple(extra_inputs)
