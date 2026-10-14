@@ -1127,33 +1127,33 @@ class AssetSpec:
                     )
                 extra_inputs = []
                 for index, item in enumerate(raw_inputs):
-                    label = f"{asset_id}.source.inputs[{index}]"
-                    mapping = _mapping(item, label)
+                    input_label = f"{asset_id}.source.inputs[{index}]"
+                    mapping = _mapping(item, input_label)
                     _known_keys(
-                        mapping, frozenset(("path", "url", "bytes", "sha256", "provenance")), label
+                        mapping, frozenset(("path", "url", "bytes", "sha256", "provenance")), input_label
                     )
-                    name = _input_name(mapping.get("path", ""), f"{label}.path")
+                    name = _input_name(mapping.get("path", ""), f"{input_label}.path")
                     item_url = _https_url(
-                        mapping.get("url"), f"{label}.url", allow_file=allow_file_urls
+                        mapping.get("url"), f"{input_label}.url", allow_file=allow_file_urls
                     )
                     own_provenance = None
                     if 'provenance' in mapping:
-                        own = _mapping(mapping['provenance'], f'{label}.provenance')
-                        _known_keys(own,frozenset(('project','revision','original_url')),f'{label}.provenance')
+                        own = _mapping(mapping['provenance'], f'{input_label}.provenance')
+                        _known_keys(own,frozenset(('project','revision','original_url')),f'{input_label}.provenance')
                         own_provenance = (
-                            _nonempty_text(own.get('project'),f'{label}.provenance.project'),
-                            _exact_hex(_nonempty_text(own.get('revision'),f'{label}.provenance.revision'),40,
-                                       f'{label}.provenance.revision'),
-                            _https_url(own.get('original_url'),f'{label}.provenance.original_url'))
-                        _require_provenance_host(item_url,own_provenance[2],f'{label}.url')
+                            _nonempty_text(own.get('project'),f'{input_label}.provenance.project'),
+                            _exact_hex(_nonempty_text(own.get('revision'),f'{input_label}.provenance.revision'),40,
+                                       f'{input_label}.provenance.revision'),
+                            _https_url(own.get('original_url'),f'{input_label}.provenance.original_url'))
+                        _require_provenance_host(item_url,own_provenance[2],f'{input_label}.url')
                     else:
-                        _require_provenance_host(item_url, provenance_url, f"{label}.url")
+                        _require_provenance_host(item_url, provenance_url, f"{input_label}.url")
                     extra_inputs.append(
                         AssetConvertInputSpec(
                             name,
                             item_url,
-                            _byte_count(mapping.get("bytes"), f"{label}.bytes"),
-                            _exact_hex(mapping.get("sha256"), 64, f"{label}.sha256"),
+                            _byte_count(mapping.get("bytes"), f"{input_label}.bytes"),
+                            _exact_hex(mapping.get("sha256"), 64, f"{input_label}.sha256"),
                             own_provenance,
                         )
                     )

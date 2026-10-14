@@ -1,5 +1,7 @@
 import copy
 import unittest
+import json
+from pathlib import Path
 from kilix_content import verified_packaged_catalog
 from kilix_content.model import AssetSpec,CatalogError
 from kilix_license.catalog import load_determined_records
@@ -7,6 +9,10 @@ from kilix_license.catalog import load_determined_records
 class DiarizationAssetTests(unittest.TestCase):
     def setUp(self):self.spec=verified_packaged_catalog().require_asset('kilix-diarization-cpu')
     def test_declared_inputs_output_population_licence_and_consumer_are_exact(self):
+        raw=json.loads((Path(__file__).resolve().parents[1]/'src/kilix_content/catalog/plebian.json').read_text())
+        declared=next(x for x in raw['assets'] if x['id']==self.spec.asset_id)
+        self.assertEqual(self.spec.to_mapping(),declared)
+        self.assertEqual(self.spec.label,'Local English speaker turns (CAM++ / pyannote 3.0)')
         self.assertEqual((self.spec.provider,self.spec.consumer_schema,self.spec.stream),
             ('kilix-transcribe','kilix.transcribe.diarization-runtime','F104'))
         self.assertEqual(self.spec.source_mode,'upstream-convert')
