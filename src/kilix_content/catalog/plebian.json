@@ -1710,12 +1710,12 @@
         {
           "bytes": 850,
           "path": "diarization.json",
-          "sha256": "9413e5e5ee0bd0c9009115b1f49798665f51c937bb06c9f66c1693447a61104d"
+          "sha256": "130d58002f8139fb5121d64989151745f858f1b4a5d682c3d3af523694f5d2f0"
         },
         {
           "bytes": 677584,
           "path": "diarize-runner",
-          "sha256": "e3a56b1ed2eeaccff0c375927627aca8ed7149120fb85e9303260f5c17f82faa"
+          "sha256": "dd2225bb15c899cc24f6e07ca83e1cb0b689c46833f3f1c672eac4cbcdc25067"
         },
         {
           "bytes": 29539501,
