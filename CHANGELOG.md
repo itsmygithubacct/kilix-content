@@ -9,6 +9,9 @@ pre-1.0.
 
 ### Changed
 
+- Select `kilix-amp` `fa9fc8f` so regular Open/Add and command-line file opening
+  load M3U, M3U8 and PLS playlists. EnCodec remains enabled in the build.
+
 - Select `kilix-tui-utils` `8b461045` and `kilix-needle` `53e881e` to restore
   cited Help Search in the text desktop while keeping the workflow input,
   detached resume and scrollback-aware transcript replay fixes. `53e881e`
