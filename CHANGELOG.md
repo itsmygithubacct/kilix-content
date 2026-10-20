@@ -9,6 +9,21 @@ pre-1.0.
 
 ### Changed
 
+- Advance kilix-needle from `53e881e` to `84ac35d`:
+  - **Request routing.** `kilix-needle ask`, and the MCP tools
+    `kilix_ask_plan` and `kilix_ask_act`, send a plain request to the job that
+    handles it. The router is a small local model that reads only the request
+    text. An unsure route acts on nothing, and so does a request that asks two
+    jobs' work. Each job keeps its own grammar, checks and consent. The no-verb
+    default is routed too, and the `panes` verb keeps the old unrouted path.
+  - **The pty job.** Persistent pane sessions, with recorded commands and
+    read passthrough.
+  - **Pane and tab mutations.** They are bound to the request and verified
+    after they run.
+  - **Experimental desktop actions.** `kilix-desktop` typed commands, a bounded
+    X11 executor and an opt-in desktop MCP menu.
+  - **Experimental Windows actions.** They run through the Kilix Windows desktop
+    SDK, inside WSL or over SSH.
 - Select `kilix-tui-utils` `8b461045` and `kilix-needle` `53e881e` to restore
   cited Help Search in the text desktop while keeping the workflow input,
   detached resume and scrollback-aware transcript replay fixes. `53e881e`
