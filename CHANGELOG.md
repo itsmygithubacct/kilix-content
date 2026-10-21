@@ -10,6 +10,8 @@ pre-1.0.
 ### Changed
 
 - Select Needle desktop commands with packaged X11 compatibility and exact typing validation.
+- Keep the diarization generator and digest inventory aligned with the selected
+  native runner; regenerating the catalog preserves its current asset records.
 
 - Select `kilix-amp` `fa9fc8f` so regular Open/Add and command-line file opening
   load M3U, M3U8 and PLS playlists. EnCodec remains enabled in the build.
