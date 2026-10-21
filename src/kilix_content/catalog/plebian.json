@@ -1617,18 +1617,18 @@
       "label": "Needle",
       "kind": "app",
       "icon": "terminal",
-      "description": "Drive panes, tabs, apps, settings and coding sessions from plain requests with Needle 2, control audio, music, voice and text size, and search files and read system status read-only. Every call is checked. Pane and app actions ask first; the agents job treats an explicit request as consent and follows the coding-yolo setting. Includes a baseline reader for searching and briefing local pane logs. Keeps a private local history of its requests, to improve it (KILIX_NEEDLE_HISTORY=0 turns this off).",
+      "description": "Drive panes, tabs, apps, settings and coding sessions from plain requests with Needle 2, control audio, music, voice and text size, and search files and read system status read-only. Every call is checked. Pane and app actions ask first; the agents job treats an explicit request as consent and follows the coding-yolo setting. Includes typed and grammar-based X11 desktop actions, plus an experimental model interface, and a baseline reader for searching and briefing local pane logs. Keeps a private local history of its requests, to improve it (KILIX_NEEDLE_HISTORY=0 turns this off).",
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-needle",
-        "ref": "53e881ef7bee42964882d40ad51713f2526b7cea"
+        "ref": "dac1bace7a84d2c25a929603fe5c640145c2885d"
       },
       "binary": "kilix-needle",
       "build": [
         "make",
         "all"
       ],
-      "dependency_hint": "needs Python 3.11 or newer and make, on x86-64 Linux; the Needle 2 engine (needle2) installs on first use once its Apache-2.0 licence is accepted; `kilix-needle setup` edits shell, Kilix and agent-harness settings only when run",
+      "dependency_hint": "needs Python 3.11 or newer and make, on x86-64 Linux; desktop actions use xdotool, xprop and python3-xlib, with no model needed for typed or grammar requests; the Needle 2 engine (needle2) installs on first use once its Apache-2.0 licence is accepted; `kilix-needle setup` edits shell, Kilix and agent-harness settings only when run",
       "capabilities": [
         "kilix-control",
         "session-read",

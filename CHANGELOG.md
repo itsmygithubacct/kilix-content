@@ -9,6 +9,8 @@ pre-1.0.
 
 ### Changed
 
+- Select Needle desktop commands with packaged X11 compatibility and exact typing validation.
+
 - Select `kilix-amp` `fa9fc8f` so regular Open/Add and command-line file opening
   load M3U, M3U8 and PLS playlists. EnCodec remains enabled in the build.
 
