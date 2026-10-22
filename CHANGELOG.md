@@ -9,6 +9,9 @@ pre-1.0.
 
 ### Changed
 
+- Select Needle `ca4f784` so explicit new-tab agent launches use the current
+  directory without model inference.
+
 - Select Needle `e82bd5e` for deterministic live pane/tab inventories and
   receipt-bound completion of staged agent messages.
 - Build the catalog-pinned conversion tool when its OS-installed executable is
