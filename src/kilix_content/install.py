@@ -1296,6 +1296,16 @@ class Installer:
                     partial_dir=os.path.join(partial_dir, str(index)),
                 )
         elif spec.source_mode == "upstream-convert":
+            converter = spec.convert_argv[0]
+            if not shutil.which(converter, path=self.env.get("PATH")):
+                # The catalog also pins the converter's source and build. A
+                # user installation need not have the OS image's /usr/lib path.
+                from . import verified_packaged_catalog
+                catalog = verified_packaged_catalog()
+                selected = catalog.get_asset(spec.asset_id)
+                if selected != spec:
+                    raise InstallError(f"converter is unavailable: {converter}")
+                converter = self.ensure(catalog.require(spec.convert_tool_asset_id), report)
             output = os.path.join(stage, "content")
             os.makedirs(output, mode=0o700, exist_ok=True)
             # With extra inputs the converter reads a private input directory
@@ -1366,6 +1376,7 @@ class Installer:
                 .replace("{manifest_digest}", spec.manifest_digest)
                 for argument in spec.convert_argv
             ]
+            argv[0] = converter
             report(f"converting {spec.label} …")
             returncode, detail = _run_with_tail(
                 argv, cwd=stage, env=self.env, timeout=self.command_timeout

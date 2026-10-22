@@ -9,6 +9,11 @@ pre-1.0.
 
 ### Changed
 
+- Select Needle `e82bd5e` for deterministic live pane/tab inventories and
+  receipt-bound completion of staged agent messages.
+- Build the catalog-pinned conversion tool when its OS-installed executable is
+  unavailable, so EnCodec model conversion also works in user installations.
+
 - Combine request routing and the 0.2.2 desktop-command fixes in Needle `3aa90ea`.
 
 - Advance kilix-needle from `53e881e` to `84ac35d`:
