@@ -9,6 +9,8 @@ pre-1.0.
 
 ### Changed
 
+- Combine request routing and the 0.2.2 desktop-command fixes in Needle `3aa90ea`.
+
 - Advance kilix-needle from `53e881e` to `84ac35d`:
   - **Request routing.** `kilix-needle ask`, and the MCP tools
     `kilix_ask_plan` and `kilix_ask_act`, send a plain request to the job that
@@ -24,6 +26,13 @@ pre-1.0.
     X11 executor and an opt-in desktop MCP menu.
   - **Experimental Windows actions.** They run through the Kilix Windows desktop
     SDK, inside WSL or over SSH.
+- Select Needle desktop commands with packaged X11 compatibility and exact typing validation.
+- Keep the diarization generator and digest inventory aligned with the selected
+  native runner; regenerating the catalog preserves its current asset records.
+
+- Select `kilix-amp` `fa9fc8f` so regular Open/Add and command-line file opening
+  load M3U, M3U8 and PLS playlists. EnCodec remains enabled in the build.
+
 - Select `kilix-tui-utils` `8b461045` and `kilix-needle` `53e881e` to restore
   cited Help Search in the text desktop while keeping the workflow input,
   detached resume and scrollback-aware transcript replay fixes. `53e881e`

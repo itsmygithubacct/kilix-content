@@ -356,7 +356,12 @@ class ScreenPresentabilityTests(unittest.TestCase):
         } | {record.text_sha256 for record in self.records}
         self.assertGreaterEqual(len(cited), len(self.catalog.assets))
         self.assertEqual(cited - surveyed, set())
-        self.assertEqual(carriers, {CRLF_QUOTATION["blob"]: ("\r",)})
+        # The native software notice is conveyed unchanged in the installed
+        # asset, and is not a model agreement or an automatically printed text.
+        # Its page breaks/BOM remain source bytes, never terminal controls.
+        software=next(x.sha256 for x in self.catalog.require_asset('kilix-diarization-cpu').files
+                      if x.path=='notices/native-runtime.txt')
+        self.assertEqual(carriers, {CRLF_QUOTATION["blob"]: ("\r",),software:('\x0c','\ufeff')})
 
     def test_the_rule_catches_a_control_character_planted_in_another_record(
         self,

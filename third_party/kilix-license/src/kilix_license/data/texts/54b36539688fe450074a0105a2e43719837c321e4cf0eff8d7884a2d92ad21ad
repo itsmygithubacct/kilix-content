@@ -1,0 +1,246 @@
+# F104 CAM++ checkpoint-weight licence determination
+
+Date: 2026-08-25  
+Stream: F104 (`kilix-transcribe` diarization route)  
+Scope: exact ModelScope CAM++ checkpoint weights, not 3D-Speaker code, example audio, mirrors, or other model families  
+Method: read-only primary-source inspection; no model weight was downloaded or copied
+
+## 1. Determination
+
+**The two exact CAM++ checkpoint artifacts below do carry an Apache-2.0
+grant.** The grant does not rest on the 3D-Speaker code licence. It rests on the
+explicit `license: Apache License 2.0` declaration committed in each official
+IIC ModelScope *model repository*, combined with ModelScope's primary
+documentation defining a model as the architecture plus its corresponding
+parameters and saying the selected licence determines the open-source protocol
+that the model follows.
+
+That is sufficient under S3 to treat the declaration as applying to the
+checkpoint parameters rather than merely to surrounding code. The absence of a
+standalone `LICENSE` file is still a distribution defect to cure: a selected
+Plebian/Kilix artifact must carry the complete Apache-2.0 text and the evidence
+that binds that text to the exact checkpoint.
+
+This determination is deliberately digest-specific. It does **not** preserve
+the earlier wildcard clearance for `iic/speech_campplus_*` or
+`iic/speech_eres2net*`; unlisted checkpoints remain unknown until read in this
+same form.
+
+## 2. Why this is a weight grant rather than a code-licence inference
+
+Three primary sources form the grant chain:
+
+1. The official IIC ModelScope repositories contain the checkpoint (or its Git
+   LFS pointer), configuration and model card in one versioned model tree. At the
+   exact revisions below, the model card explicitly contains
+   `license: Apache License 2.0`. Neither determination is inferred from the
+   separate `modelscope/3D-Speaker` GitHub `LICENSE`.
+2. ModelScope's official [Model Hub introduction](https://www.modelscope.cn/docs/models/intro)
+   defines “Model” as a model instance including its architecture and
+   corresponding parameters. The same document says the licence type determines
+   which open-source protocol the model follows. Thus the repository-level
+   licence field is stated by the hosting authority to cover the model
+   parameters, not just SDK or example code.
+3. The referenced standard is the official
+   [Apache License 2.0 text](https://www.apache.org/licenses/LICENSE-2.0.txt),
+   11,358 bytes, SHA-256
+   `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`.
+   Its copyright and patent grants permit reproduction, derivative works and
+   redistribution subject to its conditions and contain no field-of-use or
+   voice-cloning restriction.
+
+The ModelScope API independently reports `License: Apache License 2.0` for the
+[English checkpoint](https://www.modelscope.cn/api/v1/models/iic/speech_campplus_sv_en_voxceleb_16k)
+and [Chinese checkpoint](https://www.modelscope.cn/api/v1/models/iic/speech_campplus_sv_zh-cn_16k-common).
+Both API records identify the public IIC organization and describe the entries
+as user-uploaded models. `LicenseLink` and `LicenseName` are empty, so the API is
+corroboration of the committed model-card declaration, not a substitute licence
+instrument.
+
+ModelScope documentation notes that an unspecified SDK creation value can
+default to Apache-2.0. That does not make these rows default-derived: the exact
+README bytes in both repositories explicitly contain the licence declaration,
+and it persists at the checkpoint revisions inspected.
+
+## 3. Per-checkpoint S0 determinations
+
+### 3.1 English VoxCeleb CAM++ — the exact F104 P0 candidate
+
+| S0 field | Determination |
+|---|---|
+| Model | `iic/speech_campplus_sv_en_voxceleb_16k` |
+| Exact model-repository commit | `032b8131a7ad812f87061955ca974c99060c5a03` |
+| Exact tree | `e7a3d915a1b6e7d8ea1eaba68d8472874e1a6145` |
+| Checkpoint | `campplus_voxceleb.bin` |
+| Checkpoint bytes | `29,357,703` |
+| Checkpoint SHA-256 | `5b1a88b6f8d85826fabef804779c3372b42f3af21457fa48bd5c097c0686b2de` |
+| Model-card SHA-256 | `5219533788a85bd3dc7a2c2175d1f727906676927c17919a7c6061bf0f3131f7` |
+| Licence | `Apache-2.0` |
+| Redistributable | **YES, conditionally** — include Apache-2.0 text, preserve applicable notices and mark the ONNX conversion as modified |
+| Use-restricted | **NO** — no field-of-use, commercial-use, end-user, diarization or biometric-purpose restriction in Apache-2.0 |
+| Voice cloning permitted | **YES as a licence matter** — Apache-2.0 does not prohibit cloning; this embedding checkpoint does not itself synthesize or clone voices, so no technical capability is asserted |
+| Repository/checkpoint cloning permitted | **YES** — copying and redistribution are granted, subject to Apache-2.0 conditions |
+| Gated acquisition | **NO** — the repository and checkpoint are publicly cloneable/downloadable |
+| Pickle/runtime status | Original is a PyTorch checkpoint; F101's no-runtime-pickle rule still requires a reproducible, verified ONNX export |
+| Selection disposition | **LICENCE-CLEARED FOR P2 SELECTION**, but not selected by this document; P2 performance evidence remains controlling |
+
+The exact commit was authored and committed by `yfchen` using an
+`@alibaba-inc.com` address in the official IIC repository. Its tree contains no
+`LICENSE`, `LICENCE` or `NOTICE` file. The checkpoint identity was verified from
+the 133-byte Git LFS pointer; no LFS object was fetched for this task.
+
+### 3.2 Chinese 200k-speaker CAM++ — named by the earlier S0 matrix, not frozen by F104 P0
+
+| S0 field | Determination |
+|---|---|
+| Model | `iic/speech_campplus_sv_zh-cn_16k-common` |
+| Inspected official release tag | `v2.0.2` |
+| Peeled commit | `930086088e5c5fa8a3f911c20795ca72f7f16397` |
+| Exact tree | `d58e716798173af958ac944d933f0bb3d27ead58` |
+| Checkpoint | `campplus_cn_common.bin` |
+| Checkpoint bytes | `28,036,335` |
+| Checkpoint SHA-256 | `3388cf5fd3493c9ac9c69851d8e7a8badcfb4f3dc631020c4961371646d5ada8` |
+| Model-card SHA-256 | `9bd58b989a534fa0121c8d10e62c0cce9080a9a9aeb2499bb429676f9c17cc3a` |
+| Licence | `Apache-2.0` |
+| Redistributable | **YES, conditionally** — same Apache-2.0 conveyance conditions |
+| Use-restricted | **NO** — no field-of-use restriction in the grant |
+| Voice cloning permitted | **YES as a licence matter**; no synthesis capability is asserted |
+| Repository/checkpoint cloning permitted | **YES** |
+| Gated acquisition | **NO** |
+| Pickle/runtime status | Original PyTorch checkpoint; a selected runtime still requires a reproducible, verified ONNX export |
+| Selection disposition | **LICENCE-ELIGIBLE BUT UNSELECTED AND NOT AN F104 PIN** — this audit does not add it to P0/P2 |
+
+The same checkpoint LFS object and explicit licence declaration were present at
+the inspected `v1.0.0`, `v2.0.0`, `v2.0.2` and current-master commits. Current
+master is `a045b2afcaa9c3049c98a9215a2bc274407ab237`, but moving master is not a
+release identity. F104 must choose and pin an exact release commit if it ever
+adds this checkpoint; this report does not make that choice.
+
+## 4. Derived ONNX determination
+
+An ONNX file exported locally from one exact cleared checkpoint is a modified
+or derivative form covered by the same Apache-2.0 grant. It is redistributable
+only when the release record binds:
+
+- the exact source model ID, commit, tree, checkpoint size and SHA-256 above;
+- the exact exporter source/toolchain and command;
+- a reproducible output byte count and SHA-256;
+- the complete Apache-2.0 text with SHA-256
+  `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`;
+- a prominent statement that the checkpoint was converted to ONNX; and
+- every upstream copyright, attribution or NOTICE item actually present at the
+  selected source revision.
+
+Neither inspected model tree contains a `NOTICE` file, so there is no upstream
+NOTICE file to reproduce at these revisions. That is not permission to omit the
+Apache-2.0 licence text or the modification notice.
+
+The ready-made `csukuangfj/speaker-embedding-models` ONNX files are **not**
+cleared by this determination. Their repository still has no licence or
+provenance binding from its ONNX bytes to these exact source checkpoint bytes.
+They remain `FAIL-CLOSED-UNKNOWN`; local conversion is the only cleared route
+unless that mirror obtains its own grant and exact provenance.
+
+## 5. Boundaries and residual risks
+
+### 5.1 No wildcard clearance
+
+Only these two checkpoint digests are determined. The following remain outside
+the result:
+
+- every other `iic/speech_campplus_*` model, including 3D-Speaker-trained,
+  CN-Celeb, bilingual-advanced, diarization-bundle and language-identification
+  repositories;
+- every `iic/speech_eres2net*` checkpoint;
+- all downstream ONNX mirrors; and
+- any future revision or changed checkpoint digest under either model ID.
+
+The broad row in `0.2.1-S0-LICENCE-F104-ASR.md:66,432-452` must not be used as
+selection authority. Its exact English and Chinese CAM++ subcases are replaced
+by this document; its ERes2Net and wildcard portions remain admission-only and
+unknown for selection.
+
+### 5.2 Training data is provenance, not a second grant
+
+The English card says the checkpoint was trained on VoxCeleb2; the Chinese card
+says approximately 200,000 Chinese speakers. The primary model-repository grant
+is the operative permission over the checkpoint. It does not prove every
+training-data chain-of-title fact, transfer rights in the training recordings,
+or permission to redistribute the three bundled example recordings.
+
+F104 already excludes the example audio, and this result does not change that.
+Only the checkpoint is cleared. If release policy later requires a complete
+training-data rights chain rather than an affirmative checkpoint grant from the
+publisher, both rows must be reopened.
+
+### 5.3 Biometric/privacy obligations are separate
+
+Apache-2.0 imposes no use restriction, including no restriction on diarization,
+speaker verification or voice cloning. That licence result does not waive
+privacy, biometric-data, consent, recording, impersonation or jurisdictional
+law. F104's explicit-session, local-processing and no-retention controls remain
+mandatory product policy rather than licence conditions.
+
+## 6. Selection gate
+
+The English checkpoint may enter P2 comparison under the following exact
+conditions:
+
+1. P2 uses ModelScope checkpoint
+   `5b1a88b6f8d85826fabef804779c3372b42f3af21457fa48bd5c097c0686b2de`,
+   not a mirror or a moving ref.
+2. The self-exported ONNX file is reproducible and bound back to that source
+   checkpoint and the pinned 3D-Speaker exporter source.
+3. F100/F104 package metadata records `Apache-2.0`, `redistributable: true`,
+   `use_restricted: false`, and `cloning_permitted: true`, with the qualification
+   that the field is a licence determination rather than a technical feature.
+4. The complete Apache-2.0 text and conversion notice are present offline before
+   the install decision and in any redistributed artifact bundle.
+5. No ModelScope example recording and no unlicensed ONNX mirror enters the
+   product, test corpus or release artifact.
+
+Failure of any condition fails closed. This document clears licence eligibility;
+it does not select CAM++, approve a supported profile, move a consumer pin, or
+claim P2 measurement success.
+
+## 7. Evidence reproduced
+
+Controlling local inputs:
+
+| File | SHA-256 |
+|---|---|
+| `0.2.1-S0-LICENCE-F104-ASR.md` | `59904e239634072ea7d23dd7e4fcecb982ca335cb10f68e014f7b07b1eb492b5` |
+| `0.2.1-F104-P0-SOURCE-CANDIDATES-R2.md` | `88bc08c7cf95744d1f84c944caa26a3d4b87cb9bc2a448012d875ce6c28d87e8` |
+| `0.2.1-F104-SCOPING-PLAN.md` | `dd342af5fc8178a654512c23908c7729263e756b5f61bc080960aefca5553a88` |
+
+Read-only commands included:
+
+```sh
+git -C <model-repository> ls-remote origin
+git -C <model-repository> rev-parse <revision>^{tree}
+git -C <model-repository> ls-tree -r --name-only <revision>
+git -C <model-repository> show <revision>:README.md
+git -C <model-repository> show <revision>:<checkpoint>
+curl -fsSL https://www.apache.org/licenses/LICENSE-2.0.txt
+curl -fsSL https://www.modelscope.cn/api/v1/models/iic/<model-id>
+```
+
+The existing English metadata clone remained clean at detached commit
+`032b8131a7ad812f87061955ca974c99060c5a03`. Chinese and full-history English
+inspection used disposable, LFS-smudge-disabled clones below `/tmp`; the English
+F104 candidate clone, all release repositories, model stores and package state
+were not modified. No checkpoint payload was downloaded during this task.
+
+## 8. Final S0 disposition
+
+| Checkpoint | Redistributable | Use-restricted | Cloning permitted | S0 result |
+|---|---:|---:|---:|---|
+| English VoxCeleb `5b1a88b6…` | **Yes, Apache-2.0 conditions** | **No** | **Yes under licence** | **CLEARED FOR P2 SELECTION; not selected** |
+| Chinese common `3388cf5f…` | **Yes, Apache-2.0 conditions** | **No** | **Yes under licence** | **ELIGIBLE BUT UNSELECTED/UNPINNED** |
+| Any other CAM++ checkpoint | **Unknown** | **Fail closed** | **Fail closed** | **NOT DETERMINED** |
+| `csukuangfj` ONNX mirror | **Unknown** | **Fail closed** | **Fail closed** | **FAIL-CLOSED-UNKNOWN** |
+
+**Bound condition resolved for the exact English F104 candidate:** the checkpoint
+has a primary-source Apache-2.0 grant attached to its official weight repository.
+The evidence is stronger than the separate code licence and narrower than the
+old wildcard claim.

@@ -86,7 +86,9 @@ class Needle2AssetTests(unittest.TestCase):
             for row in asset["licenses"]:
                 with self.subTest(asset=asset_id, licence=row["id"]):
                     record = self.records.by_digest(row["record_digest"])
-                    self.assertEqual(record.determinations_sha256, release)
+                    expected = (_pinned('determinations-diarization.sha256')
+                                if asset_id == 'kilix-diarization-cpu' else release)
+                    self.assertEqual(record.determinations_sha256, expected)
 
     def test_version_is_the_revision(self) -> None:
         self.assertEqual(self.spec.version, REVISION)

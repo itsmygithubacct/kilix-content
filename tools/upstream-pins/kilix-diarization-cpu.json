@@ -1,0 +1,76 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "kilix-diarization-cpu",
+  "label": "Local English speaker turns (CAM++ / pyannote 3.0)",
+  "mode": "upstream-convert",
+  "license_record_id": "kilix-diarization-cpu",
+  "provider": "kilix-transcribe",
+  "consumer_schema": "kilix.transcribe.diarization-runtime",
+  "stream": "F104",
+  "version": "032b8131a7ad812f87061955ca974c99060c5a03",
+  "provenance": {
+    "project": "iic/speech_campplus_sv_en_voxceleb_16k",
+    "revision": "032b8131a7ad812f87061955ca974c99060c5a03",
+    "original_url": "https://www.modelscope.cn/api/v1/models/iic/speech_campplus_sv_en_voxceleb_16k/repo?Revision=032b8131a7ad812f87061955ca974c99060c5a03&FilePath=campplus_voxceleb.bin"
+  },
+  "input": {
+    "path": "campplus_voxceleb.bin",
+    "url": "https://www.modelscope.cn/api/v1/models/iic/speech_campplus_sv_en_voxceleb_16k/repo?Revision=032b8131a7ad812f87061955ca974c99060c5a03&FilePath=campplus_voxceleb.bin",
+    "bytes": 29357703,
+    "sha256": "5b1a88b6f8d85826fabef804779c3372b42f3af21457fa48bd5c097c0686b2de"
+  },
+  "inputs": [
+    {
+      "path": "pyannote-segmentation.onnx",
+      "url": "https://huggingface.co/csukuangfj/sherpa-onnx-pyannote-segmentation-3-0/resolve/9403a6902bb58e3d5ae8c7e77c3422de279db2e0/model.onnx",
+      "bytes": 5992913,
+      "sha256": "220ad67ca923bef2fa91f2390c786097bf305bceb5e261d4af67b38e938e1079",
+      "provenance": {
+        "project": "csukuangfj/sherpa-onnx-pyannote-segmentation-3-0",
+        "revision": "9403a6902bb58e3d5ae8c7e77c3422de279db2e0",
+        "original_url": "https://huggingface.co/csukuangfj/sherpa-onnx-pyannote-segmentation-3-0/resolve/9403a6902bb58e3d5ae8c7e77c3422de279db2e0/model.onnx"
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "path": "diarize-runner",
+      "bytes": 677584,
+      "sha256": "dd2225bb15c899cc24f6e07ca83e1cb0b689c46833f3f1c672eac4cbcdc25067"
+    },
+    {
+      "path": "lib/libonnxruntime.so",
+      "bytes": 26407985,
+      "sha256": "c85f471e1bd5059a4556038f7f5288fa41141647613688452ae7de4879150903"
+    },
+    {
+      "path": "segmentation.onnx",
+      "bytes": 5992913,
+      "sha256": "220ad67ca923bef2fa91f2390c786097bf305bceb5e261d4af67b38e938e1079"
+    },
+    {
+      "path": "embedding.onnx",
+      "bytes": 29539501,
+      "sha256": "7cfea971b2231ed7d7dd6324de1de33f8f9dbe65bbb30cf64b4b0b203b566292"
+    },
+    {
+      "path": "diarization.json",
+      "bytes": 850,
+      "sha256": "130d58002f8139fb5121d64989151745f858f1b4a5d682c3d3af523694f5d2f0"
+    }
+  ],
+  "conversion": {
+    "tool_asset_id": "kilix-diarization-convert",
+    "argv": [
+      "/usr/lib/plebian-os/kilix-diarization-convert/bin/kilix-diarization-convert",
+      "--input",
+      "{input}",
+      "--output",
+      "{output}",
+      "--receipt-store",
+      "{receipt_store}",
+      "--manifest-digest",
+      "{manifest_digest}"
+    ]
+  }
+}

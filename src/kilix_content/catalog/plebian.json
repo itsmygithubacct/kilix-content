@@ -1221,7 +1221,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-amp",
-        "ref": "e5ce674e40212b3ca410e430d922926fff770094"
+        "ref": "fa9fc8f38a7bf8d3a7aa945c9bf75a087b44b2d5"
       },
       "binary": "kilix-amp",
       "build": [
@@ -1617,18 +1617,18 @@
       "label": "Needle",
       "kind": "app",
       "icon": "terminal",
-      "description": "Drive panes, tabs, apps, settings and coding sessions from plain requests with Needle 2, control audio, music, voice and text size, and search files and read system status read-only. `ask` sends a request whose job is unclear to the job that handles it, using a small local router that reads only the request; an unsure route acts on nothing. Every call is checked. Pane and app actions ask first; the agents job treats an explicit request as consent and follows the coding-yolo setting. Includes a baseline reader for searching and briefing local pane logs. Keeps a private local history of its requests, to improve it (KILIX_NEEDLE_HISTORY=0 turns this off).",
+      "description": "Drive panes, tabs, apps, settings and coding sessions from plain requests with Needle 2, control audio, music, voice and text size, and search files and read system status read-only. `ask` sends a request whose job is unclear to the job that handles it, using a small local router that reads only the request; an unsure route acts on nothing. Every call is checked. Pane and app actions ask first; the agents job treats an explicit request as consent and follows the coding-yolo setting. Includes typed and grammar-based X11 desktop actions, an experimental model interface, and a baseline reader for searching and briefing local pane logs. Keeps a private local history of its requests, to improve it (KILIX_NEEDLE_HISTORY=0 turns this off).",
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-needle",
-        "ref": "84ac35d039b1b502cc038a4ec8d157a6e3955c65"
+        "ref": "3aa90eaa09be718e5ffd785034b5af43a51382de"
       },
       "binary": "kilix-needle",
       "build": [
         "make",
         "all"
       ],
-      "dependency_hint": "needs Python 3.11 or newer and make, on x86-64 Linux; the Needle 2 engine (needle2) installs on first use once its Apache-2.0 licence is accepted; `kilix-needle setup` edits shell, Kilix and agent-harness settings only when run",
+      "dependency_hint": "needs Python 3.11 or newer and make, on x86-64 Linux; desktop actions use xdotool, xprop and python3-xlib, with no model needed for typed or grammar requests; the Needle 2 engine (needle2) installs on first use once its Apache-2.0 licence is accepted; `kilix-needle setup` edits shell, Kilix and agent-harness settings only when run",
       "capabilities": [
         "kilix-control",
         "session-read",
@@ -1700,6 +1700,131 @@
     }
   ],
   "assets": [
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.transcribe.diarization-runtime",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 850,
+          "path": "diarization.json",
+          "sha256": "130d58002f8139fb5121d64989151745f858f1b4a5d682c3d3af523694f5d2f0"
+        },
+        {
+          "bytes": 677584,
+          "path": "diarize-runner",
+          "sha256": "dd2225bb15c899cc24f6e07ca83e1cb0b689c46833f3f1c672eac4cbcdc25067"
+        },
+        {
+          "bytes": 29539501,
+          "path": "embedding.onnx",
+          "sha256": "7cfea971b2231ed7d7dd6324de1de33f8f9dbe65bbb30cf64b4b0b203b566292"
+        },
+        {
+          "bytes": 26407985,
+          "path": "lib/libonnxruntime.so",
+          "sha256": "c85f471e1bd5059a4556038f7f5288fa41141647613688452ae7de4879150903"
+        },
+        {
+          "bytes": 11358,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "bytes": 13443,
+          "path": "notices/campp-digest-specific-grant.txt",
+          "sha256": "54b36539688fe450074a0105a2e43719837c321e4cf0eff8d7884a2d92ad21ad"
+        },
+        {
+          "bytes": 703,
+          "path": "notices/local-onnx-modification.txt",
+          "sha256": "598ee20c7456841a757590b5c4ba7ad044893b4df768a3195cf8efe2d036a611"
+        },
+        {
+          "bytes": 532726,
+          "path": "notices/native-runtime.txt",
+          "sha256": "8923cff8327b3291650bb1658bb7f3d12dd117a6a66aabaf67926221c19a0439"
+        },
+        {
+          "bytes": 1061,
+          "path": "notices/pyannote-segmentation-3-0.txt",
+          "sha256": "14d7016ad68e7394d6e6b78d96cc2ae431c905287b89674cfdf021e79e62b8ba"
+        },
+        {
+          "bytes": 5992913,
+          "path": "segmentation.onnx",
+          "sha256": "220ad67ca923bef2fa91f2390c786097bf305bceb5e261d4af67b38e938e1079"
+        }
+      ],
+      "id": "kilix-diarization-cpu",
+      "label": "Local English speaker turns (CAM++ / pyannote 3.0)",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "IIC / Alibaba Cloud",
+            "pyannote contributors",
+            "sherpa-onnx contributors",
+            "Microsoft and bundled runtime contributors"
+          ],
+          "record_digest": "e1feb5ca5f96b9725776f22ab0541d3997779674a23600dd6d17d987977cb2d3",
+          "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "provider": "kilix-transcribe",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 35350616,
+        "installed_bytes": 63178124,
+        "temporary_bytes": 98528740
+      },
+      "source": {
+        "conversion": {
+          "argv": [
+            "/usr/lib/plebian-os/kilix-diarization-convert/bin/kilix-diarization-convert",
+            "--input",
+            "{input}",
+            "--output",
+            "{output}",
+            "--receipt-store",
+            "{receipt_store}",
+            "--manifest-digest",
+            "{manifest_digest}"
+          ],
+          "tool_asset_id": "kilix-diarization-convert"
+        },
+        "input": {
+          "bytes": 29357703,
+          "sha256": "5b1a88b6f8d85826fabef804779c3372b42f3af21457fa48bd5c097c0686b2de",
+          "url": "https://www.modelscope.cn/api/v1/models/iic/speech_campplus_sv_en_voxceleb_16k/repo?Revision=032b8131a7ad812f87061955ca974c99060c5a03&FilePath=campplus_voxceleb.bin",
+          "path": "campplus_voxceleb.bin"
+        },
+        "mode": "upstream-convert",
+        "provenance": {
+          "project": "iic/speech_campplus_sv_en_voxceleb_16k",
+          "revision": "032b8131a7ad812f87061955ca974c99060c5a03",
+          "original_url": "https://www.modelscope.cn/api/v1/models/iic/speech_campplus_sv_en_voxceleb_16k/repo?Revision=032b8131a7ad812f87061955ca974c99060c5a03&FilePath=campplus_voxceleb.bin"
+        },
+        "inputs": [
+          {
+            "bytes": 5992913,
+            "path": "pyannote-segmentation.onnx",
+            "sha256": "220ad67ca923bef2fa91f2390c786097bf305bceb5e261d4af67b38e938e1079",
+            "url": "https://huggingface.co/csukuangfj/sherpa-onnx-pyannote-segmentation-3-0/resolve/9403a6902bb58e3d5ae8c7e77c3422de279db2e0/model.onnx",
+            "provenance": {
+              "project": "csukuangfj/sherpa-onnx-pyannote-segmentation-3-0",
+              "revision": "9403a6902bb58e3d5ae8c7e77c3422de279db2e0",
+              "original_url": "https://huggingface.co/csukuangfj/sherpa-onnx-pyannote-segmentation-3-0/resolve/9403a6902bb58e3d5ae8c7e77c3422de279db2e0/model.onnx"
+            }
+          }
+        ]
+      },
+      "stream": "F104",
+      "version": "032b8131a7ad812f87061955ca974c99060c5a03"
+    },
     {
       "compatibility": {
         "consumer_schema": "kilix.whistle.models/v1",

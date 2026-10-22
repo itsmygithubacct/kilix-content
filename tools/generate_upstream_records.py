@@ -20,6 +20,7 @@ LICENSE_SRC = ROOT / "third_party" / "kilix-license" / "src"
 TEXTS = LICENSE_SRC / "kilix_license" / "data" / "texts"
 
 PIN_NAMES = (
+    'kilix-diarization-cpu.json',
     "whistle.json",
     "vosk-model-small-en-us-0.15.json",
     "vosk-model-en-us-0.22-lgraph.json",
@@ -65,6 +66,7 @@ PIN_NAMES = (
 )
 
 LICENSORS = {
+    'kilix-diarization-cpu':['IIC / Alibaba Cloud','pyannote contributors','sherpa-onnx contributors','Microsoft and bundled runtime contributors'],
     "whistle": ["Cactus Compute, Inc."],
     "small-en-us": ["Alpha Cephei Inc."],
     "lgraph-en-us": ["Appen", "Alpha Cephei"],
@@ -172,6 +174,16 @@ def notice_file(record) -> dict[str, object]:
 
 def notice_files(record) -> list[dict[str, object]]:
     files = [notice_file(record)]
+    if record.id == 'kilix-diarization-cpu':
+        for item in record.components:
+            if item.exception_text_sha256:
+                files.append(notice_blob(item.exception_text_sha256,'notices/'+item.id+'.txt',record.id))
+        determination = json.loads((TEXTS.parent/'determinations-diarization.json').read_text())
+        files.append(notice_blob(determination['authority']['native_software_notice_sha256'],
+                                'notices/native-runtime.txt',record.id))
+        for item in record.statements:
+            files.append(notice_blob(item.text_sha256,'notices/'+item.id+'.txt',record.id))
+        return files
     for component in record.components:
         extra = COMPONENT_LICENSE_ROWS.get(component.id)
         if extra is None:
@@ -341,6 +353,7 @@ def build_convert_asset(pin: dict) -> dict:
                 "path": item["path"],
                 "sha256": item["sha256"],
                 "url": item["url"],
+                **({'provenance':dict(item['provenance'])} if 'provenance' in item else {}),
             }
             for item in pin.get("inputs", [])
         ]
@@ -549,6 +562,7 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--old", dest="old_sha", default=None)
+    parser.add_argument('--old-schema',default='0'*64)
     args = parser.parse_args(argv[1:])
     pins = [
         json.loads((PIN_DIR / name).read_text(encoding="utf-8")) for name in PIN_NAMES
@@ -568,7 +582,7 @@ def main(argv: list[str]) -> int:
         return 0
     CATALOG.write_text(rendered, encoding="utf-8")
     replace_pin(RECEIPT, "_CATALOG_SHA256", catalog_sha, args.old_sha)
-    replace_pin(RECEIPT, "_ASSET_V3_SCHEMA_SHA256", schema_sha, "0" * 64)
+    replace_pin(RECEIPT, "_ASSET_V3_SCHEMA_SHA256", schema_sha, args.old_schema)
     print(f"catalog sha256 {catalog_sha}")
     print(f"schema sha256 {schema_sha}")
     return 0
