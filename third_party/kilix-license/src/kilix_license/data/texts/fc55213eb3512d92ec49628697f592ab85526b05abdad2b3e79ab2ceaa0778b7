@@ -1,0 +1,11 @@
+LFM2 Kilix Commands is a modified LiquidAI/LFM2-1.2B-Tool model.
+Base revision: 6d24c6b7471fcbcec084935e377a5302f4b84389.
+Modified by itsmygithubacct: supervised LoRA fine tuning on synthetic local
+command examples, merging in bfloat16, conversion to GGUF and Q4_K_M quantization.
+The model file carries this modification notice in its GGUF metadata.
+Liquid AI, Inc. retains its rights in the base model. The LFM Open License v1.0
+is provided unchanged as notices/LICENSE-LFM.txt.
+The separately bundled CPU runtime is llama.cpp b11669, commit
+620d2225cc436ab0b001e3200e590e3b286ef9ab. Its software notices are provided
+in notices/LICENSE-runtime.txt. These software licences do not replace
+the model licence or its Commercial Use Limitation.

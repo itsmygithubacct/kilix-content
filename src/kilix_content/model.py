@@ -158,7 +158,8 @@ def _is_kilix_hosted(url: str) -> bool:
     return False
 
 
-def _https_url(value: Any, label: str, *, allow_file: bool = False) -> str:
+def _https_url(value: Any, label: str, *, allow_file: bool = False,
+               owned_archive_url: str | None = None) -> str:
     value = _nonempty_text(value, label, maximum=4096)
     try:
         parsed = urlsplit(value)
@@ -180,7 +181,7 @@ def _https_url(value: Any, label: str, *, allow_file: bool = False) -> str:
         or parsed.fragment
     ):
         raise CatalogError(f"{label} must be a public HTTPS URL")
-    if _is_kilix_hosted(value):
+    if _is_kilix_hosted(value) and value != owned_archive_url:
         raise CatalogError("model bytes must come from upstream (OD-S)")
     host = parsed.hostname.lower()
     if host in {"huggingface.co", "www.huggingface.co"}:
@@ -1004,10 +1005,25 @@ class AssetSpec:
             provenance_revision = _nonempty_text(
                 provenance["revision"], f"{asset_id}.source.provenance.revision"
             )
+            # The owner requested the trained LFM2 derivative for 0.2.2 on
+            # 2026-10-22. Kilix publishes that changed model, with the base
+            # licence and modification notice, under this one archive route.
+            # This does not admit mirrors of the other upstream model assets.
+            owned_archive_url = None
+            if (asset_id == "lfm2-kilix-commands" and provider == "kilix-needle"
+                    and consumer_schema == "kilix.commands.model/v1"
+                    and source_mode == "upstream-archive"
+                    and licenses[0].license_id == "lfm-open-license-1.0"
+                    and provenance_project == "itsmygithubacct/kilix-needle"
+                    and re.fullmatch(r"[0-9a-f]{40}", provenance_revision)
+                    and re.fullmatch(r"lfm2-kilix-commands-[0-9]{8}-v[1-9][0-9]*", version)):
+                owned_archive_url = ("https://github.com/itsmygithubacct/kilix-needle/releases/download/"
+                                     + version + "/" + version + ".tar.gz")
             provenance_url = _https_url(
                 provenance["original_url"],
                 f"{asset_id}.source.provenance.original_url",
                 allow_file=allow_file_urls,
+                owned_archive_url=owned_archive_url,
             )
         except KeyError as exc:
             raise CatalogError(
@@ -1038,7 +1054,8 @@ class AssetSpec:
             )
             try:
                 url = _https_url(
-                    source["url"], f"{asset_id}.source.url", allow_file=allow_file_urls
+                    source["url"], f"{asset_id}.source.url", allow_file=allow_file_urls,
+                    owned_archive_url=owned_archive_url,
                 )
                 archive_bytes = _byte_count(
                     source["archive_bytes"], f"{asset_id}.source.archive_bytes"

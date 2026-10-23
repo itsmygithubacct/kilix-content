@@ -19,7 +19,7 @@ from kilix_content.receipt import (
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = ROOT / "src" / "kilix_content" / "contracts" / "kilix.content.asset-v3.schema.json"
 PUBLIC_SCHEMA = ROOT / "contracts" / "kilix.content.asset-v3.schema.json"
-KILIX_LICENSE_PIN = "027f1d5e02f5f11c9b80bc5f6bedb0db1fa996ff"
+KILIX_LICENSE_PIN = "00d7bf64764c6b6722d1820e0f68fc4b8df65567"
 VENDORED = ROOT / "third_party" / "kilix-license"
 VENDORED_OBJECTS = ROOT / "third_party" / "kilix-license.objects.json"
 # Top-level kilix-license entries that are deliberately not vendored.
@@ -32,7 +32,7 @@ NOT_VENDORED = (
     "tools",
     "uv.lock",
 )
-VENDORED_FILE_COUNT = 149
+VENDORED_FILE_COUNT = 157
 
 
 def _git_oid(kind: bytes, body: bytes) -> str:
