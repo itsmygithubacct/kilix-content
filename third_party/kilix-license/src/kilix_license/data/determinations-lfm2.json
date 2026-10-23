@@ -1,0 +1,48 @@
+{
+  "schema": "kilix.license.lfm2-determination/v1",
+  "authority": {
+    "model": "LiquidAI/LFM2-1.2B-Tool",
+    "base_revision": "6d24c6b7471fcbcec084935e377a5302f4b84389",
+    "source": "https://huggingface.co/LiquidAI/LFM2-1.2B-Tool/blob/6d24c6b7471fcbcec084935e377a5302f4b84389/LICENSE",
+    "licence_sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
+    "runtime_notice_sha256": "571c0295ffbb60b79627a8956e2990826448eee7678b8d9a1e37c82bbf779f4c"
+  },
+  "records": [
+    {
+      "id": "lfm2-kilix-commands",
+      "licensor": "Liquid AI, Inc.; ggml and bundled runtime contributors",
+      "text_sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c",
+      "components": [
+        {
+          "id": "native-runtime",
+          "role": "CPU runtime software notices",
+          "exception_text_sha256": "571c0295ffbb60b79627a8956e2990826448eee7678b8d9a1e37c82bbf779f4c"
+        }
+      ],
+      "binding_conditions": [
+        {
+          "id": "commercial-use-limitation",
+          "text_sha256": "17f031acfa9fd5163a13f1ddd51e28df17c536d6969c6f65efff24309dde1e77",
+          "agreement_required": true,
+          "text_id": "liquid-ai/lfm-open-license-v1/commercial-use"
+        }
+      ],
+      "advisories": [],
+      "statements": [
+        {
+          "id": "modified-model",
+          "text_sha256": "6a728e4c8a0b873876c57583d62a8c763c27c3a282d5537e9b6024d737920ddf"
+        }
+      ],
+      "decision_class": "affirmative",
+      "licence_ids": [
+        "LFM-Open-License-1.0",
+        "MIT",
+        "BSD-2-Clause",
+        "Unlicense"
+      ],
+      "licence_text_id": "liquid-ai/lfm-open-license-v1",
+      "schema": "kilix.license.record/v1"
+    }
+  ]
+}

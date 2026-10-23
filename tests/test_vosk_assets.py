@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from owned_archive import selected_commands_archive
+
 import hashlib
 import io
 import unittest
@@ -58,7 +60,8 @@ class VoskAssetTests(unittest.TestCase):
     def test_no_packaged_asset_source_url_is_kilix_hosted(self) -> None:
         for spec in self.catalog.assets:
             packed = spec.to_mapping()
-            self.assertNotIn("itsmygithubacct", str(packed).lower())
+            if not selected_commands_archive(spec.to_mapping(), spec.url):
+                self.assertNotIn("itsmygithubacct", str(packed).lower())
             self.assertNotIn("assets-0.2.2-candidate", str(packed))
 
     def test_catalog_sha_matches_packaged_bytes(self) -> None:

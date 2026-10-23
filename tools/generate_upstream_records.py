@@ -20,6 +20,7 @@ LICENSE_SRC = ROOT / "third_party" / "kilix-license" / "src"
 TEXTS = LICENSE_SRC / "kilix_license" / "data" / "texts"
 
 PIN_NAMES = (
+    "lfm2-kilix-commands.json",
     'kilix-diarization-cpu.json',
     "whistle.json",
     "vosk-model-small-en-us-0.15.json",
@@ -66,6 +67,7 @@ PIN_NAMES = (
 )
 
 LICENSORS = {
+    "lfm2-kilix-commands": ["Liquid AI, Inc.", "ggml and bundled runtime contributors"],
     'kilix-diarization-cpu':['IIC / Alibaba Cloud','pyannote contributors','sherpa-onnx contributors','Microsoft and bundled runtime contributors'],
     "whistle": ["Cactus Compute, Inc."],
     "small-en-us": ["Alpha Cephei Inc."],
@@ -103,6 +105,7 @@ LICENSORS = {
 }
 
 LICENSE_ROW_IDS = {
+    "LFM-Open-License-1.0": "lfm-open-license-1.0",
     "Apache-2.0": "apache-2.0",
     "MIT": "mit",
     "Public domain, per the trainer's statement": "public-domain",
@@ -112,6 +115,7 @@ LICENSE_ROW_IDS = {
 }
 
 NOTICE_PATHS = {
+    "lfm-open-license-1.0": "notices/LICENSE-LFM.txt",
     "apache-2.0": "notices/LICENSE-apache-2.0.txt",
     "mit": "notices/LICENSE-mit.txt",
     "public-domain": "notices/public-domain.txt",
@@ -174,6 +178,12 @@ def notice_file(record) -> dict[str, object]:
 
 def notice_files(record) -> list[dict[str, object]]:
     files = [notice_file(record)]
+    if record.id == 'lfm2-kilix-commands':
+        runtime = next(x for x in record.components if x.id == 'native-runtime')
+        changed = next(x for x in record.statements if x.id == 'modified-model')
+        files.append(notice_blob(runtime.exception_text_sha256, 'notices/LICENSE-runtime.txt', record.id))
+        files.append(notice_blob(changed.text_sha256, 'notices/NOTICE.txt', record.id))
+        return files
     if record.id == 'kilix-diarization-cpu':
         for item in record.components:
             if item.exception_text_sha256:
@@ -246,7 +256,7 @@ def build_archive_asset(pin: dict) -> dict:
     download = pin["archive_bytes"]
     return {
         "compatibility": {
-            "consumer_schema": "kilix.speech.models/v1",
+            "consumer_schema": pin.get("consumer_schema", "kilix.speech.models/v1"),
             "maximum": 1,
             "minimum": 1,
         },
@@ -254,7 +264,7 @@ def build_archive_asset(pin: dict) -> dict:
         "id": pin["id"],
         "label": pin["id"],
         "licenses": license_rows(pin, record),
-        "provider": "kilix-voice",
+        "provider": pin.get("provider", "kilix-voice"),
         "schema": "kilix.content.asset/v3",
         "sizes": {
             "download_bytes": download,

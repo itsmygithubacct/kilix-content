@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from owned_archive import selected_commands_archive
+
 import io
 import json
 import os
@@ -164,7 +166,8 @@ class YoloxYamnetAssetTests(unittest.TestCase):
     def test_no_packaged_asset_source_url_is_kilix_hosted(self) -> None:
         for spec in self.catalog.assets:
             packed = str(spec.to_mapping()).lower()
-            self.assertNotIn("itsmygithubacct", packed)
+            if not selected_commands_archive(spec.to_mapping(), spec.url):
+                self.assertNotIn("itsmygithubacct", packed)
             self.assertNotIn("assets-0.2.2-candidate", packed)
             for item in spec.fetch:
                 parsed = urlsplit(item.url)
@@ -175,7 +178,7 @@ class YoloxYamnetAssetTests(unittest.TestCase):
                 self.assertEqual(parsed.scheme, "https")
                 self.assertFalse(_is_kilix_hosted(item.url), item.url)
             if spec.source_mode == "upstream-archive":
-                self.assertFalse(_is_kilix_hosted(spec.url), spec.url)
+                self.assertFalse(_is_kilix_hosted(spec.url) and not selected_commands_archive(spec.to_mapping(), spec.url), spec.url)
             if spec.source_mode == "upstream-convert":
                 self.assertFalse(_is_kilix_hosted(spec.convert_url), spec.convert_url)
             if spec.source_mode == "registry-manifest":

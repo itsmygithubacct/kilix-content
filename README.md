@@ -126,6 +126,13 @@ immutable and cached after its first validated load.
 
 ## Installing a model asset from bytes you already hold
 
+The `lfm2-kilix-commands` asset is a Kilix-trained derivative of the pinned
+Liquid AI model. Its archive is published by `kilix-needle`, with the LFM Open
+License v1.0, runtime licences and a modification notice. The catalog permits
+only its named, versioned release archive under this owned-model route; other
+model assets retain their upstream-only source requirement. First-use consent
+and archive/member checksums apply to the derivative too.
+
 Model assets are normally fetched from upstream on first use, after their
 licence screen has been shown and a typed agreement recorded. On an air-gapped
 or metered machine, or when the same model is already installed on another

@@ -9,6 +9,9 @@ pre-1.0.
 
 ### Changed
 
+- Support the independently licensed LFM2 command-model derivative through
+  Needle's versioned release archive, with full first-use terms and notices.
+
 - Select Needle `ca4f784` so explicit new-tab agent launches use the current
   directory without model inference.
 
