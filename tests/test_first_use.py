@@ -1,18 +1,21 @@
 from __future__ import annotations
 
 import io
+import json
 import tempfile
 import unittest
 from pathlib import Path
 
-from kilix_license.agreement import typed_agreement_line
+from kilix_license.agreement import capture_agreement, typed_agreement_line
 from kilix_license.catalog import load_determined_records, load_determined_texts
+from kilix_license.receipts import receipt_from_agreement
 
 from fake_store import FakeStore
 from first_use_fixture import FakeUpstream, make_archive_asset, vosk_fixture_zip
-from kilix_content.first_use import install_with_agreement
+from kilix_content.first_use import install_with_agreement, needs_agreement
 from kilix_content.install import Installer
 from kilix_content.model import AssetSpec
+from kilix_content.receipt import _CATALOG_SHA256, release_digest
 
 
 class FirstUseTests(unittest.TestCase):
@@ -40,6 +43,59 @@ class FirstUseTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.upstream.close()
+
+    def saved_receipt(self):
+        return receipt_from_agreement(
+            self.record,
+            capture_agreement(self.record, typed_agreement_line(self.record)),
+            manifest_digest=self.spec.manifest_digest,
+            release_digest=release_digest(),
+            catalogue_digest=_CATALOG_SHA256,
+        )
+
+    def test_malformed_saved_receipts_require_consent_without_download(self) -> None:
+        receipt = self.saved_receipt()
+        exact = self.store.path_for(receipt.record_digest, receipt.manifest_digest)
+        sibling_digest = ("0" if receipt.manifest_digest[0] != "0" else "1") + receipt.manifest_digest[1:]
+        sibling = self.store.path_for(receipt.record_digest, sibling_digest)
+        for field in ("decision", "catalogue_digest"):
+            for path in (exact, sibling):
+                with self.subTest(field=field, sibling=path == sibling):
+                    for previous in (exact, sibling):
+                        previous.unlink(missing_ok=True)
+                    payload = receipt.to_jsonable()
+                    if field == "decision":
+                        payload[field] = []
+                    else:
+                        payload["context"][field] = "invalid"
+                    data = json.dumps(payload).encode()
+                    path.write_bytes(data)
+                    self.assertTrue(needs_agreement(self.spec, records=self.records, store=self.store))
+                    screen = io.BytesIO()
+                    result = install_with_agreement(
+                        self.spec, installer=self.installer, store=self.store,
+                        records=self.records, texts=self.texts, typed_text=None,
+                        screen=screen, decline=True,
+                    )
+                    self.assertIsNone(result)
+                    self.assertIn(self.spec.asset_id.encode(), screen.getvalue())
+                    self.assertEqual(self.upstream.requests(), [])
+                    self.assertFalse(Path(self.installer.asset_destination(self.spec)).exists())
+                    self.assertEqual(path.read_bytes(), data)
+
+    def test_new_acceptance_recovers_a_malformed_exact_receipt(self) -> None:
+        receipt = self.saved_receipt()
+        path = self.store.path_for(receipt.record_digest, receipt.manifest_digest)
+        path.write_text(json.dumps(dict(receipt.to_jsonable(), decision=[])))
+        self.assertTrue(needs_agreement(self.spec, records=self.records, store=self.store))
+        result = install_with_agreement(
+            self.spec, installer=self.installer, store=self.store,
+            records=self.records, texts=self.texts,
+            typed_text=typed_agreement_line(self.record), screen=io.BytesIO(),
+        )
+        self.assertIsNotNone(result)
+        self.assertFalse(needs_agreement(self.spec, records=self.records, store=self.store))
+        self.assertIn("/model.zip", {item.get("path") for item in self.upstream.requests()})
 
     def test_decline_writes_nothing(self) -> None:
         screen = io.BytesIO()

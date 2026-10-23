@@ -444,7 +444,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-land",
-        "ref": "8fa063d9b4db18019a79282d5b0c106a458ac85b"
+        "ref": "39b2ec05ba23849be9c868da23cf4f1423a6ddba"
       },
       "binary": "kilix-land",
       "build": [

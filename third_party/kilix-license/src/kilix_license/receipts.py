@@ -160,7 +160,7 @@ def parse_receipt(raw: Mapping[str, Any]) -> Receipt:
         if field not in context:
             raise ReceiptShapeError(field, f"receipt context missing {field}")
     decision = raw.get("decision")
-    if decision not in {"accept", "record"}:
+    if not isinstance(decision, str) or decision not in {"accept", "record"}:
         raise ReceiptShapeError("decision", "receipt decision must be accept or record")
     licence_id = raw.get("licence_id")
     licensor = raw.get("licensor")
@@ -239,7 +239,13 @@ def parse_receipt_bytes(data: bytes) -> Receipt:
         raise
     except ValueError as error:
         raise ReceiptShapeError("receipt", str(error)) from error
-    return parse_receipt(payload)
+    try:
+        return parse_receipt(payload)
+    except ValueError as error:
+        # Legacy field validators remain ValueError-based for direct callers.
+        # Persisted receipt parsing has one typed failure contract; preserve
+        # the validator's field diagnostic and cause for coverage recovery.
+        raise ReceiptShapeError("receipt", str(error)) from error
 
 
 def receipt_from_agreement(

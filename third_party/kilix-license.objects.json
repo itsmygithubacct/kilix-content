@@ -1,11 +1,14 @@
 {
-  "commit": "tree a709c47ca98830119220dd10ae19dd99ede10010\nparent 3fba5beb741042c6737168e88f44e190814fa56b\nauthor itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1792014826 -0700\ncommitter itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1792014826 -0700\n\nResolve independently pinned diarization records through public path API\n",
+  "commit": "tree c763c02d48647e22c934673898ed4056e4176051\nparent 0566f50ac53de6d55e2c7507fd601735eb4e28f7\nauthor itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1792719741 -0700\ncommitter itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1792719741 -0700\n\nReport malformed saved receipts as typed coverage refusals\n",
   "excluded_top_level": [".gitignore", ".python-version", "Makefile", "PUBLICATION.md", "tests", "tools", "uv.lock"],
-  "pin": "0566f50ac53de6d55e2c7507fd601735eb4e28f7",
+  "pin": "027f1d5e02f5f11c9b80bc5f6bedb0db1fa996ff",
   "schema": "kilix-content.vendored-git-objects/v1",
   "trees": {
     "0637f9c78d82d43f2dd617530535f0522b6dafe3": [
       ["100644", "kilix-diarization-cpu.json", "9d11cd3dfb33228f908fca504f61db7dc433fe80"]
+    ],
+    "3d65a6fcef854e70142ae048c061c245edcd2aa4": [
+      ["40000", "kilix_license", "b8f7be5f7f66ee62b2c8b8ebffaf170755d32486"]
     ],
     "9c1bf7b44e49bbe0d380825b36603cbfea54f4fb": [
       ["100644", "08279522f2f6866b9a9f9c2da5842200cdc4d44211d835e225c32736bde35c9d", "067a705ee096adb16ccc4717210926c28803537c"],
@@ -94,22 +97,6 @@
       ["100644", "eb08af7e312af21876578253bbb4c184d3f940a9286ef8bf52a801e64c9d9c6d", "9b8a309ba2841babf4b968ff4aa1319787bfe242"],
       ["100644", "fa152afc73238001c008ff67f5b8a3c6d645cfb714a3900a37a2481a8e75d748", "97a2b0bdc0857923eba59279b40f6d0cbbb4a177"]
     ],
-    "a709c47ca98830119220dd10ae19dd99ede10010": [
-      ["100644", ".gitignore", "7e74013359efce08b816f3b27b6a941e96ce87a2"],
-      ["100644", ".python-version", "04e207918ddc86409a934bfdaf92dbbf0f8ac1cc"],
-      ["100644", "CHANGELOG.md", "3724251c7c1c2be801f64ee2c32e00fa99a9f7d1"],
-      ["100644", "LICENSE", "41c7d40b05d38a4b9dc2f71fab9c1f32a3567734"],
-      ["100644", "Makefile", "c3f9f06dc69429ccaed15523608522d110f85e28"],
-      ["100644", "NOTICE", "2da879fa9340526fc8c05392d6d0d8b895f1b089"],
-      ["100644", "PUBLICATION.md", "ad0e4496f9a6bcfde3b260844fa09ad721c1ef1c"],
-      ["100644", "README.md", "e4b05fef12d91fae73e5e9f5be7d33ac9715c740"],
-      ["100644", "VERSION", "6e8bf73aa550d4c57f6f35830f1bcdc7a4a62f38"],
-      ["100644", "pyproject.toml", "a392c0b1bb144030c480b3aa24f36e8ac2ff2917"],
-      ["40000", "src", "e8eed6535ee031aa5369d8db2601db8a0773bcd9"],
-      ["40000", "tests", "27ef8775fd32d433dbb7aced093b1a47171abf43"],
-      ["40000", "tools", "e17d36783f63a292bc110037d5b2100e0ab8686d"],
-      ["100644", "uv.lock", "43e09590b109b26f4fcbdf9b2ee5428fadfba778"]
-    ],
     "b3a902ec3b13c5a910fe5260f0726e483e24f9e2": [
       ["40000", "app-records", "dadcbb744332fd9c4891dc2272ccdb64320cf52a"],
       ["100644", "determinations-apps.json", "ccba54ff35066b4a71d5249cec331eb1eefd546f"],
@@ -122,12 +109,12 @@
       ["40000", "records", "dcc7e1d280cf3acdf7d72187cc09101bde403e8f"],
       ["40000", "texts", "9c1bf7b44e49bbe0d380825b36603cbfea54f4fb"]
     ],
-    "d41835740271afe2c4fbcb27af6a02ed859a936d": [
+    "b8f7be5f7f66ee62b2c8b8ebffaf170755d32486": [
       ["100644", "__init__.py", "1bdedc091b24d6726f983c6b8d6d29b156fd6456"],
       ["100644", "agreement.py", "0e88fe63f2a649c9127f2d99a17b0b89ec21c3c2"],
       ["100644", "catalog.py", "24c5ec2d20dd8e1733751b49018710c9175f01e4"],
       ["100644", "changed.py", "6b07ce42c06f786126174bf482b8350ece2823f7"],
-      ["100644", "coverage.py", "b2bb74abd04a620961a408cb3b120924f5ffa923"],
+      ["100644", "coverage.py", "56c9ea413bf78b93dcb4ede83a10c1561aaea3db"],
       ["40000", "data", "b3a902ec3b13c5a910fe5260f0726e483e24f9e2"],
       ["100644", "diarization.py", "345f94472f91631ec566202353fb600354210ce6"],
       ["100644", "digest.py", "fa0e7cc8d0dd8716b57f29309694791dfaef919f"],
@@ -136,11 +123,27 @@
       ["100644", "paraphrase.py", "15271885fbe2249b2ef90100734125af1a1dba1f"],
       ["100644", "paths.py", "a5dffb5922ae7af2a5039d15046f6a93196d1307"],
       ["100644", "py.typed", "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"],
-      ["100644", "receipts.py", "eb6db3ca7f85a07710e44b58dbf374ee9305dd91"],
+      ["100644", "receipts.py", "74f02650c261c068f353d44574f19f14f92aac19"],
       ["100644", "records.py", "14e16f6c0887c5bd1dec84abe4ed6c35e0718cbb"],
       ["100644", "screen.py", "f77d77b95cdf5338eca2a7c03d5b48c3219a9ddb"],
       ["100644", "store.py", "4139555a5661f38d66b17d0794cae4c1712bd87b"],
       ["100644", "texts.py", "6d95a9a91dd7f396d453569f05ef0000f2b88b4f"]
+    ],
+    "c763c02d48647e22c934673898ed4056e4176051": [
+      ["100644", ".gitignore", "7e74013359efce08b816f3b27b6a941e96ce87a2"],
+      ["100644", ".python-version", "04e207918ddc86409a934bfdaf92dbbf0f8ac1cc"],
+      ["100644", "CHANGELOG.md", "3724251c7c1c2be801f64ee2c32e00fa99a9f7d1"],
+      ["100644", "LICENSE", "41c7d40b05d38a4b9dc2f71fab9c1f32a3567734"],
+      ["100644", "Makefile", "c3f9f06dc69429ccaed15523608522d110f85e28"],
+      ["100644", "NOTICE", "2da879fa9340526fc8c05392d6d0d8b895f1b089"],
+      ["100644", "PUBLICATION.md", "ad0e4496f9a6bcfde3b260844fa09ad721c1ef1c"],
+      ["100644", "README.md", "e4b05fef12d91fae73e5e9f5be7d33ac9715c740"],
+      ["100644", "VERSION", "6e8bf73aa550d4c57f6f35830f1bcdc7a4a62f38"],
+      ["100644", "pyproject.toml", "a392c0b1bb144030c480b3aa24f36e8ac2ff2917"],
+      ["40000", "src", "3d65a6fcef854e70142ae048c061c245edcd2aa4"],
+      ["40000", "tests", "ae0526ffa3ede2c4a3c659e6fcd620ebdf0c9a25"],
+      ["40000", "tools", "e17d36783f63a292bc110037d5b2100e0ab8686d"],
+      ["100644", "uv.lock", "43e09590b109b26f4fcbdf9b2ee5428fadfba778"]
     ],
     "dadcbb744332fd9c4891dc2272ccdb64320cf52a": [
       ["100644", "needle2-runtime.json", "da5f64c7d6b50d94b221f894ab05b6740bf088bf"],
@@ -179,9 +182,6 @@
       ["100644", "yolox_nano.json", "b71319da799cce9b63e7bc08880cde59de0270cd"],
       ["100644", "yolox_s.json", "25c84caa492aa6530741ff8948c11bd2a43121ec"],
       ["100644", "yolox_tiny.json", "044206ccbd28c4848db7bd43edf9839d1ba80489"]
-    ],
-    "e8eed6535ee031aa5369d8db2601db8a0773bcd9": [
-      ["40000", "kilix_license", "d41835740271afe2c4fbcb27af6a02ed859a936d"]
     ]
   }
 }

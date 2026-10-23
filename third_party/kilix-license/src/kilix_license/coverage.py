@@ -105,14 +105,8 @@ def require(
     # chained here and named in the message, so a corrupt store is still
     # diagnosable.
     #
-    # What this does NOT close, said plainly: the pre-existing family of bare
-    # `ValueError` escapes out of the LIC4/LIC5 digest-map and text-id helpers
-    # (advisory_digests, statement_digests, binding_text_ids,
-    # component_exception_digests, catalogue_digest, release_digest,
-    # licence_text_id) still leave this function untyped. They are identical
-    # at 417b0c2d, c002be26 and 1a3bc477, so nothing regressed; closing them
-    # changes the failure contract of seven fields at once and is its own
-    # wave, with its own require() differential.
+    # parse_receipt_bytes also normalizes legacy field-validator ValueErrors;
+    # direct parse_receipt callers retain their compatibility contract.
     try:
         receipt = store.lookup(asset.record_digest, asset.manifest_digest)
         others = () if receipt is not None else store.for_record(asset.record_digest)
