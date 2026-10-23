@@ -1697,6 +1697,42 @@
           "description": "Search documentation for a question"
         }
       }
+    },
+    {
+      "id": "kilix-waydroid",
+      "label": "Android",
+      "kind": "app",
+      "icon": "computer",
+      "description": "Run Android in a Kilix pane or desktop window; the pinned runtime installs on first use.",
+      "source": {
+        "type": "system"
+      },
+      "command": [
+        "kilix-waydroid",
+        "window",
+        "--size",
+        "960x600"
+      ],
+      "capabilities": [
+        "x11-app",
+        "wayland-client",
+        "android-runtime",
+        "audio",
+        "clipboard",
+        "network",
+        "persistent-state"
+      ],
+      "lifecycle": {
+        "single_instance": true,
+        "requires_kilix_session": true,
+        "degrades_inplace": false,
+        "preserve_on_failure": true,
+        "startup_timeout_seconds": 30
+      },
+      "launch": {
+        "mode": "xpane",
+        "preferred_size": "960x600"
+      }
     }
   ],
   "assets": [
