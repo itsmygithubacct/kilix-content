@@ -6,7 +6,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-tui-utils",
-        "ref": "ea7818467496965accf0ee58ae5ca4c0571d5b69"
+        "ref": "14d981c7f5d96621b6ec784f750f49c2c5b56521"
       },
       "build": [
         "make",
@@ -444,7 +444,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-land",
-        "ref": "96d22a84dc5fe0605b984235f152b9890964fda9"
+        "ref": "710d73ef7d6a2c22218df3ef1644d6032a22d696"
       },
       "binary": "kilix-land",
       "build": [
@@ -1377,7 +1377,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-object-detect",
-        "ref": "05623f3894e823760519942861515b766a075881"
+        "ref": "d33a4733ecc9bad1b5dda0b8de6c1a3a9cb107ed"
       },
       "binary": "build/kilix-look",
       "build": [
