@@ -20,8 +20,8 @@ a strict descendant that follows the live header's epoch-start profile (OD-AT)
 and covers the C5 live paths. The build stays `make all ENCODEC=1`.
 
 The two EnCodec converters, `kilix-encodec-convert-24khz` and
-`kilix-encodec-convert-48khz`, select `kilix-encodec` `684b010b`, the commit
-that carries the asset/v3 migration. Their only other test,
+`kilix-encodec-convert-48khz`, select `kilix-encodec` `22290fb4`, retaining the asset/v3 migration and
+adding the reviewed converter and native-architecture fixture repairs. Their only other test,
 `test_both_tools_are_pinned_at_the_same_ref_for_c5`, asks that the two agree,
 so rolling both back to `16ad64ce` together passed every test while EnCodec
 playback would break at runtime. Their ref is typed here for the same reason
@@ -60,7 +60,7 @@ CATALOG = ROOT / "src" / "kilix_content" / "catalog" / "plebian.json"
 TUI_UTILS_REF = "860c0db951e3da59173d292217f5a2908cdb785e"
 AMP_REF = "fa9fc8f38a7bf8d3a7aa945c9bf75a087b44b2d5"
 AMP_BUILD = ("make", "all", "ENCODEC=1")
-ENCODEC_CONVERTER_REF = "684b010b211470f7c358105d2da453fb7a9d0ec5"
+ENCODEC_CONVERTER_REF = "22290fb4a0587d5b7f937e345c99aa5d599c2282"
 ENCODEC_CONVERTERS = ("kilix-encodec-convert-24khz", "kilix-encodec-convert-48khz")
 
 

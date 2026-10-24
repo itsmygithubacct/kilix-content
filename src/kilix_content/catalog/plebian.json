@@ -1353,7 +1353,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-nvr",
-        "ref": "25497a6c7cf9722b34beb11bc1d5fd5221118693"
+        "ref": "8e750add318667f4fa3a49c8f0321beab38c93d1"
       },
       "binary": "build/kilix-nvr",
       "build": [
@@ -1377,7 +1377,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-object-detect",
-        "ref": "d33a4733ecc9bad1b5dda0b8de6c1a3a9cb107ed"
+        "ref": "db46edeb933115f3cb89830964a20886b511624b"
       },
       "binary": "build/kilix-look",
       "build": [
@@ -1563,7 +1563,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-encodec",
-        "ref": "684b010b211470f7c358105d2da453fb7a9d0ec5"
+        "ref": "22290fb4a0587d5b7f937e345c99aa5d599c2282"
       },
       "binary": "bin/kilix-encodec-convert-24khz",
       "build": [
@@ -1592,7 +1592,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-encodec",
-        "ref": "684b010b211470f7c358105d2da453fb7a9d0ec5"
+        "ref": "22290fb4a0587d5b7f937e345c99aa5d599c2282"
       },
       "binary": "bin/kilix-encodec-convert-48khz",
       "build": [
@@ -1621,7 +1621,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-needle",
-        "ref": "1e35e2d6cc2e2cafe7e96d9639713904dac07340"
+        "ref": "72ed1faa7184bc27b1e207ea7873efbaf492a49e"
       },
       "binary": "kilix-needle",
       "build": [

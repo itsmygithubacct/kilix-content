@@ -31,7 +31,7 @@ class ConverterResolutionTests(unittest.TestCase):
                 patch('kilix_content.install._run_with_tail', return_value=(0, '')) as run:
             self.populate(self.spec)
         tool = ensure.call_args.args[0]
-        self.assertEqual(tool.ref, '684b010b211470f7c358105d2da453fb7a9d0ec5')
+        self.assertEqual(tool.ref, '22290fb4a0587d5b7f937e345c99aa5d599c2282')
         self.assertEqual(tool.content_id, 'kilix-encodec-convert-24khz')
         argv = run.call_args.args[0]
         self.assertEqual(argv[0], '/user/converter')

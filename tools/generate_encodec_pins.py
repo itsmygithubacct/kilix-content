@@ -60,7 +60,7 @@ PIN_DIR = ROOT / "tools" / "upstream-pins"
 
 # The kilix-encodec commit the catalog's two converters select (the asset/v3
 # migration); tests/test_consumer_selection.py holds the two equal.
-DEFAULT_REF = "684b010b211470f7c358105d2da453fb7a9d0ec5"
+DEFAULT_REF = "22290fb4a0587d5b7f937e345c99aa5d599c2282"
 
 CONVERTER_INPUTS = "tools/converter-inputs.json"
 GRAPH_POPULATION = "python/graph_population.py"
