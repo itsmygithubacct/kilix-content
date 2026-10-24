@@ -6,7 +6,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-tui-utils",
-        "ref": "3cad13ef9fe863c9c3bdaa1f212e46e14db15eb7"
+        "ref": "860c0db951e3da59173d292217f5a2908cdb785e"
       },
       "build": [
         "make",
@@ -1250,7 +1250,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-pdf",
-        "ref": "20ff247a5956406f71b12f0c365a48aa179a7aa5"
+        "ref": "d59ff451a2953ae0d3c7529f793a8a79cbc118f5"
       },
       "binary": "kilix-pdf-viewer",
       "build": [
@@ -1617,18 +1617,18 @@
       "label": "Needle",
       "kind": "app",
       "icon": "terminal",
-      "description": "Drive panes, tabs, apps, settings and coding sessions from plain requests with Needle 2, control audio, music, voice and text size, and search files and read system status read-only. `ask` sends a request whose job is unclear to the job that handles it, using a small local router that reads only the request; an unsure route acts on nothing. Every call is checked. Pane and app actions ask first; the agents job treats an explicit request as consent and follows the coding-yolo setting. Includes typed and grammar-based X11 desktop actions, an experimental model interface, and a baseline reader for searching and briefing local pane logs. Keeps a private local history of its requests, to improve it (KILIX_NEEDLE_HISTORY=0 turns this off).",
+      "description": "Kilix Ask handles supported app and coding-session commands with a pinned local LFM2 model and grammar shortcuts. Every proposal is checked against the whole request before confirmation and execution. Other Needle jobs drive panes, settings, audio, music, voice and text size, search files and read system status. Includes X11 desktop actions and local pane-log search. Keeps a private local request history (KILIX_NEEDLE_HISTORY=0 turns this off).",
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-needle",
-        "ref": "f93b2a7ffa9cc5480b8c862780597323114562f0"
+        "ref": "1e35e2d6cc2e2cafe7e96d9639713904dac07340"
       },
       "binary": "kilix-needle",
       "build": [
         "make",
         "all"
       ],
-      "dependency_hint": "needs Python 3.11 or newer and make, on x86-64 Linux; desktop actions use xdotool, xprop and python3-xlib, with no model needed for typed or grammar requests; the Needle 2 engine (needle2) installs on first use once its Apache-2.0 licence is accepted; `kilix-needle setup` edits shell, Kilix and agent-harness settings only when run",
+      "dependency_hint": "needs Python 3.11 or newer and make on x86-64 Linux; `kilix-needle install --commands` installs the default LFM2 Ask model after licence review and acceptance; exact grammar requests need no model. Legacy Needle 2 jobs use their separately installed Apache-2.0 engine. Desktop actions use xdotool, xprop and python3-xlib; `kilix-needle setup` changes settings only when run",
       "capabilities": [
         "kilix-control",
         "session-read",
@@ -1655,7 +1655,14 @@
             "tune",
             "--status"
           ],
-          "description": "Show which model answers requests"
+          "description": "Show the Needle job model selection"
+        },
+        "install-commands": {
+          "argv": [
+            "install",
+            "--commands"
+          ],
+          "description": "Review the LFM licence and install the default Ask model"
         }
       },
       "launch": {
