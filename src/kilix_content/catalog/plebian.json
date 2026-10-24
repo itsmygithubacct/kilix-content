@@ -1329,7 +1329,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-rtsp",
-        "ref": "74a8eb64f8d61ecbbd538fdabd4231b298d8c8e3"
+        "ref": "bf5128f2575f9b210956da479a7da2be5133fe8c"
       },
       "binary": "build/kilix-rtsp",
       "build": [
@@ -1353,7 +1353,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-nvr",
-        "ref": "8e750add318667f4fa3a49c8f0321beab38c93d1"
+        "ref": "cad35fe21031dcc1f9784357bfeeec92d0328634"
       },
       "binary": "build/kilix-nvr",
       "build": [
@@ -1377,7 +1377,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-object-detect",
-        "ref": "db46edeb933115f3cb89830964a20886b511624b"
+        "ref": "0207a8ca4b6d2aa92d5c90eecc2c120940eeb819"
       },
       "binary": "build/kilix-look",
       "build": [
