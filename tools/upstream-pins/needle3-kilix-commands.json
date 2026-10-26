@@ -7,8 +7,8 @@
   "consumer_schema": "kilix.needle3.model/v1",
   "version": "needle3-kilix-commands-20261026-v9",
   "archive_url": "https://github.com/itsmygithubacct/kilix-needle/releases/download/needle3-kilix-commands-20261026-v9/needle3-kilix-commands-20261026-v9.tar.gz",
-  "archive_bytes": 79806467,
-  "archive_sha256": "72e4a5ff5126ff318f1a19ca66032d0b95f0237433412f4fce785fb6ab032621",
+  "archive_bytes": 79806474,
+  "archive_sha256": "8f842c08271ce9c474cdb322b745a9096dc891c8b0fa32b52e9740f8b7721d8e",
   "format": "tar",
   "root": "needle3-kilix-commands-20261026-v9",
   "provenance": {

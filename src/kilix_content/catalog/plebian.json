@@ -1843,13 +1843,13 @@
       "provider": "kilix-needle",
       "schema": "kilix.content.asset/v3",
       "sizes": {
-        "download_bytes": 79806467,
+        "download_bytes": 79806474,
         "installed_bytes": 84741329,
-        "temporary_bytes": 164547796
+        "temporary_bytes": 164547803
       },
       "source": {
-        "archive_bytes": 79806467,
-        "archive_sha256": "72e4a5ff5126ff318f1a19ca66032d0b95f0237433412f4fce785fb6ab032621",
+        "archive_bytes": 79806474,
+        "archive_sha256": "8f842c08271ce9c474cdb322b745a9096dc891c8b0fa32b52e9740f8b7721d8e",
         "format": "tar",
         "mode": "upstream-archive",
         "provenance": {
