@@ -1214,10 +1214,22 @@ class Installer:
         for item in spec.files:
             if not item.path.startswith("notices/"):
                 continue
+            target = os.path.join(output, item.path)
+            if os.path.lexists(target):
+                # An archive can already carry the required notices, including
+                # producer notices that are pinned only in its file manifest.
+                # Reuse exact regular files; never overwrite a conflicting
+                # notice or follow a link to make the staged tree look valid.
+                with SuppliedFile.open_beneath(output, item.path) as handle:
+                    if handle.bytes != item.bytes or handle.sha256 != item.sha256:
+                        raise InstallError(
+                            f"bundled notice does not match the manifest: {item.path}"
+                        )
+                    handle.revalidate()
+                continue
             payload = notices.get(item.sha256, label=item.path)
             if len(payload) != item.bytes:
                 raise InstallError("notice text does not match the manifest size")
-            target = os.path.join(output, item.path)
             os.makedirs(os.path.dirname(target), mode=0o700, exist_ok=True)
             fd = os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_CLOEXEC, 0o600)
             try:
@@ -1436,9 +1448,10 @@ class Installer:
         verified against the manifest's own size and digest before and after
         it is copied (`SuppliedFile.open_beneath`, which follows no symlink
         at any depth below `supplied`), and the staged tree is then verified
-        again as a whole by the caller. Notices are written from the packaged
-        licence authority, never from the supplied directory, so a supplier
-        cannot substitute the licence text.
+        again as a whole by the caller. Notices held by the packaged licence
+        authority are regenerated from that authority. Additional producer
+        notices are supplied and verified like other manifest members; neither
+        route permits a supplier to substitute different licence bytes.
         """
         source = os.path.abspath(os.fspath(supplied))
         if not os.path.isdir(source):
@@ -1450,6 +1463,12 @@ class Installer:
         ]
         if not wanted:
             raise InstallError("this asset has no files that can be supplied")
+        for item in spec.files:
+            if item.path.startswith("notices/"):
+                try:
+                    notices.get(item.sha256, label=item.path)
+                except FileNotFoundError:
+                    wanted.append(item)
         report(f"reading {len(wanted)} supplied file(s) for {spec.asset_id} …")
         for item in wanted:
             with SuppliedFile.open_beneath(source, item.path) as handle:
