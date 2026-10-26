@@ -129,9 +129,13 @@ immutable and cached after its first validated load.
 The `lfm2-kilix-commands` asset is a Kilix-trained derivative of the pinned
 Liquid AI model. Its archive is published by `kilix-needle`, with the LFM Open
 License v1.0, runtime licences and a modification notice. The catalog permits
-only its named, versioned release archive under this owned-model route; other
-model assets retain their upstream-only source requirement. First-use consent
-and archive/member checksums apply to the derivative too.
+its named, versioned release archive under this owned-model route. The optional
+`needle3-kilix-commands` asset similarly packages the Kilix-trained Needle 3 V9
+epoch-1 model, its cached CPU runtime, original Apache-2.0 and MIT licences,
+modification notices and runtime source. It is installed through
+`kilix-needle install --commands needle3`; LFM2 remains the Ask default.
+Other model assets retain their upstream-only source requirement. First-use
+consent and archive/member checksums apply to both derivatives.
 
 Model assets are normally fetched from upstream on first use, after their
 licence screen has been shown and a typed agreement recorded. On an air-gapped

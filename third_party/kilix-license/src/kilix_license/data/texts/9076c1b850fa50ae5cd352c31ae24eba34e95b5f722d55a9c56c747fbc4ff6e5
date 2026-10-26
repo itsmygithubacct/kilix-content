@@ -1,0 +1,14 @@
+Needle 3 command fine-tune for Kilix, 2026-10-23.
+Based on Cactus Compute Needle 3, Apache-2.0. Original licence retained.
+Model: https://huggingface.co/Cactus-Compute/needle
+Kilix continuation and synthetic command data by itsmygithubacct.
+LoRA rank 16, alpha 32; full 20-layer model; CQ W4 / A8 export.
+This continuation uses 24,400 synthetic examples, learning rate 0.00001,
+two training epochs, and checkpoint selection on 700 development cases.
+The original held-out 500 cases are now development feedback. A separate
+synthetic family holdout was generated before this training run.
+No recorded user sessions were used as training examples.
+The upstream confidence head was removed; confidence is uncalibrated.
+This candidate only proposes five tool types. Final shared admission,
+target resolution, readiness and retry semantics belong to the host.
+Development selection is not production promotion.

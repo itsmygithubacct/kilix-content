@@ -20,6 +20,7 @@ LICENSE_SRC = ROOT / "third_party" / "kilix-license" / "src"
 TEXTS = LICENSE_SRC / "kilix_license" / "data" / "texts"
 
 PIN_NAMES = (
+    "needle3-kilix-commands.json",
     "lfm2-kilix-commands.json",
     'kilix-diarization-cpu.json',
     "whistle.json",
@@ -67,6 +68,7 @@ PIN_NAMES = (
 )
 
 LICENSORS = {
+    "needle3-kilix-commands": ["Cactus Compute, Inc.", "needle-rs contributors"],
     "lfm2-kilix-commands": ["Liquid AI, Inc.", "ggml and bundled runtime contributors"],
     'kilix-diarization-cpu':['IIC / Alibaba Cloud','pyannote contributors','sherpa-onnx contributors','Microsoft and bundled runtime contributors'],
     "whistle": ["Cactus Compute, Inc."],
@@ -178,6 +180,12 @@ def notice_file(record) -> dict[str, object]:
 
 def notice_files(record) -> list[dict[str, object]]:
     files = [notice_file(record)]
+    if record.id == 'needle3-kilix-commands':
+        runtime = next(x for x in record.components if x.id == 'cached-runtime')
+        files.append(notice_blob(runtime.exception_text_sha256, 'notices/LICENSE-runtime.txt', record.id))
+        for statement in record.statements:
+            files.append(notice_blob(statement.text_sha256, 'notices/' + statement.id + '.txt', record.id))
+        return files
     if record.id == 'lfm2-kilix-commands':
         runtime = next(x for x in record.components if x.id == 'native-runtime')
         changed = next(x for x in record.statements if x.id == 'modified-model')

@@ -1019,6 +1019,17 @@ class AssetSpec:
                     and re.fullmatch(r"lfm2-kilix-commands-[0-9]{8}-v[1-9][0-9]*", version)):
                 owned_archive_url = ("https://github.com/itsmygithubacct/kilix-needle/releases/download/"
                                      + version + "/" + version + ".tar.gz")
+            # The optional Needle 3 model is also a Kilix-trained derivative.
+            # Permit only its named versioned archive and original model licence.
+            if (asset_id == "needle3-kilix-commands" and provider == "kilix-needle"
+                    and consumer_schema == "kilix.needle3.model/v1"
+                    and source_mode == "upstream-archive"
+                    and licenses[0].license_id == "apache-2.0"
+                    and provenance_project == "itsmygithubacct/kilix-needle"
+                    and re.fullmatch(r"[0-9a-f]{40}", provenance_revision)
+                    and re.fullmatch(r"needle3-kilix-commands-[0-9]{8}-v[1-9][0-9]*", version)):
+                owned_archive_url = ("https://github.com/itsmygithubacct/kilix-needle/releases/download/"
+                                     + version + "/" + version + ".tar.gz")
             provenance_url = _https_url(
                 provenance["original_url"],
                 f"{asset_id}.source.provenance.original_url",

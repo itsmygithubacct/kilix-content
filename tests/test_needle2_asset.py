@@ -88,6 +88,8 @@ class Needle2AssetTests(unittest.TestCase):
                     record = self.records.by_digest(row["record_digest"])
                     expected = (_pinned('determinations-diarization.sha256')
                                 if asset_id == 'kilix-diarization-cpu' else
+                                _pinned('determinations-needle3.sha256')
+                                if asset_id == 'needle3-kilix-commands' else
                                 _pinned('determinations-lfm2.sha256')
                                 if asset_id == 'lfm2-kilix-commands' else release)
                     self.assertEqual(record.determinations_sha256, expected)

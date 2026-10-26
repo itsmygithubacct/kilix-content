@@ -1,0 +1,45 @@
+{
+  "schema": "kilix.license.needle3-determination/v1",
+  "authority": {
+    "model": "Cactus-Compute/needle",
+    "base_revision": "d6c7d6a2e9655505e0f8e23339356dd1705900eb",
+    "source": "https://huggingface.co/Cactus-Compute/needle/blob/d6c7d6a2e9655505e0f8e23339356dd1705900eb/LICENSE",
+    "licence_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "runtime_source": "https://github.com/geekgineer/needle-rs",
+    "runtime_revision": "4de50494fd60f417b24c37e4d972f95d128f8a0f",
+    "runtime_notice_sha256": "831c057440d79f85a28362fd6765ccba24346e28343f1cecdb7eda7d1b479863"
+  },
+  "records": [
+    {
+      "schema": "kilix.license.record/v1",
+      "id": "needle3-kilix-commands",
+      "licensor": "Cactus Compute, Inc.; needle-rs contributors",
+      "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "components": [
+        {
+          "id": "cached-runtime",
+          "role": "Cached CPU runtime software licence",
+          "exception_text_sha256": "831c057440d79f85a28362fd6765ccba24346e28343f1cecdb7eda7d1b479863"
+        }
+      ],
+      "binding_conditions": [],
+      "advisories": [],
+      "statements": [
+        {
+          "id": "modified-model",
+          "text_sha256": "9076c1b850fa50ae5cd352c31ae24eba34e95b5f722d55a9c56c747fbc4ff6e5"
+        },
+        {
+          "id": "modified-runtime",
+          "text_sha256": "9a84555e7afefa586b8eb4c71fdc7373f71520eeba4c1545856251fb34cf78cb"
+        }
+      ],
+      "decision_class": "affirmative",
+      "licence_ids": [
+        "Apache-2.0",
+        "MIT"
+      ],
+      "licence_text_id": "debian/common-licenses/Apache-2.0"
+    }
+  ]
+}

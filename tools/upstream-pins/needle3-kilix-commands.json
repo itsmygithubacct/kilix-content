@@ -1,0 +1,76 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "needle3-kilix-commands",
+  "mode": "upstream-archive",
+  "license_record_id": "needle3-kilix-commands",
+  "provider": "kilix-needle",
+  "consumer_schema": "kilix.needle3.model/v1",
+  "version": "needle3-kilix-commands-20261026-v9",
+  "archive_url": "https://github.com/itsmygithubacct/kilix-needle/releases/download/needle3-kilix-commands-20261026-v9/needle3-kilix-commands-20261026-v9.tar.gz",
+  "archive_bytes": 79806467,
+  "archive_sha256": "72e4a5ff5126ff318f1a19ca66032d0b95f0237433412f4fce785fb6ab032621",
+  "format": "tar",
+  "root": "needle3-kilix-commands-20261026-v9",
+  "provenance": {
+    "project": "itsmygithubacct/kilix-needle",
+    "revision": "5c7a887883dda580c3f7868d15e4e5be08dab27a",
+    "original_url": "https://github.com/itsmygithubacct/kilix-needle/releases/download/needle3-kilix-commands-20261026-v9/needle3-kilix-commands-20261026-v9.tar.gz"
+  },
+  "members": [
+    {
+      "path": "RELEASE.txt",
+      "bytes": 711,
+      "sha256": "c83c8186fc565a571ac456c3b470899c662e2010fe8a9c8b388c655519120d04"
+    },
+    {
+      "path": "SHA256SUMS",
+      "bytes": 1214,
+      "sha256": "63ac18edb5a99f21e1829cac9da32df2ce5acc3051fdd386e4fad1659b7f5e56"
+    },
+    {
+      "path": "adapter.safetensors",
+      "bytes": 7906680,
+      "sha256": "44c76f0780ee034b2e3fd2fa1b56206b438a91d928d68fe81dbcb86478325099"
+    },
+    {
+      "path": "candidate.json",
+      "bytes": 2654,
+      "sha256": "dfa97972bf6f44fb0bb1eb0c6d5049841f70ce5f29a8317ba7fa1f0b6e27158f"
+    },
+    {
+      "path": "libneedle3-cached.so",
+      "bytes": 1141848,
+      "sha256": "347c2f13e7b24c0549cec139aa7cfe5cc63a77537f84e25fb375de39f52f31b4"
+    },
+    {
+      "path": "needle3-runtime-source-v1.tar.gz",
+      "bytes": 12226278,
+      "sha256": "0f6cf481d1bd0af85a3124c64d14c3256190290ede0de4041b0e6aec61326e87"
+    },
+    {
+      "path": "prompt-prefix.txt",
+      "bytes": 2668,
+      "sha256": "9b78a1d0a3be86da3b43e5af15b4b5af7ba5e1f4792f0f1b552fec0949dcfe04"
+    },
+    {
+      "path": "prompt-template.txt",
+      "bytes": 2709,
+      "sha256": "51221fbe9319c62275b416b0517a4b2245dd8f1b640860f14d355ab232b8e753"
+    },
+    {
+      "path": "prompt.json",
+      "bytes": 721,
+      "sha256": "8103a0e3e021931cb600ca0eba5d96a5357bc741790e8af30e71afb2854fe85e"
+    },
+    {
+      "path": "tools.json",
+      "bytes": 4029,
+      "sha256": "10f930ad6989955aff5eb7f11d18f3a9371cd6ceb43f7434136d4793e54be998"
+    },
+    {
+      "path": "weights.cact",
+      "bytes": 63437076,
+      "sha256": "d0ee5fb1318191bca85b931b16cdbb37529eafdfed286f35d144216bdfbd9e46"
+    }
+  ]
+}

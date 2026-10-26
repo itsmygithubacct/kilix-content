@@ -1745,6 +1745,126 @@
   "assets": [
     {
       "compatibility": {
+        "consumer_schema": "kilix.needle3.model/v1",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 711,
+          "path": "RELEASE.txt",
+          "sha256": "c83c8186fc565a571ac456c3b470899c662e2010fe8a9c8b388c655519120d04"
+        },
+        {
+          "bytes": 1214,
+          "path": "SHA256SUMS",
+          "sha256": "63ac18edb5a99f21e1829cac9da32df2ce5acc3051fdd386e4fad1659b7f5e56"
+        },
+        {
+          "bytes": 7906680,
+          "path": "adapter.safetensors",
+          "sha256": "44c76f0780ee034b2e3fd2fa1b56206b438a91d928d68fe81dbcb86478325099"
+        },
+        {
+          "bytes": 2654,
+          "path": "candidate.json",
+          "sha256": "dfa97972bf6f44fb0bb1eb0c6d5049841f70ce5f29a8317ba7fa1f0b6e27158f"
+        },
+        {
+          "bytes": 1141848,
+          "path": "libneedle3-cached.so",
+          "sha256": "347c2f13e7b24c0549cec139aa7cfe5cc63a77537f84e25fb375de39f52f31b4"
+        },
+        {
+          "bytes": 12226278,
+          "path": "needle3-runtime-source-v1.tar.gz",
+          "sha256": "0f6cf481d1bd0af85a3124c64d14c3256190290ede0de4041b0e6aec61326e87"
+        },
+        {
+          "bytes": 11358,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "bytes": 1403,
+          "path": "notices/LICENSE-runtime.txt",
+          "sha256": "831c057440d79f85a28362fd6765ccba24346e28343f1cecdb7eda7d1b479863"
+        },
+        {
+          "bytes": 906,
+          "path": "notices/modified-model.txt",
+          "sha256": "9076c1b850fa50ae5cd352c31ae24eba34e95b5f722d55a9c56c747fbc4ff6e5"
+        },
+        {
+          "bytes": 1074,
+          "path": "notices/modified-runtime.txt",
+          "sha256": "9a84555e7afefa586b8eb4c71fdc7373f71520eeba4c1545856251fb34cf78cb"
+        },
+        {
+          "bytes": 2668,
+          "path": "prompt-prefix.txt",
+          "sha256": "9b78a1d0a3be86da3b43e5af15b4b5af7ba5e1f4792f0f1b552fec0949dcfe04"
+        },
+        {
+          "bytes": 2709,
+          "path": "prompt-template.txt",
+          "sha256": "51221fbe9319c62275b416b0517a4b2245dd8f1b640860f14d355ab232b8e753"
+        },
+        {
+          "bytes": 721,
+          "path": "prompt.json",
+          "sha256": "8103a0e3e021931cb600ca0eba5d96a5357bc741790e8af30e71afb2854fe85e"
+        },
+        {
+          "bytes": 4029,
+          "path": "tools.json",
+          "sha256": "10f930ad6989955aff5eb7f11d18f3a9371cd6ceb43f7434136d4793e54be998"
+        },
+        {
+          "bytes": 63437076,
+          "path": "weights.cact",
+          "sha256": "d0ee5fb1318191bca85b931b16cdbb37529eafdfed286f35d144216bdfbd9e46"
+        }
+      ],
+      "id": "needle3-kilix-commands",
+      "label": "needle3-kilix-commands",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "Cactus Compute, Inc.",
+            "needle-rs contributors"
+          ],
+          "record_digest": "d98ff48b9872249e1ca3ea6a5edfff3adea70558ec14bd6062b024a5701a5a56",
+          "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "provider": "kilix-needle",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 79806467,
+        "installed_bytes": 84741329,
+        "temporary_bytes": 164547796
+      },
+      "source": {
+        "archive_bytes": 79806467,
+        "archive_sha256": "72e4a5ff5126ff318f1a19ca66032d0b95f0237433412f4fce785fb6ab032621",
+        "format": "tar",
+        "mode": "upstream-archive",
+        "provenance": {
+          "project": "itsmygithubacct/kilix-needle",
+          "revision": "5c7a887883dda580c3f7868d15e4e5be08dab27a",
+          "original_url": "https://github.com/itsmygithubacct/kilix-needle/releases/download/needle3-kilix-commands-20261026-v9/needle3-kilix-commands-20261026-v9.tar.gz"
+        },
+        "root": "needle3-kilix-commands-20261026-v9",
+        "url": "https://github.com/itsmygithubacct/kilix-needle/releases/download/needle3-kilix-commands-20261026-v9/needle3-kilix-commands-20261026-v9.tar.gz"
+      },
+      "stream": "F104",
+      "version": "needle3-kilix-commands-20261026-v9"
+    },
+    {
+      "compatibility": {
         "consumer_schema": "kilix.commands.model/v1",
         "maximum": 1,
         "minimum": 1

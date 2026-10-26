@@ -1,0 +1,17 @@
+Needle 3 cached CPU runtime for Kilix, 2026-10-23.
+Based on needle-rs 0.3.1, revision 4de50494fd60f417b24c37e4d972f95d128f8a0f.
+Original source: https://github.com/geekgineer/needle-rs
+Local changes by itsmygithubacct, distributed under the original MIT licence.
+The original copyright and licence in source/LICENSE are retained.
+
+Changes add an explicit cached generation-3 C interface, complete immutable
+prefix state restoration, SIMD quantized matrix operations, and parallel
+attention/row work. Reset and each call restore all causal state. The exported
+model carries its tokenizer; no network access or GPU is used for inference.
+This interface requires its matched worker and schema. It has no calibrated
+confidence head and is not the upstream native C++ ABI.
+
+source/ contains the full modified source. vendor/ contains Cargo.lock-pinned
+workspace dependencies with their original licences and checksums. BUILD.sh
+builds offline once the recorded toolchain and a Linux C linker are installed.
+needle-rs-modifications.patch records the delta from the base revision.
