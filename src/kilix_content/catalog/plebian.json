@@ -6,7 +6,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-tui-utils",
-        "ref": "860c0db951e3da59173d292217f5a2908cdb785e"
+        "ref": "063c96060cadd717081f70338043d75721fcf167"
       },
       "build": [
         "make",
@@ -1217,19 +1217,20 @@
       "label": "Kilix Amp",
       "kind": "app",
       "icon": "amp",
-      "description": "A compact skinnable music player.",
+      "description": "A skinnable controller for the shared Amp and Music playback session.",
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-amp",
-        "ref": "fa9fc8f38a7bf8d3a7aa945c9bf75a087b44b2d5"
+        "ref": "88f518e88af49b92f2b5d85a9335ad3048c6d15a"
       },
       "binary": "kilix-amp",
       "build": [
         "make",
         "all",
+        "runtime-check",
         "ENCODEC=1"
       ],
-      "dependency_hint": "needs SDL2, SDL2_image, libsndfile, zlib, and FluidSynth development files",
+      "dependency_hint": "needs SDL2, SDL2_image, libsndfile, zlib, FluidSynth and kilix-encodec development files, Python 3, and kilix-mpv with lavfi/LADSPA filters",
       "capabilities": [
         "x11-app",
         "audio",

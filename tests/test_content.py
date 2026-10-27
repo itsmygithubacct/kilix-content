@@ -91,7 +91,7 @@ class ContentTests(unittest.TestCase):
         # The Music playback wave (OD-BN). tests/test_consumer_selection.py
         # says why this value moved and what a re-pin does if it does not.
         self.assertEqual(
-            files.ref, "860c0db951e3da59173d292217f5a2908cdb785e"
+            files.ref, "063c96060cadd717081f70338043d75721fcf167"
         )
         self.assertEqual(files.require_action("open").argv, ("--open",))
         self.assertIn("application/pdf", pdf_conversion.accepts)
@@ -119,7 +119,7 @@ class ContentTests(unittest.TestCase):
                 # trailing argument keeps this a whitelist -- a flag added to
                 # some other entry still fails here.
                 if entry.content_id == "kilix-amp":
-                    expected_build = ("make", "all", "ENCODEC=1")
+                    expected_build = ("make", "all", "runtime-check", "ENCODEC=1")
                 elif (
                     entry.content_id == "kilix-pdf-conversion"
                     or entry.install_id == "kilix-tui-utils"
