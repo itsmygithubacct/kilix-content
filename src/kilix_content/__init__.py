@@ -11,6 +11,7 @@ from .fetch import DownloadError, Progress, fetch_exact
 from .install import (
     Installer,
     InstallError,
+    ConverterPrerequisiteError,
     download,
     safe_extract_tar,
     safe_extract_zip,
@@ -85,6 +86,7 @@ __all__ = [
     "Catalog",
     "CatalogError",
     "ContentSpec",
+    "ConverterPrerequisiteError",
     "DownloadError",
     "InstallError",
     "Installer",

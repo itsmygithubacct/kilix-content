@@ -53,6 +53,17 @@ class InstallError(RuntimeError):
     """A content install failed without selecting a partial result."""
 
 
+class ConverterPrerequisiteError(InstallError):
+    """The exact packaged asset needs an externally installed converter."""
+
+    def __init__(self, spec: AssetSpec):
+        self.tool_asset_id = spec.convert_tool_asset_id
+        self.converter = spec.convert_argv[0]
+        super().__init__(f"{spec.asset_id}: install the optional converter "
+                         f"{self.tool_asset_id} before downloading this model "
+                         f"(expected {self.converter})")
+
+
 class SuppliedFile:
     """One exact file the user already holds, held open across verification.
 
@@ -1249,6 +1260,27 @@ class Installer:
         shutil.rmtree(extracted, ignore_errors=True)
         return content
 
+    def resolve_converter(self, spec: AssetSpec, report: Report) -> str:
+        """Resolve conversion software before fetching any model inputs.
+
+        Only the exact verified packaged asset may borrow a Content tool or
+        request an external prerequisite. This method never fetches models,
+        records consent, or invokes a privileged installer.
+        """
+        if spec.source_mode != "upstream-convert":
+            raise InstallError(f"{spec.asset_id} does not use a converter")
+        converter = spec.convert_argv[0]
+        if shutil.which(converter, path=self.env.get("PATH")):
+            return converter
+        from . import verified_packaged_catalog
+        catalog = verified_packaged_catalog()
+        if catalog.get_asset(spec.asset_id) != spec:
+            raise InstallError(f"converter is unavailable: {converter}")
+        tool = catalog.get(spec.convert_tool_asset_id)
+        if tool is None:
+            raise ConverterPrerequisiteError(spec)
+        return self.ensure(tool, report)
+
     def _populate_upstream_asset(
         self,
         spec: AssetSpec,
@@ -1308,16 +1340,7 @@ class Installer:
                     partial_dir=os.path.join(partial_dir, str(index)),
                 )
         elif spec.source_mode == "upstream-convert":
-            converter = spec.convert_argv[0]
-            if not shutil.which(converter, path=self.env.get("PATH")):
-                # The catalog also pins the converter's source and build. A
-                # user installation need not have the OS image's /usr/lib path.
-                from . import verified_packaged_catalog
-                catalog = verified_packaged_catalog()
-                selected = catalog.get_asset(spec.asset_id)
-                if selected != spec:
-                    raise InstallError(f"converter is unavailable: {converter}")
-                converter = self.ensure(catalog.require(spec.convert_tool_asset_id), report)
+            converter = self.resolve_converter(spec, report)
             output = os.path.join(stage, "content")
             os.makedirs(output, mode=0o700, exist_ok=True)
             # With extra inputs the converter reads a private input directory
