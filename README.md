@@ -191,6 +191,15 @@ is not how this works: at asset/v3 the manifest determines the installed tree
 for every mode alike, so supply is an acquisition available for **all** of
 them rather than a record shape that marks a few.
 
+## Converter prerequisites
+
+For explicitly accepted `upstream-convert` models,
+`Installer.resolve_converter(spec, report)` resolves system software or builds
+the exact packaged Content tool before any model inputs are fetched. It raises
+`ConverterPrerequisiteError` when the packaged model needs external software;
+the caller can offer a separate opt-in setup step. Content never invokes an
+administrator command. Normal model installation also performs this check.
+
 ## Packaged catalog verification
 
 `default_catalog()` parses the packaged `plebian.json` without comparing it to
