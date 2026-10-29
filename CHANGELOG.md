@@ -5,6 +5,12 @@
 All notable user-visible changes are recorded here. The public API remains
 pre-1.0.
 
+## Ready-source integration for 0.2.2
+
+- Offer the public MIT-licensed Claudex through the shared application installer.
+  Installation selects an immutable commit and needs no build or account login.
+- Select the toolkit revision that supplies `kilix rollout log`.
+
 ## Unreleased
 
 ### Changed

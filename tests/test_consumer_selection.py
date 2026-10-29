@@ -57,7 +57,7 @@ CATALOG = ROOT / "src" / "kilix_content" / "catalog" / "plebian.json"
 # c90e37c adds Grok/OMP rollout readers and approval/liveness fixes on
 # b74c21f, which is 785a62e plus sha256-pinned agent installers. 785a62e merged
 # rc1's af7e848 with kilix-tui-utils main for 0.2.2 rc2.
-TUI_UTILS_REF = "063c96060cadd717081f70338043d75721fcf167"
+TUI_UTILS_REF = "61a514f536a804d82f20bda7e65c7bf3145a229a"
 AMP_REF = "88f518e88af49b92f2b5d85a9335ad3048c6d15a"
 AMP_BUILD = ("make", "all", "runtime-check", "ENCODEC=1")
 ENCODEC_CONVERTER_REF = "22290fb4a0587d5b7f937e345c99aa5d599c2282"
@@ -66,6 +66,16 @@ ENCODEC_CONVERTERS = ("kilix-encodec-convert-24khz", "kilix-encodec-convert-48kh
 
 class ConsumerSelectionTests(unittest.TestCase):
     """Read through the verified entry point: unpinned bytes are never asserted on."""
+
+    def test_claudex_selects_the_public_script_without_install_side_effects(self):
+        app = verified_packaged_catalog().require("kilix-claudex")
+        self.assertEqual(app.repository, "https://github.com/itsmygithubacct/kilix-claudex")
+        self.assertEqual(app.ref, "8346512bff4d2bf2e3574285a588361124a4a321")
+        self.assertEqual(app.binary, "claudex")
+        self.assertEqual(app.build, ())
+        self.assertEqual(app.kind, "app")
+        self.assertEqual(app.launch_mode, "terminal")
+        self.assertEqual(app.require_action("help").argv, ("--help",))
 
     def test_amp_selects_the_encodec_playback_source_and_build(self) -> None:
         amp = verified_packaged_catalog().require("kilix-amp")

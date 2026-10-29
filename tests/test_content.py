@@ -91,7 +91,7 @@ class ContentTests(unittest.TestCase):
         # The Music playback wave (OD-BN). tests/test_consumer_selection.py
         # says why this value moved and what a re-pin does if it does not.
         self.assertEqual(
-            files.ref, "063c96060cadd717081f70338043d75721fcf167"
+            files.ref, "61a514f536a804d82f20bda7e65c7bf3145a229a"
         )
         self.assertEqual(files.require_action("open").argv, ("--open",))
         self.assertIn("application/pdf", pdf_conversion.accepts)

@@ -6,7 +6,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-tui-utils",
-        "ref": "063c96060cadd717081f70338043d75721fcf167"
+        "ref": "61a514f536a804d82f20bda7e65c7bf3145a229a"
       },
       "build": [
         "make",
@@ -1677,6 +1677,40 @@
       "launch": {
         "mode": "terminal",
         "preferred_size": "800x360"
+      }
+    },
+    {
+      "id": "kilix-claudex",
+      "label": "Claudex",
+      "kind": "app",
+      "icon": "terminal",
+      "description": "Launch and manage coding sessions, inspect usage and plan configurable session teams. Agent commands and account access are installed separately.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-claudex",
+        "ref": "8346512bff4d2bf2e3574285a588361124a4a321"
+      },
+      "binary": "claudex",
+      "build": [],
+      "dependency_hint": "needs Python 3.10 or newer on Linux and Kilix; agent CLIs and account access are optional external prerequisites for their respective commands",
+      "capabilities": [
+        "kilix-control",
+        "session-read",
+        "session-write",
+        "network",
+        "settings-write"
+      ],
+      "actions": {
+        "help": {
+          "argv": [
+            "--help"
+          ],
+          "description": "Show available commands without starting a session"
+        }
+      },
+      "launch": {
+        "mode": "terminal",
+        "preferred_size": "900x620"
       }
     },
     {
