@@ -1,0 +1,29 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "kilix-female-02",
+  "label": "Kilix Female-02 epoch 80",
+  "mode": "upstream-files",
+  "license_record_id": "kilix-female-02",
+  "provider": "kilix-piper-tts",
+  "consumer_schema": "kilix.piper.models/v1",
+  "version": "kilix-female-02-epoch80",
+  "provenance": {
+    "project": "itsmygithubacct/kilix-voice",
+    "revision": "1faf9fb07ec04af3c7b6c130c4bd1fd315c25dc4",
+    "original_url": "https://github.com/itsmygithubacct/kilix-voice/releases/download/kilix-female-02-epoch80/kilix-female-02.onnx"
+  },
+  "members": [
+    {
+      "path": "kilix-female-02.onnx",
+      "url": "https://github.com/itsmygithubacct/kilix-voice/releases/download/kilix-female-02-epoch80/kilix-female-02.onnx",
+      "bytes": 63522221,
+      "sha256": "263beafc9e5fa759878294e7c45bb3639d930075c845ea96c71331edeeb86d61"
+    },
+    {
+      "path": "kilix-female-02.onnx.json",
+      "url": "https://github.com/itsmygithubacct/kilix-voice/releases/download/kilix-female-02-epoch80/kilix-female-02.onnx.json",
+      "bytes": 5486,
+      "sha256": "062ed73be776e0950198aef0171e9f3a1a50ba520b3a0a91ee5a3f11421e43b5"
+    }
+  ]
+}

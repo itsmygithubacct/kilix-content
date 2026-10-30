@@ -3334,6 +3334,70 @@
     },
     {
       "compatibility": {
+        "consumer_schema": "kilix.piper.models/v1",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 63522221,
+          "path": "kilix-female-02.onnx",
+          "sha256": "263beafc9e5fa759878294e7c45bb3639d930075c845ea96c71331edeeb86d61"
+        },
+        {
+          "bytes": 5486,
+          "path": "kilix-female-02.onnx.json",
+          "sha256": "062ed73be776e0950198aef0171e9f3a1a50ba520b3a0a91ee5a3f11421e43b5"
+        },
+        {
+          "bytes": 11358,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "id": "kilix-female-02",
+      "label": "Kilix Female-02 epoch 80",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "itsmygithubacct"
+          ],
+          "record_digest": "fda09a19de629fd838a8c38b02d290dbf4687e848c708c7056dd8eafd4f8cb97",
+          "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "provider": "kilix-piper-tts",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 63527707,
+        "installed_bytes": 63539065,
+        "temporary_bytes": 63539065
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "kilix-female-02.onnx",
+            "url": "https://github.com/itsmygithubacct/kilix-voice/releases/download/kilix-female-02-epoch80/kilix-female-02.onnx"
+          },
+          {
+            "path": "kilix-female-02.onnx.json",
+            "url": "https://github.com/itsmygithubacct/kilix-voice/releases/download/kilix-female-02-epoch80/kilix-female-02.onnx.json"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "itsmygithubacct/kilix-voice",
+          "revision": "1faf9fb07ec04af3c7b6c130c4bd1fd315c25dc4",
+          "original_url": "https://github.com/itsmygithubacct/kilix-voice/releases/download/kilix-female-02-epoch80/kilix-female-02.onnx"
+        }
+      },
+      "stream": "F104",
+      "version": "kilix-female-02-epoch80"
+    },
+    {
+      "compatibility": {
         "consumer_schema": "kilix.bonsai.runtime",
         "maximum": 1,
         "minimum": 1

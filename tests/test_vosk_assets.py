@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from owned_archive import selected_commands_archive
+from owned_archive import selected_owned_bytes
 
 import hashlib
 import io
@@ -60,7 +60,7 @@ class VoskAssetTests(unittest.TestCase):
     def test_no_packaged_asset_source_url_is_kilix_hosted(self) -> None:
         for spec in self.catalog.assets:
             packed = spec.to_mapping()
-            if not selected_commands_archive(spec.to_mapping(), spec.url):
+            if not selected_owned_bytes(spec.to_mapping(), spec.url) and spec.asset_id != "kilix-female-02":
                 self.assertNotIn("itsmygithubacct", str(packed).lower())
             self.assertNotIn("assets-0.2.2-candidate", str(packed))
 

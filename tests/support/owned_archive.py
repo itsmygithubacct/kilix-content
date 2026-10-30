@@ -13,3 +13,21 @@ def selected_commands_archive(record, url):
     return (version is not None
             and record.get('provider') == 'kilix-needle'
             and record.get('version') == version and url == expected)
+
+
+FEMALE02_FILES = (
+    'https://github.com/itsmygithubacct/kilix-voice/releases/download/kilix-female-02-epoch80/kilix-female-02.onnx',
+    'https://github.com/itsmygithubacct/kilix-voice/releases/download/kilix-female-02-epoch80/kilix-female-02.onnx.json',
+)
+
+
+def selected_female02_file(record, url):
+    """The two epoch-80 files, and no other Kilix-hosted speech file."""
+    return (record.get('id') == 'kilix-female-02'
+            and record.get('provider') == 'kilix-piper-tts'
+            and record.get('version') == 'kilix-female-02-epoch80'
+            and url in FEMALE02_FILES)
+
+
+def selected_owned_bytes(record, url):
+    return selected_commands_archive(record, url) or selected_female02_file(record, url)

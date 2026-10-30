@@ -159,7 +159,8 @@ def _is_kilix_hosted(url: str) -> bool:
 
 
 def _https_url(value: Any, label: str, *, allow_file: bool = False,
-               owned_archive_url: str | None = None) -> str:
+               owned_archive_url: str | None = None,
+               owned_file_urls: frozenset[str] | None = None) -> str:
     value = _nonempty_text(value, label, maximum=4096)
     try:
         parsed = urlsplit(value)
@@ -181,7 +182,8 @@ def _https_url(value: Any, label: str, *, allow_file: bool = False,
         or parsed.fragment
     ):
         raise CatalogError(f"{label} must be a public HTTPS URL")
-    if _is_kilix_hosted(value) and value != owned_archive_url:
+    allowed_files = owned_file_urls or frozenset()
+    if _is_kilix_hosted(value) and value != owned_archive_url and value not in allowed_files:
         raise CatalogError("model bytes must come from upstream (OD-S)")
     host = parsed.hostname.lower()
     if host in {"huggingface.co", "www.huggingface.co"}:
@@ -1010,6 +1012,21 @@ class AssetSpec:
             # licence and modification notice, under this one archive route.
             # This does not admit mirrors of the other upstream model assets.
             owned_archive_url = None
+            owned_file_urls = None
+            # Owner direction 2026-10-30: Kilix Female-02 epoch 80 is the
+            # default speech model. itsmygithubacct publishes those two files
+            # from the kilix-voice release. No other Kilix-hosted file is admitted.
+            if (asset_id == "kilix-female-02" and provider == "kilix-piper-tts"
+                    and consumer_schema == "kilix.piper.models/v1"
+                    and source_mode == "upstream-files"
+                    and licenses[0].license_id == "apache-2.0"
+                    and provenance_project == "itsmygithubacct/kilix-voice"
+                    and provenance_revision == "1faf9fb07ec04af3c7b6c130c4bd1fd315c25dc4"
+                    and version == "kilix-female-02-epoch80"):
+                owned_file_urls = frozenset({
+                    "https://github.com/itsmygithubacct/kilix-voice/releases/download/kilix-female-02-epoch80/kilix-female-02.onnx",
+                    "https://github.com/itsmygithubacct/kilix-voice/releases/download/kilix-female-02-epoch80/kilix-female-02.onnx.json",
+                })
             if (asset_id == "lfm2-kilix-commands" and provider == "kilix-needle"
                     and consumer_schema == "kilix.commands.model/v1"
                     and source_mode == "upstream-archive"
@@ -1035,6 +1052,7 @@ class AssetSpec:
                 f"{asset_id}.source.provenance.original_url",
                 allow_file=allow_file_urls,
                 owned_archive_url=owned_archive_url,
+                owned_file_urls=owned_file_urls,
             )
         except KeyError as exc:
             raise CatalogError(
@@ -1105,6 +1123,7 @@ class AssetSpec:
                     mapping.get("url"),
                     f"{asset_id}.source.fetch[{index}].url",
                     allow_file=allow_file_urls,
+                    owned_file_urls=owned_file_urls,
                 )
                 _require_provenance_host(
                     item_url, provenance_url, f"{asset_id}.source.fetch[{index}].url"

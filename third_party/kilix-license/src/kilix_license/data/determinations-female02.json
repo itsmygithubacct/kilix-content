@@ -1,0 +1,26 @@
+{
+  "authority": {
+    "checkpoint": 80,
+    "licence_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "model": "kilix-female-02",
+    "source": "https://github.com/itsmygithubacct/kilix-voice/releases/download/kilix-female-02-epoch80/kilix-female-02.onnx"
+  },
+  "records": [
+    {
+      "advisories": [],
+      "binding_conditions": [],
+      "components": [],
+      "decision_class": "affirmative",
+      "id": "kilix-female-02",
+      "licence_ids": [
+        "Apache-2.0"
+      ],
+      "licence_text_id": "debian/common-licenses/Apache-2.0",
+      "licensor": "itsmygithubacct",
+      "schema": "kilix.license.record/v1",
+      "statements": [],
+      "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    }
+  ],
+  "schema": "kilix.license.female02-determination/v1"
+}

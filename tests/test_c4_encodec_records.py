@@ -48,7 +48,7 @@ from pathlib import Path
 from typing import Any
 
 from fake_store import FakeStore
-from owned_archive import selected_commands_archive
+from owned_archive import selected_owned_bytes
 from kilix_license.agreement import typed_agreement_line
 from kilix_license.catalog import load_determined_records, load_determined_texts
 
@@ -208,7 +208,7 @@ class CatalogWideEncodecGuardTests(unittest.TestCase):
                 continue
             for url in urls_in(record):
                 with self.subTest(asset=asset_id, url=url):
-                    self.assertFalse(_is_kilix_hosted(url) and not selected_commands_archive(record, url), url)
+                    self.assertFalse(_is_kilix_hosted(url) and not selected_owned_bytes(record, url), url)
 
     def test_no_parsed_asset_url_is_kilix_hosted(self) -> None:
         """The same guard through the parsed specs, for every source mode."""
@@ -217,13 +217,13 @@ class CatalogWideEncodecGuardTests(unittest.TestCase):
             for url in (spec.url, spec.convert_url, spec.manifest_url):
                 if url:
                     seen += 1
-                    self.assertFalse(_is_kilix_hosted(url) and not selected_commands_archive(spec.to_mapping(), url), url)
+                    self.assertFalse(_is_kilix_hosted(url) and not selected_owned_bytes(spec.to_mapping(), url), url)
             for item in spec.fetch + spec.blobs:
                 seen += 1
-                self.assertFalse(_is_kilix_hosted(item.url) and not selected_commands_archive(spec.to_mapping(), item.url), item.url)
+                self.assertFalse(_is_kilix_hosted(item.url) and not selected_owned_bytes(spec.to_mapping(), item.url), item.url)
             seen += 1
             self.assertFalse(
-                _is_kilix_hosted(spec.provenance_url) and not selected_commands_archive(spec.to_mapping(), spec.provenance_url), spec.provenance_url
+                _is_kilix_hosted(spec.provenance_url) and not selected_owned_bytes(spec.to_mapping(), spec.provenance_url), spec.provenance_url
             )
         self.assertGreater(seen, 0, "no URL was checked")
 
@@ -287,7 +287,7 @@ class CatalogWideGuardPlantedDefectTests(unittest.TestCase):
             url
             for record in planted["assets"]
             for url in urls_in(record)
-            if _is_kilix_hosted(url) and not selected_commands_archive(record, url)
+            if _is_kilix_hosted(url) and not selected_owned_bytes(record, url)
         ]
         self.assertEqual(offenders, [self.MIRROR_URL])
 
@@ -376,7 +376,7 @@ class CatalogWideGuardPlantedDefectTests(unittest.TestCase):
             record_id
             for section, record_id, record in rows
             if section == "assets"
-            and any(_is_kilix_hosted(url) and not selected_commands_archive(record, url)
+            and any(_is_kilix_hosted(url) and not selected_owned_bytes(record, url)
                     for url in urls_in(record))
         }
         self.assertEqual(by_mode, {self.BAD_MERGE_ID})
@@ -441,7 +441,7 @@ class CatalogWideGuardPlantedDefectTests(unittest.TestCase):
                 url
                 for record in self.raw["assets"]
                 for url in urls_in(record)
-                if _is_kilix_hosted(url) and not selected_commands_archive(record, url)
+                if _is_kilix_hosted(url) and not selected_owned_bytes(record, url)
             ],
             [],
         )

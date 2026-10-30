@@ -34,6 +34,7 @@ PIN_NAMES = (
     # capable hardware, run by kilix-whisper-stt (faster-whisper).
     "faster-whisper-small-en.json",
     "piper-en-us-kristin-medium.json",
+    "kilix-female-02.json",
     "vibevoice-asr-bitnet.json",
     "yolox_s.json",
     "yolox_tiny.json",
@@ -80,6 +81,7 @@ LICENSORS = {
     "whisper-tiny-ggml": ["OpenAI"],
     "faster-whisper-small-en": ["OpenAI", "SYSTRAN"],
     "piper-en-us-kristin-medium": ["Bryce Beattie"],
+    "kilix-female-02": ["itsmygithubacct"],
     "vibevoice-asr-bitnet": ["Microsoft Corporation"],
     "yolox_s": ["Megvii (Base Detection / Megvii Inc.)"],
     "yolox_tiny": ["Megvii (Base Detection / Megvii Inc.)"],

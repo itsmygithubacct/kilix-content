@@ -91,7 +91,9 @@ class Needle2AssetTests(unittest.TestCase):
                                 _pinned('determinations-needle3.sha256')
                                 if asset_id == 'needle3-kilix-commands' else
                                 _pinned('determinations-lfm2.sha256')
-                                if asset_id == 'lfm2-kilix-commands' else release)
+                                if asset_id == 'lfm2-kilix-commands' else
+                                _pinned('determinations-female02.sha256')
+                                if asset_id == 'kilix-female-02' else release)
                     self.assertEqual(record.determinations_sha256, expected)
 
     def test_version_is_the_revision(self) -> None:
