@@ -7,6 +7,7 @@ pre-1.0.
 
 ## Ready-source integration for 0.2.2
 
+- Select Kilix Amp `eff203a74f6cc726e9c1211cfe6d0960077fc388` so a second startup does not block when the control socket's accept queue is full.
 - Offer the public MIT-licensed Claudex through the shared application installer.
   Installation selects an immutable commit and needs no build or account login.
 - Select the toolkit revision that supplies `kilix rollout log`.

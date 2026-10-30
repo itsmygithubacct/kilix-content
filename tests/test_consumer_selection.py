@@ -19,6 +19,10 @@ README onto asset/v3 and kilix-license receipts. It then moved to `e5ce674e`,
 a strict descendant that follows the live header's epoch-start profile (OD-AT)
 and covers the C5 live paths. The build stays `make all ENCODEC=1`.
 
+`kilix-amp` then moved from `88f518e8` to `eff203a7`, a strict descendant whose
+one commit keeps a saturated control-socket probe from blocking a second
+startup. The build stays `make all runtime-check ENCODEC=1`.
+
 The two EnCodec converters, `kilix-encodec-convert-24khz` and
 `kilix-encodec-convert-48khz`, select `kilix-encodec` `22290fb4`, retaining the asset/v3 migration and
 adding the reviewed converter and native-architecture fixture repairs. Their only other test,
@@ -58,7 +62,7 @@ CATALOG = ROOT / "src" / "kilix_content" / "catalog" / "plebian.json"
 # b74c21f, which is 785a62e plus sha256-pinned agent installers. 785a62e merged
 # rc1's af7e848 with kilix-tui-utils main for 0.2.2 rc2.
 TUI_UTILS_REF = "61a514f536a804d82f20bda7e65c7bf3145a229a"
-AMP_REF = "88f518e88af49b92f2b5d85a9335ad3048c6d15a"
+AMP_REF = "eff203a74f6cc726e9c1211cfe6d0960077fc388"
 AMP_BUILD = ("make", "all", "runtime-check", "ENCODEC=1")
 ENCODEC_CONVERTER_REF = "22290fb4a0587d5b7f937e345c99aa5d599c2282"
 ENCODEC_CONVERTERS = ("kilix-encodec-convert-24khz", "kilix-encodec-convert-48khz")
