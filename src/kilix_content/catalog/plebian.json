@@ -1354,7 +1354,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-nvr",
-        "ref": "cad35fe21031dcc1f9784357bfeeec92d0328634"
+        "ref": "0092d5cbec4a78bb2a31b5c66532d43063723cce"
       },
       "binary": "build/kilix-nvr",
       "build": [
@@ -1378,7 +1378,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-object-detect",
-        "ref": "0207a8ca4b6d2aa92d5c90eecc2c120940eeb819"
+        "ref": "af65eee3577a833e9c6f288bb14a7bf874a2e1ab"
       },
       "binary": "build/kilix-look",
       "build": [
