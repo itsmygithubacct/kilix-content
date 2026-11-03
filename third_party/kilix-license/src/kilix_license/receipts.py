@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, replace
 from typing import Any
 
-from kilix_license.agreement import Acceptance, Agreement, typed_agreement_line
+from kilix_license.agreement import Acceptance, Agreement, STANDARD_POLICY, typed_agreement_line
 from kilix_license.digest import (
     canonical_json,
     load_json_object,
@@ -263,7 +263,14 @@ def receipt_from_agreement(
     expected = record.agreement_binding_digests()
     if tuple(sorted(agreement.named_binding_ids)) != tuple(sorted(expected)):
         raise AgreementRequired("agreement did not name every binding condition")
-    if agreement.decision == "accept" and agreement.typed_text not in (
+    policy = agreement.authorization_policy == STANDARD_POLICY
+    if agreement.authorization_policy is not None and not policy:
+        raise AgreementRequired("unknown distribution policy")
+    if policy:
+        from kilix_license.standard_policy import standard_policy_eligible, POLICY_SHA256
+        if not standard_policy_eligible(record) or agreement.typed_text is not None:
+            raise AgreementRequired('standard policy cannot authorize these terms or claim typed consent')
+    elif agreement.decision == "accept" and agreement.typed_text not in (
         "yes", "y", typed_agreement_line(record)
     ):
         raise AgreementRequired("accept receipt requires affirmative agreement")
@@ -306,7 +313,8 @@ def receipt_from_agreement(
         # identity for the changed-text marker (SR-4). Never compared by covers().
         binding_text_ids=record.binding_text_ids(),
         component_exception_digests=record.component_exception_digests(),
-        statement_digests=record.statement_digests(),
+        statement_digests=(record.statement_digests() | {STANDARD_POLICY: POLICY_SHA256}
+                          if policy else record.statement_digests()),
         licence_text_id=record.licence_text_id,
         # V-ACC-VERIFY F6: what was observed when the agreement was captured,
         # not when this receipt was assembled. An Agreement built by hand

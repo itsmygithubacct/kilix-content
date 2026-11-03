@@ -37,6 +37,7 @@ from kilix_license.records import LicenseRecord, RecordIndex
 from kilix_license.screen import render_screen
 from kilix_license.store import ReceiptStore
 from kilix_license.texts import TextStore
+from kilix_license.standard_policy import capture_standard_policy, standard_policy_eligible
 
 __version__ = "0.1.0"
 
@@ -62,6 +63,8 @@ __all__ = [
     "TextStore",
     "__version__",
     "capture_agreement",
+    "capture_standard_policy",
+    "standard_policy_eligible",
     "changed_texts",
     "check_receipt_store_root",
     "covers",

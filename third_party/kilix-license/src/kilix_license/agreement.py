@@ -23,6 +23,7 @@ from kilix_license.records import LicenseRecord
 # neither is attested by anything.
 INTERACTIVE_TTY = "interactive-tty"
 NO_TTY = "no-tty"
+STANDARD_POLICY = "standard-license-policy-v1"
 CAPTURE_MODES = (INTERACTIVE_TTY, NO_TTY)
 
 # \Z, not $: `$` also matches before a final newline, so "...Z\n" parsed and
@@ -63,9 +64,8 @@ class Acceptance:
     changes no receipt's coverage and voids no acceptance. It is audit context,
     and, for a caller that opts in, a check a consumer can demand.
 
-    See the shipping rule in ``README.md``: a receipt is never shipped,
-    vendored or provisioned, and shipping one is not a remedy for a refusing
-    gate.
+    See the shipping rule in ``README.md``: receipts are never shipped or vendored. Standard-policy receipts may
+    be generated locally at installation; they are not human consent.
     """
 
     captured_at: str
@@ -186,6 +186,7 @@ class Agreement:
     # What was observed about this capture (V-ACC-VERIFY F6). None only for an
     # Agreement a caller built by hand, as every caller did before LIC6.
     acceptance: Acceptance | None = None
+    authorization_policy: str | None = None
 
 
 def typed_agreement_line(record: LicenseRecord) -> str:

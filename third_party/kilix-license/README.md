@@ -149,21 +149,24 @@ a console - by inspection, and by
 **available and off**; the default is unchanged and every earlier receipt
 still covers.
 
-### A receipt is never shipped
+### Distribution policy and receipts
 
-A receipt is **never shipped, vendored or provisioned**. The only producer
-is the first-use flow, on the user's own machine, after that user has been
-shown the licence and has accepted it (OD-S, OD-BB).
+Images and model bundles never carry user receipts. Standard licences can be
+handled during installation by `capture_standard_policy(record)`, using the
+complete determined record and exact model manifest. This writes a local
+`standard-license-policy-v1` statement digest in the existing receipt
+context, with no typed answer or claim of human consent. Capture mode still
+records the actual terminal state. This preserves older receipt readers;
+the policy statement distinguishes automated authorization. Original licence texts, notices and modification statements must
+remain available beside the installed model.
 
-**Shipping a receipt is not an acceptable remedy for a gate that refuses.**
-An image that carries one turns every install into consent nobody gave,
-while the audit surface reads "gated" - which is the bypass OS-V-VERIFY F2
-reported, wearing a compliant hat. The gate cannot tell the two apart, and
-no flag in this repository can enforce this rule; it is a rule about what
-is built.
+Unknown licences, extra binding terms and unreviewed component exceptions
+still require explicit agreement. The legacy component field also carries
+ordinary licence notices: the reviewed Needle 3 MIT runtime notice is allowed
+only at its exact digest. A changed notice requires renewed review.
 
-The acceptable outcomes are exactly two: **acceptance at first use, or no
-weights.**
+Interactive-terminal-only consumers continue to reject policy receipts.
+Existing interactive and noninteractive receipts remain readable.
 
 If a build needs to attest something about licences, that attestation is a
 **distinct schema** and never a `kilix.license.receipt/v1` (OD-BC, settling
