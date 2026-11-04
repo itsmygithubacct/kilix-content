@@ -1,0 +1,26 @@
+LFM2 Kilix Commands is a modified LiquidAI/LFM2-1.2B-Tool model.
+Base revision: 6d24c6b7471fcbcec084935e377a5302f4b84389.
+Modified by itsmygithubacct: supervised LoRA fine tuning on synthetic command
+examples, merging in bfloat16, conversion to GGUF and Q8_0 quantization,
+followed by direct weight edits for the Kilix command interface.
+
+The weight-edit lineage includes an explicit output projection initialized
+from the parent embedding matrix and constrained edits to its empty-call
+token row. This revision changes only output.weight row 8104 relative to
+its immediate parent; the input embeddings and all other bytes are unchanged
+relative to that parent. This is a modified model, not an upstream release.
+No additional gradient training was used for this revision.
+
+Weight version: lfm2-kilix-v5e1-wse-20261103.21
+GGUF SHA256: c6b065d617b95745bd207c4f9c9b605a8af922f5ebb5d7ff1d4c686d9d1c8f0e
+Immediate parent: lfm2-kilix-v5e1-wse-20261103.10
+Parent GGUF SHA256: 0d3dc3c9b8c210cfc5c855893d1a66f3c06eb8bc6afda65bd31a542cc61a99ab
+Delivery version: lfm2-kilix-commands-20261103-v21
+
+Liquid AI, Inc. retains its rights in the base model. The LFM Open License v1.0
+is provided unchanged as notices/LICENSE-LFM.txt. This accompanying NOTICE
+records the modifications and is not embedded in the GGUF metadata.
+The separately bundled CPU runtime is llama.cpp b11669, commit
+620d2225cc436ab0b001e3200e590e3b286ef9ab. Its software notices are provided
+in notices/LICENSE-runtime.txt. These software licences do not replace
+the model licence or its Commercial Use Limitation.
