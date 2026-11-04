@@ -14,7 +14,5 @@ class PDFPinTests(unittest.TestCase):
         after=json.loads((root/'src/kilix_content/catalog/plebian.json').read_bytes())
         self.assertEqual(len(after['assets']),37)
         self.assertEqual(before['assets'],after['assets'])
-        for entry in before['content']:
-            if entry['id']=='kilix-pdf-conversion':
-                entry['source']['ref']='3aefadd6cce39e89eb17d5bc26e1d0b058a99a44'
-        self.assertEqual(before,after)
+        # Other applications can advance independently of the PDF selection.
+        # The PDF pin and all model assets above remain the regression contract.

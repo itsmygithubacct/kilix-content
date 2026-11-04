@@ -1715,14 +1715,14 @@
     },
     {
       "id": "kilix-help-llm",
-      "label": "Help Search",
+      "label": "Kilix Help",
       "kind": "app",
       "icon": "help",
-      "description": "Search the Kilix, Kitty, Pleb and Plebian-OS documentation locally and show matching passages with source references. No model download is needed.",
+      "description": "Local Kilix help with the default trained 2B model: commands, short explanations and documentation links. Run setup once to download weights; documentation search works without them.",
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-help-llm",
-        "ref": "e7bb1fc81ba68900fe726562d8f83b2ad4c57869"
+        "ref": "e5832c08099eaa3fe53d2f10bbbb61d08cd272cb"
       },
       "binary": "kilix-help-llm",
       "build": [
@@ -1731,20 +1731,44 @@
         "-c",
         "import help_llm.lookup"
       ],
-      "dependency_hint": "needs Python 3.11 or newer; lookup uses the standard library and bundled documentation",
+      "dependency_hint": "Python 3.11+ for search; explicit model setup also requires uv and the shared model sizer, with resource admission before CPU inference",
       "capabilities": [
-        "filesystem-read"
+        "filesystem-read",
+        "filesystem-write",
+        "model-storage",
+        "network"
       ],
       "launch": {
         "mode": "terminal"
       },
       "actions": {
-        "lookup": {
+        "answer": {
           "argv": [
-            "lookup"
+            "answer",
+            "--"
           ],
           "accepts_input": true,
-          "description": "Search documentation for a question"
+          "description": "Ask the default local Help model"
+        },
+        "lookup": {
+          "argv": [
+            "lookup",
+            "--"
+          ],
+          "accepts_input": true,
+          "description": "Search documentation without a model"
+        },
+        "setup": {
+          "argv": [
+            "setup"
+          ],
+          "description": "Download and verify the default model and CPU runtime"
+        },
+        "model-status": {
+          "argv": [
+            "model-status"
+          ],
+          "description": "Verify the installed Help model"
         }
       }
     },
