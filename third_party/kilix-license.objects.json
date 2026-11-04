@@ -1,7 +1,7 @@
 {
-  "commit": "tree 9f6a5a629fb795467f5b4b3ed22c35bb0586c5af\nparent 4b29f156eb3edc793318fc1728c259298599d34e\nauthor itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1793770340 -0800\ncommitter itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1793770340 -0800\n\nDetermine unchanged upstream Basic Pitch ONNX model terms\n",
+  "commit": "tree c2ffafa57ae07aaf92e1070a534a9798cf5313ee\nparent 514bbc5d05328f924c2237a38002abbfec15cd20\nauthor itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1793772139 -0800\ncommitter itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1793772139 -0800\n\nRetain Female02 records in installed licence wheels\n",
   "excluded_top_level": [".gitignore", ".python-version", "Makefile", "PUBLICATION.md", "tests", "tools", "uv.lock"],
-  "pin": "514bbc5d05328f924c2237a38002abbfec15cd20",
+  "pin": "9241e1accd4d3ea729f9211d1137ed896b7fe3b9",
   "schema": "kilix-content.vendored-git-objects/v1",
   "trees": {
     "0637f9c78d82d43f2dd617530535f0522b6dafe3": [
@@ -139,7 +139,10 @@
       ["100644", "store.py", "4139555a5661f38d66b17d0794cae4c1712bd87b"],
       ["100644", "texts.py", "6d95a9a91dd7f396d453569f05ef0000f2b88b4f"]
     ],
-    "9f6a5a629fb795467f5b4b3ed22c35bb0586c5af": [
+    "c29fa4f9ff323b8b1f65cbdc573c910ba053df38": [
+      ["100644", "needle3-kilix-commands.json", "a283c70f725bb877751be0614f061f6e5149b7f3"]
+    ],
+    "c2ffafa57ae07aaf92e1070a534a9798cf5313ee": [
       ["100644", ".gitignore", "7e74013359efce08b816f3b27b6a941e96ce87a2"],
       ["100644", ".python-version", "04e207918ddc86409a934bfdaf92dbbf0f8ac1cc"],
       ["100644", "CHANGELOG.md", "3724251c7c1c2be801f64ee2c32e00fa99a9f7d1"],
@@ -149,14 +152,11 @@
       ["100644", "PUBLICATION.md", "ad0e4496f9a6bcfde3b260844fa09ad721c1ef1c"],
       ["100644", "README.md", "0caa10f7450339c73b8e08a7992f360babaa3619"],
       ["100644", "VERSION", "6e8bf73aa550d4c57f6f35830f1bcdc7a4a62f38"],
-      ["100644", "pyproject.toml", "97e5268ffc454d875bbfcdd9b15f2e2ef8f2b69f"],
+      ["100644", "pyproject.toml", "28e291a2d5cacbc86e6204bb2bcb94088ed11269"],
       ["40000", "src", "6360c87aff66acbee5e14226464c2b97f6282025"],
-      ["40000", "tests", "3a48206c791f058450f774581e382c95023f26de"],
+      ["40000", "tests", "535e24c075c4937873ad72bbd4eaf9675e0b3778"],
       ["40000", "tools", "1da322432abc8852c23ebbe5388ff0b2f2d24c25"],
       ["100644", "uv.lock", "43e09590b109b26f4fcbdf9b2ee5428fadfba778"]
-    ],
-    "c29fa4f9ff323b8b1f65cbdc573c910ba053df38": [
-      ["100644", "needle3-kilix-commands.json", "a283c70f725bb877751be0614f061f6e5149b7f3"]
     ],
     "c364f647e8c4e1145e1851e1f3e151f1da300467": [
       ["40000", "app-records", "dadcbb744332fd9c4891dc2272ccdb64320cf52a"],
