@@ -50,7 +50,7 @@ def _env():
 
 
 def _git(directory, *args):
-    result = subprocess.run(['git', '-c', 'pack.threads=2', '-c', 'index.threads=2', '-c', 'core.hooksPath=' + os.devnull,
+    result = subprocess.run(['git', '-c', 'gc.auto=0', '-c', 'maintenance.auto=false', '-c', 'pack.threads=2', '-c', 'index.threads=2', '-c', 'core.hooksPath=' + os.devnull,
                              '-c', 'core.autocrlf=false', '-C', str(directory), *args],
                             env=_env(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                             timeout=180, check=False)
@@ -172,6 +172,12 @@ class Carrier:
                     raise SourceCarrierError('invalid bundle reference')
                 refspecs.append(name + ':refs/carrier/source-' + str(i))
             _git(destination, 'fetch', '--quiet', '--no-tags', str(bundle), *refspecs)
+        # A 40-hex object name is not necessarily a commit: annotated tags peel.
+        # Bind raw object types before any checkout, then bind the resulting HEAD.
+        if _git(destination, 'cat-file', '-t', node['commit']).strip() != b'commit':
+            raise SourceCarrierError('declared source object is not a raw commit')
+        if _git(destination, 'cat-file', '-t', node['tree']).strip() != b'tree':
+            raise SourceCarrierError('declared source tree is not a raw tree')
         if _git(destination, 'rev-parse', node['commit'] + '^{tree}').decode().strip() != node['tree']:
             raise SourceCarrierError('source tree mismatch')
         entries = {}
@@ -213,6 +219,8 @@ class Carrier:
             self._populate((_repository(child['repository']), child['commit']), dest)
         if links:
             _git(destination, 'submodule', 'init')
+        if _git(destination, 'rev-parse', '--verify', 'HEAD').decode().strip() != node['commit']:
+            raise SourceCarrierError('checked out HEAD differs from declared commit')
         self._verify(destination, entries)
         _git(destination, 'fsck', '--full', '--no-dangling')
 

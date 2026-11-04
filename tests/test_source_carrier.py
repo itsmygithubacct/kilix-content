@@ -149,3 +149,37 @@ class SourceCarrierTests(unittest.TestCase):
         self.assertIn(b'dubious ownership',denied.stderr)
         accepted=subprocess.run(['git','clone','--quiet','--recurse-submodules',self.parent['repository'],str(self.root/'accepted')],env=env,capture_output=True)
         self.assertEqual(accepted.returncode,0,accepted.stderr)
+
+    def test_raw_object_types_refuse_annotated_tag_tree_and_blob_as_commit(self):
+        repo=self.root/'parent'
+        git(repo,'tag','-a','review-tag','-m','Annotated tag fixture')
+        tag=git(repo,'rev-parse','review-tag')
+        blob=git(repo,'rev-parse','HEAD:run')
+        original=self.parent['commit']
+        bundle=self.root/self.parent['bundle'];bundle.unlink()
+        git(repo,'bundle','create',str(bundle),'--all')
+        raw=bundle.read_bytes();self.parent['bytes']=len(raw);self.parent['sha256']=hashlib.sha256(raw).hexdigest()
+        for wrong in (tag,self.parent['tree'],blob):
+            self.parent['commit']=wrong;self.write()
+            with self.subTest(object=wrong),self.assertRaises(SourceCarrierError):self.materialize()
+            self.assertFalse((self.root/'out').exists())
+        self.parent['commit']=original;self.parent['tree']=tag;self.write()
+        with self.assertRaises(SourceCarrierError):self.materialize()
+
+    def test_new_generation_failed_build_preserves_actual_selected_source(self):
+        from dataclasses import replace
+        import sys
+        env=dict(os.environ,KILIX_SOURCE_CARRIER_MANIFEST=str(self.manifest),KILIX_SOURCE_CARRIER_SHA256=self.digest)
+        installer=Installer(str(self.root/'installed'),env=env)
+        spec=ContentSpec(content_id='fixture',label='Fixture',kind='tool',icon='tool',description='Fixture',source_type='git',repository=self.parent['repository'],ref=self.parent['commit'],binary='run')
+        executable=Path(installer.ensure(spec));old_bytes=executable.read_bytes();old_commit=self.parent['commit']
+        repo=self.root/'parent';(repo/'revision').write_text('next-generation')
+        git(repo,'add','revision');git(repo,'commit','-qm','Next generation fixture')
+        bundle=self.root/'next.bundle';git(repo,'bundle','create',str(bundle),'--all');raw=bundle.read_bytes()
+        node=dict(self.parent,commit=git(repo,'rev-parse','HEAD'),tree=git(repo,'rev-parse','HEAD^{tree}'),bundle=bundle.name,bytes=len(raw),sha256=hashlib.sha256(raw).hexdigest())
+        self.nodes.append(node);self.write();installer.env['KILIX_SOURCE_CARRIER_SHA256']=self.digest
+        failing=replace(spec,ref=node['commit'],build=(sys.executable,'-c','raise SystemExit(29)'))
+        with self.assertRaises(InstallError):installer.ensure(failing)
+        self.assertEqual(executable.read_bytes(),old_bytes)
+        self.assertEqual(git(executable.parent,'rev-parse','HEAD'),old_commit)
+        self.assertEqual(installer.ensure(spec),str(executable))
