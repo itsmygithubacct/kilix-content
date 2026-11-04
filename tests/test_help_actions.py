@@ -10,7 +10,7 @@ class HelpActions(unittest.TestCase):
     def test_default_answers_preserve_separate_search_and_setup(self):
         catalog = verified_packaged_catalog()
         self.assertEqual(catalog.require('kilix-help-llm').ref,
-                         'e5832c08099eaa3fe53d2f10bbbb61d08cd272cb')
+                         '41dd050560a6d0b8067b57fa76ab333e05e6bc72')
         root = Path(__file__).resolve().parents[1]
         raw = json.loads((root / 'src/kilix_content/catalog/plebian.json').read_bytes())
         help_app = next(app for app in raw['content'] if app['id'] == 'kilix-help-llm')

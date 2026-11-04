@@ -1745,7 +1745,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-help-llm",
-        "ref": "e5832c08099eaa3fe53d2f10bbbb61d08cd272cb"
+        "ref": "41dd050560a6d0b8067b57fa76ab333e05e6bc72"
       },
       "binary": "kilix-help-llm",
       "build": [
