@@ -17,7 +17,7 @@ class DetectorPins(unittest.TestCase):
             self.assertEqual(catalog.require(name).ref, ref)
         root = Path(__file__).resolve().parents[1]
         before = json.loads(subprocess.check_output([
-            'git', 'show', '9a1aa54c39d46794f94fe13d0408290d281f0753:src/kilix_content/catalog/plebian.json'], cwd=root))
+            'git', 'show', '98aa076100aee09847499977fb8731a30551a95d:src/kilix_content/catalog/plebian.json'], cwd=root))
         after = json.loads((root / 'src/kilix_content/catalog/plebian.json').read_bytes())
         for document in (before, after):
             document['assets'] = [asset for asset in document['assets']
@@ -29,7 +29,7 @@ class DetectorPins(unittest.TestCase):
             elif entry['id'] == 'kilix-pdf-conversion':
                 entry['source']['ref'] = 'e841241b0134fef42045a946199a92e9fa35ffbf'
             elif entry['id'] == 'kilix-needle':
-                entry['source']['ref'] = '3f561187d71377422d98da50e225bad17dc9b8a9'
+                entry['source']['ref'] = '8408183f909a7052bb14cc974a869909234d8bca'
         # Help has its own source/action contract and can evolve independently
         # of detector selection. Retain the byte comparison for every other app.
         for document in (before, after):
