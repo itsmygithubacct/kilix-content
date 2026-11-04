@@ -1753,15 +1753,20 @@
       "label": "Android",
       "kind": "app",
       "icon": "computer",
-      "description": "Run Android in a Kilix pane or desktop window; the pinned runtime installs on first use.",
+      "description": "Optional Android support; install the app on first launch, then confirm Android runtime setup.",
       "source": {
-        "type": "system"
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-waydroid",
+        "ref": "9d1803dfe3c148d8823fa21335460b0c7677ef5b"
       },
-      "command": [
-        "kilix-waydroid",
-        "window",
-        "--size",
-        "960x600"
+      "binary": "kilix-waydroid",
+      "build": [
+        "python3",
+        "-m",
+        "compileall",
+        "-q",
+        "src",
+        "kilix-waydroid"
       ],
       "capabilities": [
         "x11-app",
