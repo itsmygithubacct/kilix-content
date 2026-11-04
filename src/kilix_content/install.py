@@ -39,6 +39,7 @@ from .fetch import (
     fetch_exact,
 )
 from .model import AssetSpec, Catalog, ContentSpec, source_objects_sha256
+from .source_carrier import SourceCarrierError, materialize_source
 
 Report = Callable[[str], None]
 
@@ -1021,6 +1022,7 @@ class Installer:
         destination = self.destination(spec)
         self._existing_git_is_replaceable(spec, destination)
         stage = self._create_stage(spec)
+        offline_sibling = ""
         try:
             commands = (
                 ["git", "init", "--quiet"],
@@ -1040,7 +1042,20 @@ class Installer:
             )
             report(f"fetching pinned source {spec.ref[:12]} from {spec.repository} …")
             git_env = _git_environment(self.env)
-            for argv in commands:
+            # Offline transport populates a new source within the existing transaction.
+            # Remote fallback is permitted only when no carrier was configured.
+            offline_stage = os.path.join(stage, "source")
+            try:
+                offline = materialize_source(spec.repository, spec.ref, offline_stage, env=self.env)
+            except SourceCarrierError as exc:
+                raise InstallError(str(exc)) from exc
+            if offline:
+                offline_sibling = stage + ".offline"
+                os.rename(offline_stage, offline_sibling)
+                os.rmdir(stage)
+                os.rename(offline_sibling, stage)
+                offline_sibling = ""
+            for argv in (() if offline else commands):
                 try:
                     result = _run(
                         argv, cwd=stage, env=git_env, timeout=self.command_timeout
@@ -1077,6 +1092,8 @@ class Installer:
         finally:
             if stage:
                 shutil.rmtree(stage, ignore_errors=True)
+            if offline_sibling:
+                shutil.rmtree(offline_sibling, ignore_errors=True)
         ready = self.ready(spec)
         if not ready:
             raise InstallError(f"installed content has no runnable {spec.binary}")
