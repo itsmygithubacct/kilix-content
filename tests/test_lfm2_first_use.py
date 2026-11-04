@@ -21,20 +21,22 @@ module_spec.loader.exec_module(generator)
 
 
 class LFM2FirstUseTests(unittest.TestCase):
+    asset_id = 'lfm2-kilix-commands'
+    notice_id = 'modified-model'
     def setUp(self):
         self.scratch=tempfile.TemporaryDirectory(prefix='kilix-lfm2-first-use-')
         self.addCleanup(self.scratch.cleanup)
         root=Path(self.scratch.name)
         self.records=load_determined_records()
-        self.record=self.records.by_id('lfm2-kilix-commands')
+        self.record=self.records.by_id(self.asset_id)
         self.texts=load_determined_texts(root/'texts')
         self.store=FakeStore(root/'fixture-receipts')
         self.installer=Installer(str(root/'installed'))
         self.supplied=root/'supplied';self.supplied.mkdir()
         model=b'non-executable fixture weights'
-        version='lfm2-kilix-commands-20261023-v1'
+        version=self.asset_id+'-20261103-v1'
         url='https://github.com/itsmygithubacct/kilix-needle/releases/download/'+version+'/'+version+'.tar.gz'
-        pin={'id':'lfm2-kilix-commands','license_record_id':'lfm2-kilix-commands',
+        pin={'id':self.asset_id,'license_record_id':self.asset_id,
              'provider':'kilix-needle','consumer_schema':'kilix.commands.model/v1',
              'version':version,'archive_url':url,'archive_bytes':1,'archive_sha256':'0'*64,
              'format':'tar','root':'fixture',
@@ -135,7 +137,7 @@ class LFM2FirstUseTests(unittest.TestCase):
         self.assertIn(b'Commercial Use Limitation',screen)
         self.assertIn(b'Liquid',screen)
         self.assertIn(self.texts.get(next(s.text_sha256 for s in self.record.statements
-                                        if s.id=='modified-model')),screen)
+                                        if s.id==self.notice_id)),screen)
         self.assertTrue(needs_agreement(self.spec,records=self.records,store=self.store))
         self.assertIsNone(self.install(typed_text=None,decline=True,screen=io.BytesIO()))
         self.assertEqual(list(self.store.root.glob('*.json')),[])
@@ -173,3 +175,8 @@ class LFM2FirstUseTests(unittest.TestCase):
             target[keys[-1]]=value
             with self.subTest(keys=keys,value=value),self.assertRaises(CatalogError):
                 AssetSpec.from_mapping(mapping)
+
+
+class LFM3FirstUseTests(LFM2FirstUseTests):
+    asset_id = "lfm3-kilix-commands"
+    notice_id = "upstream-model"

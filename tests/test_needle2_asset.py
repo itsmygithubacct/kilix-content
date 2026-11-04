@@ -90,6 +90,8 @@ class Needle2AssetTests(unittest.TestCase):
                                 if asset_id == 'kilix-diarization-cpu' else
                                 _pinned('determinations-needle3.sha256')
                                 if asset_id == 'needle3-kilix-commands' else
+                                _pinned('determinations-lfm3.sha256')
+                                if asset_id == 'lfm3-kilix-commands' else
                                 _pinned('determinations-lfm2.sha256')
                                 if asset_id == 'lfm2-kilix-commands' else
                                 _pinned('determinations-female02.sha256')

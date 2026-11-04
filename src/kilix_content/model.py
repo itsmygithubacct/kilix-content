@@ -1027,13 +1027,13 @@ class AssetSpec:
                     "https://github.com/itsmygithubacct/kilix-voice/releases/download/kilix-female-02-epoch80/kilix-female-02.onnx",
                     "https://github.com/itsmygithubacct/kilix-voice/releases/download/kilix-female-02-epoch80/kilix-female-02.onnx.json",
                 })
-            if (asset_id == "lfm2-kilix-commands" and provider == "kilix-needle"
+            if (asset_id in ("lfm2-kilix-commands", "lfm3-kilix-commands") and provider == "kilix-needle"
                     and consumer_schema == "kilix.commands.model/v1"
                     and source_mode == "upstream-archive"
                     and licenses[0].license_id == "lfm-open-license-1.0"
                     and provenance_project == "itsmygithubacct/kilix-needle"
                     and re.fullmatch(r"[0-9a-f]{40}", provenance_revision)
-                    and re.fullmatch(r"lfm2-kilix-commands-[0-9]{8}-v[1-9][0-9]*", version)):
+                    and re.fullmatch(re.escape(asset_id) + r"-[0-9]{8}-v[1-9][0-9]*", version)):
                 owned_archive_url = ("https://github.com/itsmygithubacct/kilix-needle/releases/download/"
                                      + version + "/" + version + ".tar.gz")
             # The optional Needle 3 model is also a Kilix-trained derivative.

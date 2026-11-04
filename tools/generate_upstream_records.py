@@ -22,6 +22,7 @@ TEXTS = LICENSE_SRC / "kilix_license" / "data" / "texts"
 PIN_NAMES = (
     "needle3-kilix-commands.json",
     "lfm2-kilix-commands.json",
+    "lfm3-kilix-commands.json",
     'kilix-diarization-cpu.json',
     "whistle.json",
     "vosk-model-small-en-us-0.15.json",
@@ -70,6 +71,7 @@ PIN_NAMES = (
 
 LICENSORS = {
     "needle3-kilix-commands": ["Cactus Compute, Inc.", "needle-rs contributors"],
+    "lfm3-kilix-commands": ["Liquid AI, Inc.", "ggml and bundled runtime contributors"],
     "lfm2-kilix-commands": ["Liquid AI, Inc.", "ggml and bundled runtime contributors"],
     'kilix-diarization-cpu':['IIC / Alibaba Cloud','pyannote contributors','sherpa-onnx contributors','Microsoft and bundled runtime contributors'],
     "whistle": ["Cactus Compute, Inc."],
@@ -188,9 +190,9 @@ def notice_files(record) -> list[dict[str, object]]:
         for statement in record.statements:
             files.append(notice_blob(statement.text_sha256, 'notices/' + statement.id + '.txt', record.id))
         return files
-    if record.id == 'lfm2-kilix-commands':
+    if record.id in ('lfm2-kilix-commands', 'lfm3-kilix-commands'):
         runtime = next(x for x in record.components if x.id == 'native-runtime')
-        changed = next(x for x in record.statements if x.id == 'modified-model')
+        changed = next(x for x in record.statements if x.id == ('upstream-model' if record.id == 'lfm3-kilix-commands' else 'modified-model'))
         files.append(notice_blob(runtime.exception_text_sha256, 'notices/LICENSE-runtime.txt', record.id))
         files.append(notice_blob(changed.text_sha256, 'notices/NOTICE.txt', record.id))
         return files
