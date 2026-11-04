@@ -49,12 +49,12 @@ def _env():
     return env
 
 
-def _git(directory, *args):
+def _git(directory, *args, ok=(0,)):
     result = subprocess.run(['git', '-c', 'gc.auto=0', '-c', 'maintenance.auto=false', '-c', 'pack.threads=2', '-c', 'index.threads=2', '-c', 'core.hooksPath=' + os.devnull,
                              '-c', 'core.autocrlf=false', '-C', str(directory), *args],
                             env=_env(), stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                             timeout=180, check=False)
-    if result.returncode:
+    if result.returncode not in ok:
         raise SourceCarrierError('offline Git failed: ' + ' '.join(args[:2]) + ': ' +
                                  result.stderr.decode(errors='replace')[-400:])
     return result.stdout
@@ -232,7 +232,10 @@ class Carrier:
         _git(destination, 'remote', 'add', 'origin', node['repository'])
         actual = {}
         if '.gitmodules' in entries:
-            for line in _git(destination, 'config', '-z', '--file', '.gitmodules', '--get-regexp', r'^submodule\..*\.path$').split(b'\0'):
+            # Git returns 1 for a valid config with no matching keys. Upstream
+            # repositories may retain an empty .gitmodules after removing their
+            # last dependency; malformed configs must still fail closed.
+            for line in _git(destination, 'config', '-z', '--file', '.gitmodules', '--get-regexp', r'^submodule\..*\.path$', ok=(0, 1)).split(b'\0'):
                 if not line:
                     continue
                 config, path = line.decode().split('\n', 1)

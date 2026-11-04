@@ -23,12 +23,15 @@ class SourceCarrierTests(unittest.TestCase):
         self.parent = self.make('parent', self.child)
         self.manifest = self.root / 'manifest.json'; self.write()
 
-    def make(self, name, child=None):
+    def make(self, name, child=None, gitmodules=None):
         p = self.root / name; p.mkdir(); git(p, 'init', '-q')
         git(p, 'config', 'user.name', 'itsmygithubacct')
         git(p, 'config', 'user.email', 'itsmygithubacct@users.noreply.github.com')
         (p / 'run').write_text('#!/bin/sh\nexit 0\n'); (p / 'run').chmod(0o755)
         links = {}
+        if gitmodules is not None:
+            (p / '.gitmodules').write_text(gitmodules)
+            git(p, 'add', '.gitmodules')
         if child:
             (p / '.gitmodules').write_text('[submodule "dep"]\n path = deps/child\n url = '+child['repository']+'\n')
             git(p, 'add', '.gitmodules'); git(p, 'update-index', '--add', '--cacheinfo', '160000,'+child['commit']+',deps/child')
@@ -61,6 +64,22 @@ class SourceCarrierTests(unittest.TestCase):
         (self.root/self.parent['bundle']).write_bytes(b'bad')
         with self.assertRaises(SourceCarrierError): self.materialize()
         self.assertFalse((self.root/'out').exists())
+
+    def test_empty_gitmodules_without_dependencies_is_valid(self):
+        node = self.make('empty-modules', gitmodules='')
+        self.write()
+        destination = self.root / 'empty-out'
+        Carrier(self.manifest, self.digest).materialize(node['repository'], node['commit'], destination)
+        self.assertEqual((destination / '.gitmodules').read_bytes(), b'')
+        self.assertEqual(git(destination, 'status', '--porcelain'), '')
+
+    def test_malformed_gitmodules_still_refused(self):
+        node = self.make('invalid-modules', gitmodules='[invalid\n')
+        self.write()
+        destination = self.root / 'invalid-out'
+        with self.assertRaises(SourceCarrierError):
+            Carrier(self.manifest, self.digest).materialize(node['repository'], node['commit'], destination)
+        self.assertFalse(destination.exists())
 
     def test_missing_dependency_and_cycle_refused(self):
         self.nodes.remove(self.child); self.write()
