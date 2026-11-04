@@ -14,8 +14,11 @@ class PDFPinTests(unittest.TestCase):
         root=Path(__file__).resolve().parents[1]
         before=json.loads(subprocess.check_output(['git','show','b54bc86936dc74017e6cb267b58f294b45af1221:src/kilix_content/catalog/plebian.json'],cwd=root))
         after=json.loads((root/'src/kilix_content/catalog/plebian.json').read_bytes())
-        self.assertEqual(len(after['assets']),38)
-        after=dict(after,assets=[asset for asset in after['assets'] if asset['id']!='basic-pitch-icassp-2022-onnx'])
+        self.assertEqual(len(after['assets']),39)
+        for document in (before, after):
+            document['assets']=[asset for asset in document['assets']
+                                if asset['id'] not in ('basic-pitch-icassp-2022-onnx',
+                                                       'lfm2-kilix-commands', 'lfm3-kilix-commands')]
         self.assertEqual(before['assets'],after['assets'])
         # Application actions can advance independently of model asset bytes.
         # The selected consumer pins and model assets above remain checked.

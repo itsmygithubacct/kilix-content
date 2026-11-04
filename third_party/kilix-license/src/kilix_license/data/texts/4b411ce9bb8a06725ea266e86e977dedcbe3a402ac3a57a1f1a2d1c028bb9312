@@ -1,0 +1,6 @@
+LFM3-1.7B for Kilix Ask, Plebian-OS 0.2.3 rc1.
+Official Liquid AI Q8_0 weights are redistributed unchanged; no Kilix fine-tuning has been performed.
+Model: LiquidAI/LFM3-1.7B, revision 0dc4268b561499c648c7ba7c9466bf3d8d01517a.
+GGUF: LiquidAI/LFM3-1.7B-GGUF, revision cd0c74c575b5c416f3011b5b4c298077f26ca8c2.
+Runtime: ggml-org/llama.cpp v0.8.0, revision 8642541b255bfb5dc39cd351a178be09013a55d6, CPU build.
+Local command proposals pass Kilix whole-request admission before confirmation or execution.

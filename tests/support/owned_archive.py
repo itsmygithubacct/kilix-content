@@ -1,6 +1,7 @@
 """Exact owned derivative selected for Ask; other model URLs stay upstream."""
 
-VERSIONS = {'lfm2-kilix-commands': 'lfm2-kilix-commands-20261023-v5',
+VERSIONS = {'lfm3-kilix-commands': 'lfm3-kilix-commands-20261103-v1',
+            'lfm2-kilix-commands': 'lfm2-kilix-commands-20261104-v8',
             'needle3-kilix-commands': 'needle3-kilix-commands-20261026-v9'}
 
 

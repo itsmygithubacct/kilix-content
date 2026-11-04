@@ -19,6 +19,9 @@ class DetectorPins(unittest.TestCase):
         before = json.loads(subprocess.check_output([
             'git', 'show', '9a1aa54c39d46794f94fe13d0408290d281f0753:src/kilix_content/catalog/plebian.json'], cwd=root))
         after = json.loads((root / 'src/kilix_content/catalog/plebian.json').read_bytes())
+        for document in (before, after):
+            document['assets'] = [asset for asset in document['assets']
+                                  if asset['id'] not in ('lfm2-kilix-commands', 'lfm3-kilix-commands')]
         self.assertEqual(before['assets'], after['assets'])
         for entry in before['content']:
             if entry['id'] in pins:

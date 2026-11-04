@@ -771,6 +771,7 @@ class AssetSpec:
     consumer_schema: str
     compatibility_minimum: int
     compatibility_maximum: int
+    storage: str = "flat"
 
     def to_mapping(self) -> dict[str, Any]:
         provenance = {
@@ -843,6 +844,7 @@ class AssetSpec:
             "source": source,
             "stream": self.stream,
             "version": self.version,
+            **({"storage": self.storage} if self.storage != "flat" else {}),
         }
 
     @property
@@ -853,6 +855,13 @@ class AssetSpec:
     def manifest_digest(self) -> str:
         payload = [item.to_mapping() for item in self.files]
         return hashlib.sha256(_canonical_json(payload)).hexdigest()
+
+    @property
+    def install_name(self) -> str:
+        """Resolve a selection without creating installer state."""
+        if self.storage == "versioned":
+            return self.asset_id + "--" + self.manifest_digest
+        return self.asset_id
 
     @property
     def source_url(self) -> str:
@@ -894,6 +903,7 @@ class AssetSpec:
                     "sizes",
                     "licenses",
                     "compatibility",
+                    "storage",
                 )
             ),
             "asset entry",
@@ -923,6 +933,9 @@ class AssetSpec:
         if not isinstance(stream, str) or not re.fullmatch(r"F[0-9]{3}", stream):
             raise CatalogError(f"{asset_id}.stream must be an FNNN identifier")
         version = _nonempty_text(raw["version"], f"{asset_id}.version", maximum=128)
+        storage = raw.get("storage", "flat")
+        if storage not in ("flat", "versioned"):
+            raise CatalogError(f"{asset_id}.storage must be flat or versioned")
         raw_files = raw["files"]
         if not isinstance(raw_files, list) or not raw_files:
             raise CatalogError(f"{asset_id}.files must be a non-empty array")
@@ -1027,13 +1040,13 @@ class AssetSpec:
                     "https://github.com/itsmygithubacct/kilix-voice/releases/download/kilix-female-02-epoch80/kilix-female-02.onnx",
                     "https://github.com/itsmygithubacct/kilix-voice/releases/download/kilix-female-02-epoch80/kilix-female-02.onnx.json",
                 })
-            if (asset_id == "lfm2-kilix-commands" and provider == "kilix-needle"
+            if (asset_id in ("lfm2-kilix-commands", "lfm3-kilix-commands") and provider == "kilix-needle"
                     and consumer_schema == "kilix.commands.model/v1"
                     and source_mode == "upstream-archive"
                     and licenses[0].license_id == "lfm-open-license-1.0"
                     and provenance_project == "itsmygithubacct/kilix-needle"
                     and re.fullmatch(r"[0-9a-f]{40}", provenance_revision)
-                    and re.fullmatch(r"lfm2-kilix-commands-[0-9]{8}-v[1-9][0-9]*", version)):
+                    and re.fullmatch(re.escape(asset_id) + r"-[0-9]{8}-v[1-9][0-9]*", version)):
                 owned_archive_url = ("https://github.com/itsmygithubacct/kilix-needle/releases/download/"
                                      + version + "/" + version + ".tar.gz")
             # The optional Needle 3 model is also a Kilix-trained derivative.
@@ -1356,6 +1369,7 @@ class AssetSpec:
             consumer_schema=consumer_schema,
             compatibility_minimum=compatibility_minimum,
             compatibility_maximum=compatibility_maximum,
+            storage=storage,
         )
 
 

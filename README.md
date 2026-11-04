@@ -137,6 +137,12 @@ modification notices and runtime source. It is installed through
 Other model assets retain their upstream-only source requirement. First-use
 consent and archive/member checksums apply to both derivatives.
 
+An asset can opt into `"storage": "versioned"` to keep each installed manifest
+in its own directory. Use `Installer.asset_destination(spec)` to resolve that
+directory. Upgrades preserve earlier bytes and receipts, and restoring an
+earlier catalog selects its earlier installation. A changed manifest still
+requires its own covering receipt; failed installs leave earlier versions intact.
+
 Model assets are normally fetched from upstream on first use, after their
 licence screen has been shown and a typed agreement recorded. On an air-gapped
 or metered machine, or when the same model is already installed on another
@@ -259,3 +265,14 @@ remain with Plebian-OS, the desktop provider, and each application.
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## Offline archive cache
+
+Upstream archives may be staged by the operating-system installer in
+`/usr/local/share/kilix/model-archives/<archive_sha256>`. The installer checks
+that file against the asset's exact archive size and SHA-256 and installs it
+through the normal manifest verification and atomic selection path. An absent
+entry falls back to the pinned download; a corrupt entry refuses installation.
+The cache creates no licence receipt and does not bypass agreement.
+`KILIX_CONTENT_ARCHIVE_CACHE` selects another cache directory (an empty value
+disables cache lookup). Old archive digests can coexist for rollback.

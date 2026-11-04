@@ -27,8 +27,11 @@ class BasicPitchAssetTests(unittest.TestCase):
             'notices/NOTICE-basic-pitch.txt':(1034,'b810e55c0e3b520fabb45fc2ccc74880187bf84e309971968541cc812dcde905')})
         before=json.loads(subprocess.check_output(['git','show','aa1d9d707685fb5a6b5c5c30e4155474a0800147:src/kilix_content/catalog/plebian.json'],cwd=ROOT))
         after=json.loads((ROOT/'src/kilix_content/catalog/plebian.json').read_bytes())
-        self.assertEqual(len(after['assets']),38)
-        after['assets']=[a for a in after['assets'] if a['id']!=ID]
+        self.assertEqual(len(after['assets']),39)
+        # Command-model releases have their own exact preservation contract.
+        for document in (before, after):
+            document['assets']=[a for a in document['assets']
+                                if a['id'] not in (ID, 'lfm2-kilix-commands', 'lfm3-kilix-commands')]
         # Asset receipts must survive unrelated application pin updates.
         # Exact app/catalog delta scope is audited separately in the handoff.
         self.assertEqual(before['assets'],after['assets'])

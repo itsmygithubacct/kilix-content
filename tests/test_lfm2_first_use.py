@@ -13,6 +13,7 @@ from kilix_content.first_use import install_with_agreement, needs_agreement, pre
 from kilix_content.install import Installer, InstallError
 from kilix_content.model import AssetSpec, CatalogError
 from kilix_license import load_determined_records, load_determined_texts, typed_agreement_line
+from kilix_license.errors import CoverageRefused
 
 ROOT=Path(__file__).resolve().parents[1]
 module_spec=importlib.util.spec_from_file_location('lfm2_asset_generator',ROOT/'tools/generate_upstream_records.py')
@@ -21,20 +22,22 @@ module_spec.loader.exec_module(generator)
 
 
 class LFM2FirstUseTests(unittest.TestCase):
+    asset_id = 'lfm2-kilix-commands'
+    notice_id = 'modified-model'
     def setUp(self):
         self.scratch=tempfile.TemporaryDirectory(prefix='kilix-lfm2-first-use-')
         self.addCleanup(self.scratch.cleanup)
         root=Path(self.scratch.name)
         self.records=load_determined_records()
-        self.record=self.records.by_id('lfm2-kilix-commands')
+        self.record=self.records.by_id(self.asset_id)
         self.texts=load_determined_texts(root/'texts')
         self.store=FakeStore(root/'fixture-receipts')
         self.installer=Installer(str(root/'installed'))
         self.supplied=root/'supplied';self.supplied.mkdir()
         model=b'non-executable fixture weights'
-        version='lfm2-kilix-commands-20261023-v1'
+        version=self.asset_id+'-20261103-v1'
         url='https://github.com/itsmygithubacct/kilix-needle/releases/download/'+version+'/'+version+'.tar.gz'
-        pin={'id':'lfm2-kilix-commands','license_record_id':'lfm2-kilix-commands',
+        pin={'id':self.asset_id,'license_record_id':self.asset_id,
              'provider':'kilix-needle','consumer_schema':'kilix.commands.model/v1',
              'version':version,'archive_url':url,'archive_bytes':1,'archive_sha256':'0'*64,
              'format':'tar','root':'fixture',
@@ -128,6 +131,66 @@ class LFM2FirstUseTests(unittest.TestCase):
         return install_with_agreement(self.spec,installer=self.installer,store=self.store,
             records=self.records,texts=self.texts,supplied=str(self.supplied),**kwargs)
 
+    def revised_model(self, payload=b'revised fixture weights'):
+        value = self.spec.to_mapping()
+        value['storage'] = 'versioned'
+        model = next(item for item in value['files'] if item['path'] == 'model.gguf')
+        delta = len(payload) - model['bytes']
+        model.update(bytes=len(payload), sha256=hashlib.sha256(payload).hexdigest())
+        value['sizes']['installed_bytes'] += delta
+        value['sizes']['temporary_bytes'] += delta
+        self.spec = AssetSpec.from_mapping(value)
+        (self.supplied/'model.gguf').write_bytes(payload)
+
+    def test_versioned_update_preserves_legacy_install_and_rollback(self):
+        old_spec = self.spec
+        self.install(typed_text=typed_agreement_line(self.record), screen=io.BytesIO())
+        old_path = Path(self.installer.asset_destination(old_spec))
+        original = (old_path/'model.gguf').read_bytes()
+        self.revised_model()
+        self.install(typed_text=typed_agreement_line(self.record), screen=io.BytesIO())
+        new_path = Path(self.installer.asset_destination(self.spec))
+        self.assertNotEqual(old_path, new_path)
+        self.assertEqual((old_path/'model.gguf').read_bytes(), original)
+        self.assertEqual((new_path/'model.gguf').read_bytes(), (self.supplied/'model.gguf').read_bytes())
+        # Rolling back the catalog reselects the old verified bytes and receipt.
+        selected = self.installer.ensure_supplied_asset(old_spec, supplied='not-read',
+            store=self.store, records=self.records, notices=self.texts)
+        self.assertEqual(selected, (str(old_path),))
+
+    def test_versioned_update_requires_its_own_manifest_receipt(self):
+        self.install(typed_text=typed_agreement_line(self.record), screen=io.BytesIO())
+        old_path = Path(self.installer.asset_destination(self.spec))
+        self.revised_model()
+        self.assertTrue(needs_agreement(self.spec, records=self.records, store=self.store))
+        with self.assertRaises(CoverageRefused):
+            self.installer.ensure_supplied_asset(self.spec, supplied=str(self.supplied),
+                store=self.store, records=self.records, notices=self.texts)
+        self.assertTrue(old_path.is_dir())
+        self.assertFalse(Path(self.installer.asset_destination(self.spec)).exists())
+
+    def test_failed_versioned_install_preserves_previous_revision(self):
+        self.revised_model(b'first versioned fixture')
+        old_spec = self.spec
+        self.install(typed_text=typed_agreement_line(self.record), screen=io.BytesIO())
+        old_path = Path(self.installer.asset_destination(old_spec))
+        original = (old_path/'model.gguf').read_bytes()
+        self.revised_model(b'second versioned fixture')
+        (self.supplied/'model.gguf').write_bytes(b'corrupt replacement')
+        with self.assertRaises(InstallError):
+            self.install(typed_text=typed_agreement_line(self.record), screen=io.BytesIO())
+        self.assertFalse(Path(self.installer.asset_destination(self.spec)).exists())
+        self.assertEqual((old_path/'model.gguf').read_bytes(), original)
+
+    def test_versioned_storage_round_trips_and_refuses_unknown_layout(self):
+        self.revised_model()
+        value = self.spec.to_mapping()
+        self.assertEqual(value['storage'], 'versioned')
+        self.assertEqual(AssetSpec.from_mapping(value), self.spec)
+        value['storage'] = '../elsewhere'
+        with self.assertRaises(CatalogError):
+            AssetSpec.from_mapping(value)
+
     def test_full_terms_and_modification_notice_are_displayed_before_agreement(self):
         screen=present_asset(self.spec,self.record,self.texts,receipts=self.store,
                              records=self.records,supplied=self.supplied)
@@ -135,7 +198,7 @@ class LFM2FirstUseTests(unittest.TestCase):
         self.assertIn(b'Commercial Use Limitation',screen)
         self.assertIn(b'Liquid',screen)
         self.assertIn(self.texts.get(next(s.text_sha256 for s in self.record.statements
-                                        if s.id=='modified-model')),screen)
+                                        if s.id==self.notice_id)),screen)
         self.assertTrue(needs_agreement(self.spec,records=self.records,store=self.store))
         self.assertIsNone(self.install(typed_text=None,decline=True,screen=io.BytesIO()))
         self.assertEqual(list(self.store.root.glob('*.json')),[])
@@ -173,3 +236,8 @@ class LFM2FirstUseTests(unittest.TestCase):
             target[keys[-1]]=value
             with self.subTest(keys=keys,value=value),self.assertRaises(CatalogError):
                 AssetSpec.from_mapping(mapping)
+
+
+class LFM3FirstUseTests(LFM2FirstUseTests):
+    asset_id = "lfm3-kilix-commands"
+    notice_id = "upstream-model"
