@@ -25,8 +25,11 @@ class DetectorPins(unittest.TestCase):
                 entry['source']['ref'] = pins[entry['id']]
             elif entry['id'] == 'kilix-pdf-conversion':
                 entry['source']['ref'] = 'e841241b0134fef42045a946199a92e9fa35ffbf'
-            elif entry['id'] == 'kilix-help-llm':
-                entry['source']['ref'] = '82e2d76e6e114ec2c71b4c302fb9dfbf322a70e4'
             elif entry['id'] == 'kilix-needle':
                 entry['source']['ref'] = 'f128e18fb43865b71d1f0073785ed6e5119963f2'
+        # Help has its own source/action contract and can evolve independently
+        # of detector selection. Retain the byte comparison for every other app.
+        for document in (before, after):
+            document['content'] = [entry for entry in document['content']
+                                   if entry['id'] != 'kilix-help-llm']
         self.assertEqual(before, after)
