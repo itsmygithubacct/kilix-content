@@ -1213,6 +1213,29 @@
       }
     },
     {
+      "id": "kilix-power-controls",
+      "label": "Power Controls",
+      "kind": "app",
+      "icon": "system",
+      "description": "Kilix power preferences, display power, dimming, battery and shared Screen Lock settings.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-power-controls",
+        "ref": "6558f802e24ff553317b9936493ca9abca3312b4"
+      },
+      "binary": "kilix-power-controls",
+      "dependency_hint": "needs Python 3, Tk, python3-dbus, xfconf and the Pleb Screen Lock settings module",
+      "capabilities": [
+        "x11-app",
+        "session-read",
+        "session-write"
+      ],
+      "launch": {
+        "mode": "xpane",
+        "preferred_size": "1000x720"
+      }
+    },
+    {
       "id": "kilix-amp",
       "label": "Kilix Amp",
       "kind": "app",
