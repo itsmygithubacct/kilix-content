@@ -6,7 +6,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-tui-utils",
-        "ref": "61a514f536a804d82f20bda7e65c7bf3145a229a"
+        "ref": "b6321de94371029b40955e606d371fca83657d6f"
       },
       "build": [
         "make",
@@ -1291,7 +1291,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-pdf-conversion",
-        "ref": "07ee29296e1c0c3fc2a8e4899a53c1098e96b05d"
+        "ref": "31d879ded79e87dceaf0359f61b012e3be2597f3"
       },
       "binary": "kilix-pdf",
       "build": [
@@ -1354,7 +1354,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-nvr",
-        "ref": "cad35fe21031dcc1f9784357bfeeec92d0328634"
+        "ref": "0092d5cbec4a78bb2a31b5c66532d43063723cce"
       },
       "binary": "build/kilix-nvr",
       "build": [
@@ -1378,7 +1378,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-object-detect",
-        "ref": "0207a8ca4b6d2aa92d5c90eecc2c120940eeb819"
+        "ref": "af65eee3577a833e9c6f288bb14a7bf874a2e1ab"
       },
       "binary": "build/kilix-look",
       "build": [
@@ -1622,7 +1622,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-needle",
-        "ref": "de68eff0174fed8c349580e61bb4b14d1bdef3e2"
+        "ref": "0e3c6fb7c78fdab6653cabc631ab9c5bbfa82222"
       },
       "binary": "kilix-needle",
       "build": [
@@ -1722,7 +1722,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-help-llm",
-        "ref": "c4bf4367a23fffef6efa941550baf8603424fb2c"
+        "ref": "e7bb1fc81ba68900fe726562d8f83b2ad4c57869"
       },
       "binary": "kilix-help-llm",
       "build": [
