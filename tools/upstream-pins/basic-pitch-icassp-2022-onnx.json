@@ -1,0 +1,24 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "basic-pitch-icassp-2022-onnx",
+  "mode": "upstream-files",
+  "license_record_id": "basic-pitch-icassp-2022-onnx",
+  "provider": "kilix-playalong",
+  "consumer_schema": "kilix.playalong.basic-pitch/v1",
+  "version": "9991303bba609a3b93089d13ec80d1d495083596",
+  "label": "Basic Pitch ICASSP 2022 (unchanged upstream ONNX)",
+  "provenance": {
+    "project": "spotify/basic-pitch",
+    "revision": "9991303bba609a3b93089d13ec80d1d495083596",
+    "original_url": "https://raw.githubusercontent.com/spotify/basic-pitch/9991303bba609a3b93089d13ec80d1d495083596/basic_pitch/saved_models/icassp_2022/nmp.onnx"
+  },
+  "members": [
+    {
+      "path": "models/nmp.onnx",
+      "url": "https://raw.githubusercontent.com/spotify/basic-pitch/9991303bba609a3b93089d13ec80d1d495083596/basic_pitch/saved_models/icassp_2022/nmp.onnx",
+      "bytes": 230444,
+      "sha256": "2c3c1d144bfa61ad236e92e169c13535c880469a12a047d4e73451f2c059a0ec"
+    }
+  ],
+  "provenance_scope": "Exact upstream 0.4.0 ONNX bytes, also in released wheel; no local conversion. Original conversion command/operator/checkpoint digest unestablished. Python/runtime wheels and audio datasets outside this asset."
+}

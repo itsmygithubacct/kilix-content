@@ -1,0 +1,37 @@
+{
+  "schema": "kilix.license.basic-pitch-determination/v1",
+  "authority": {
+    "repository": "https://github.com/spotify/basic-pitch",
+    "revision": "9991303bba609a3b93089d13ec80d1d495083596",
+    "model_path": "basic_pitch/saved_models/icassp_2022/nmp.onnx",
+    "model_blob": "c30e5f9438e798604b7177aa26be1fe64482f767",
+    "model_bytes": 230444,
+    "model_sha256": "2c3c1d144bfa61ad236e92e169c13535c880469a12a047d4e73451f2c059a0ec",
+    "licence_sha256": "929c910bae2152fa87199a5d0660e09263419b7eee6d4b301d05ee2aaf211c37",
+    "notice_sha256": "b810e55c0e3b520fabb45fc2ccc74880187bf84e309971968541cc812dcde905",
+    "scope": "Unchanged upstream ONNX file plus original LICENSE and full NOTICE only. Python/runtime dependencies and audio datasets are not included. No local conversion claim.",
+    "unproved": "Exact upstream conversion command, operator identity and source-checkpoint digest remain unestablished."
+  },
+  "records": [
+    {
+      "schema": "kilix.license.record/v1",
+      "id": "basic-pitch-icassp-2022-onnx",
+      "licensor": "Spotify AB",
+      "licence_ids": [
+        "Apache-2.0"
+      ],
+      "licence_text_id": "github.com/spotify/basic-pitch/LICENSE",
+      "text_sha256": "929c910bae2152fa87199a5d0660e09263419b7eee6d4b301d05ee2aaf211c37",
+      "decision_class": "affirmative",
+      "advisories": [],
+      "binding_conditions": [],
+      "components": [],
+      "statements": [
+        {
+          "id": "upstream-notice",
+          "text_sha256": "b810e55c0e3b520fabb45fc2ccc74880187bf84e309971968541cc812dcde905"
+        }
+      ]
+    }
+  ]
+}

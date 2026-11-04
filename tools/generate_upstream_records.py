@@ -66,9 +66,11 @@ PIN_NAMES = (
     # fine-tuned model, and the checkpoint and tokenizer fine-tuning starts from.
     "needle2-runtime.json",
     "needle2-train.json",
+    "basic-pitch-icassp-2022-onnx.json",
 )
 
 LICENSORS = {
+    "basic-pitch-icassp-2022-onnx": ["Spotify AB"],
     "needle3-kilix-commands": ["Cactus Compute, Inc.", "needle-rs contributors"],
     "lfm2-kilix-commands": ["Liquid AI, Inc.", "ggml and bundled runtime contributors"],
     'kilix-diarization-cpu':['IIC / Alibaba Cloud','pyannote contributors','sherpa-onnx contributors','Microsoft and bundled runtime contributors'],
@@ -182,6 +184,10 @@ def notice_file(record) -> dict[str, object]:
 
 def notice_files(record) -> list[dict[str, object]]:
     files = [notice_file(record)]
+    if record.id == "basic-pitch-icassp-2022-onnx":
+        notice = next(s for s in record.statements if s.id == "upstream-notice")
+        files.append(notice_blob(notice.text_sha256, "notices/NOTICE-basic-pitch.txt", record.id))
+        return files
     if record.id == 'needle3-kilix-commands':
         runtime = next(x for x in record.components if x.id == 'cached-runtime')
         files.append(notice_blob(runtime.exception_text_sha256, 'notices/LICENSE-runtime.txt', record.id))
