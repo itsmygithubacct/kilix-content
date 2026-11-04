@@ -183,3 +183,82 @@ class SourceCarrierTests(unittest.TestCase):
         self.assertEqual(executable.read_bytes(),old_bytes)
         self.assertEqual(git(executable.parent,'rev-parse','HEAD'),old_commit)
         self.assertEqual(installer.ensure(spec),str(executable))
+
+    def named_ref_fixture(self):
+        repo=self.root/'parent'
+        git(repo,'tag','-a','v0.2.3-rc1','-m','Public carrier ref fixture')
+        tag=git(repo,'rev-parse','refs/tags/v0.2.3-rc1')
+        bundle=self.root/self.parent['bundle'];bundle.unlink()
+        git(repo,'bundle','create',str(bundle),'--all');raw=bundle.read_bytes()
+        self.parent.update(bytes=len(raw),sha256=hashlib.sha256(raw).hexdigest(),refs={'refs/tags/v0.2.3-rc1':{'object':tag,'type':'tag'}})
+        self.write()
+        return tag
+
+    def test_declared_annotated_tag_is_fetchable_with_exact_object_and_commit(self):
+        tag=self.named_ref_fixture();config=Carrier(self.manifest,self.digest).prepare_git(self.root/'pool')
+        env={k:v for k,v in os.environ.items() if not k.startswith('GIT_')}
+        env.update(GIT_CONFIG_GLOBAL=config,GIT_CONFIG_NOSYSTEM='1',GIT_ALLOW_PROTOCOL='file',GIT_TERMINAL_PROMPT='0')
+        destination=self.root/'fetch';destination.mkdir();git(destination,'init','-q');git(destination,'remote','add','origin',self.parent['repository'])
+        fetched=subprocess.run(['git','-C',str(destination),'fetch','--quiet','origin','refs/tags/v0.2.3-rc1'],env=env,capture_output=True,text=True)
+        self.assertEqual(fetched.returncode,0,fetched.stderr)
+        self.assertEqual(git(destination,'rev-parse','FETCH_HEAD'),tag)
+        self.assertEqual(git(destination,'cat-file','-t','FETCH_HEAD'),'tag')
+        self.assertEqual(git(destination,'rev-parse','FETCH_HEAD^{commit}'),self.parent['commit'])
+
+    def test_declared_refs_refuse_wrong_object_target_and_unsafe_namespace(self):
+        self.named_ref_fixture()
+        for name,binding in [('refs/replace/unsafe',{'object':self.parent['commit'],'type':'commit'}),('refs/tags/../escape',{'object':self.parent['commit'],'type':'commit'}),('refs/tags/bad',{'object':self.child['commit'],'type':'commit'}),('refs/heads/tag-as-branch',self.parent['refs']['refs/tags/v0.2.3-rc1'])]:
+            self.parent['refs']={name:binding};self.write()
+            with self.subTest(ref=name),self.assertRaises(SourceCarrierError):self.materialize()
+            self.assertFalse((self.root/'out').exists())
+
+    def test_annotated_tag_target_cannot_differ_from_declared_commit(self):
+        self.named_ref_fixture();repo=self.root/'parent'
+        git(repo,'commit','--allow-empty','-qm','Another source commit')
+        self.parent['commit']=git(repo,'rev-parse','HEAD')
+        bundle=self.root/self.parent['bundle'];bundle.unlink();git(repo,'bundle','create',str(bundle),'--all')
+        raw=bundle.read_bytes();self.parent.update(bytes=len(raw),sha256=hashlib.sha256(raw).hexdigest());self.write()
+        with self.assertRaisesRegex(SourceCarrierError,'tag name or target mismatch'):self.materialize()
+        self.assertFalse((self.root/'out').exists())
+
+    def test_declared_lightweight_tag_and_branch_preserve_raw_commit(self):
+        self.parent['refs'] = {name: {'object': self.parent['commit'], 'type': 'commit'}
+                               for name in ('refs/tags/release', 'refs/heads/release')}
+        self.write()
+        Carrier(self.manifest,self.digest).prepare_git(self.root/'pool')
+        bare = self.root/'pool/repositories'/(
+            hashlib.sha256(self.parent['repository'].removesuffix('.git').encode()).hexdigest()+'.git')
+        for name in self.parent['refs']:
+            self.assertEqual(git(bare,'rev-parse',name), self.parent['commit'])
+            self.assertEqual(git(bare,'cat-file','-t',name), 'commit')
+
+    def test_undeclared_bundle_tag_is_not_exposed_in_pool(self):
+        self.named_ref_fixture()
+        del self.parent['refs']
+        self.write()
+        Carrier(self.manifest,self.digest).prepare_git(self.root/'pool')
+        bare = self.root/'pool/repositories'/(
+            hashlib.sha256(self.parent['repository'].removesuffix('.git').encode()).hexdigest()+'.git')
+        self.assertEqual(git(bare,'for-each-ref','--format=%(refname)','refs/tags'), '')
+
+    def test_same_canonical_repository_ref_cannot_bind_different_commits(self):
+        self.parent['refs'] = {'refs/heads/release': {'object':self.parent['commit'], 'type':'commit'}}
+        other = dict(self.parent, repository=self.parent['repository'].removesuffix('.git'),
+                     commit=self.child['commit'], gitlinks={},
+                     refs={'refs/heads/release': {'object':self.child['commit'], 'type':'commit'}})
+        self.nodes.append(other)
+        self.write()
+        with self.assertRaisesRegex(SourceCarrierError,'conflicting named ref'):
+            Carrier(self.manifest,self.digest)
+
+    def test_named_ref_wrong_raw_type_and_annotated_tag_name_refuse(self):
+        tag = self.named_ref_fixture()
+        for name, binding in [
+                ('refs/tags/v0.2.3-rc1', {'object':self.parent['commit'], 'type':'tag'}),
+                ('refs/tags/another-name', {'object':tag, 'type':'tag'}),
+                ('refs/tags/missing', {'object':'0'*40, 'type':'commit'})]:
+            self.parent['refs'] = {name:binding}
+            self.write()
+            with self.subTest(ref=name), self.assertRaises(SourceCarrierError):
+                Carrier(self.manifest,self.digest).prepare_git(self.root/'pool')
+            self.assertFalse((self.root/'pool').exists())

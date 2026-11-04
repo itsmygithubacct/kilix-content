@@ -110,6 +110,7 @@ class Carrier:
         if data.get('schema') != 'kilix.source-carrier/v1' or not isinstance(data.get('nodes'), list):
             raise SourceCarrierError('unsupported source manifest')
         self.nodes = {}
+        declared_refs = {}
         if not 0 < len(data['nodes']) <= 4096:
             raise SourceCarrierError('invalid source node count')
         for node in data['nodes']:
@@ -130,6 +131,22 @@ class Carrier:
                 _repository(child['repository'])
                 if not _hex(child['commit'], 40):
                     raise SourceCarrierError('invalid dependency identity')
+            refs = node.get('refs', {})
+            if not isinstance(refs, dict) or len(refs) > 256:
+                raise SourceCarrierError('invalid named ref map')
+            for ref, binding in refs.items():
+                if not isinstance(ref, str) or not re.fullmatch(r'refs/(heads|tags)/[A-Za-z0-9][A-Za-z0-9._/-]*', ref):
+                    raise SourceCarrierError('unsafe named ref namespace')
+                _relative(ref)
+                if (not isinstance(binding, dict) or set(binding) != {'object', 'type'}
+                        or not _hex(binding['object'], 40) or binding['type'] not in ('commit', 'tag')
+                        or (ref.startswith('refs/heads/') and binding['type'] != 'commit')):
+                    raise SourceCarrierError('invalid named ref binding')
+                ref_key = (key[0], ref)
+                identity = (binding['object'], binding['type'], node['commit'])
+                if ref_key in declared_refs and declared_refs[ref_key] != identity:
+                    raise SourceCarrierError('conflicting named ref bindings')
+                declared_refs[ref_key] = identity
             self.nodes[key] = node
         visited = set()
         def visit(key, ancestors):
@@ -180,6 +197,20 @@ class Carrier:
             raise SourceCarrierError('declared source tree is not a raw tree')
         if _git(destination, 'rev-parse', node['commit'] + '^{tree}').decode().strip() != node['tree']:
             raise SourceCarrierError('source tree mismatch')
+        for ref, binding in node.get('refs', {}).items():
+            _git(destination, 'check-ref-format', ref)
+            if _git(destination, 'cat-file', '-t', binding['object']).decode().strip() != binding['type']:
+                raise SourceCarrierError('named ref raw object type mismatch')
+            if binding['type'] == 'commit':
+                if binding['object'] != node['commit']:
+                    raise SourceCarrierError('named ref points at a different commit')
+            else:
+                header = _git(destination, 'cat-file', 'tag', binding['object']).split(b'\n\n', 1)[0].splitlines()
+                expected = [b'object ' + node['commit'].encode(), b'type commit',
+                            b'tag ' + ref.removeprefix('refs/tags/').encode()]
+                if header[:3] != expected or _git(destination, 'rev-parse', binding['object'] + '^{commit}').decode().strip() != node['commit']:
+                    raise SourceCarrierError('annotated tag name or target mismatch')
+            _git(destination, 'update-ref', ref, binding['object'])
         entries = {}
         for line in _git(destination, 'ls-tree', '-rz', node['commit']).split(b'\0'):
             if not line:
@@ -281,7 +312,11 @@ class Carrier:
                 if not bare.exists():
                     bare.mkdir(parents=True); _git(bare, 'init', '--bare', '--quiet')
                 branch = 'refs/heads/offline/' + node['commit']
-                _git(bare, 'fetch', '--quiet', str(checkout / '.git'), node['commit'] + ':' + branch)
+                _git(bare, 'fetch', '--quiet', '--no-tags', str(checkout / '.git'), node['commit'] + ':' + branch)
+                for ref, binding in node.get('refs', {}).items():
+                    _git(bare, 'fetch', '--quiet', '--no-tags', str(checkout / '.git'), ref + ':' + ref)
+                    if _git(bare, 'rev-parse', '--verify', ref).decode().strip() != binding['object']:
+                        raise SourceCarrierError('named ref transfer changed its object')
                 if key[0] not in repositories:
                     _git(bare, 'symbolic-ref', 'HEAD', branch)
                     repositories[key[0]] = relative
