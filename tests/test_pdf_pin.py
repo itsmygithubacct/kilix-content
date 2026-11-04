@@ -12,7 +12,8 @@ class PDFPinTests(unittest.TestCase):
         root=Path(__file__).resolve().parents[1]
         before=json.loads(subprocess.check_output(['git','show','b54bc86936dc74017e6cb267b58f294b45af1221:src/kilix_content/catalog/plebian.json'],cwd=root))
         after=json.loads((root/'src/kilix_content/catalog/plebian.json').read_bytes())
-        self.assertEqual(len(after['assets']),37)
+        self.assertEqual(len(after['assets']),38)
+        after=dict(after,assets=[asset for asset in after['assets'] if asset['id']!='basic-pitch-icassp-2022-onnx'])
         self.assertEqual(before['assets'],after['assets'])
         for entry in before['content']:
             if entry['id']=='kilix-pdf-conversion':

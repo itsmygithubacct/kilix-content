@@ -6057,6 +6057,66 @@
       },
       "stream": "F104",
       "version": "32e9e3a93b205f786929697446ae669cf0a84579"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.playalong.basic-pitch/v1",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 230444,
+          "path": "models/nmp.onnx",
+          "sha256": "2c3c1d144bfa61ad236e92e169c13535c880469a12a047d4e73451f2c059a0ec"
+        },
+        {
+          "bytes": 11384,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "929c910bae2152fa87199a5d0660e09263419b7eee6d4b301d05ee2aaf211c37"
+        },
+        {
+          "bytes": 1034,
+          "path": "notices/NOTICE-basic-pitch.txt",
+          "sha256": "b810e55c0e3b520fabb45fc2ccc74880187bf84e309971968541cc812dcde905"
+        }
+      ],
+      "id": "basic-pitch-icassp-2022-onnx",
+      "label": "Basic Pitch ICASSP 2022 (unchanged upstream ONNX)",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "Spotify AB"
+          ],
+          "record_digest": "a8cc74373dbede9e3cafe736f14f171a58f78adb937fb5375b5179584acd0484",
+          "text_sha256": "929c910bae2152fa87199a5d0660e09263419b7eee6d4b301d05ee2aaf211c37"
+        }
+      ],
+      "provider": "kilix-playalong",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 230444,
+        "installed_bytes": 242862,
+        "temporary_bytes": 242862
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "models/nmp.onnx",
+            "url": "https://raw.githubusercontent.com/spotify/basic-pitch/9991303bba609a3b93089d13ec80d1d495083596/basic_pitch/saved_models/icassp_2022/nmp.onnx"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "spotify/basic-pitch",
+          "revision": "9991303bba609a3b93089d13ec80d1d495083596",
+          "original_url": "https://raw.githubusercontent.com/spotify/basic-pitch/9991303bba609a3b93089d13ec80d1d495083596/basic_pitch/saved_models/icassp_2022/nmp.onnx"
+        }
+      },
+      "stream": "F104",
+      "version": "9991303bba609a3b93089d13ec80d1d495083596"
     }
   ]
 }
