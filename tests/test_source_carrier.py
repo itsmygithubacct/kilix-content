@@ -137,3 +137,15 @@ class SourceCarrierTests(unittest.TestCase):
         original.write_bytes(raw);self.parent['bundle']=original.name
         self.parent['bytes']=len(raw);self.parent['sha256']=hashlib.sha256(raw).hexdigest();self.write()
         with self.assertRaises(SourceCarrierError): self.materialize()
+
+    def test_foreign_owned_pool_guard_is_scoped_to_exact_repositories(self):
+        config=Path(Carrier(self.manifest,self.digest).prepare_git(self.root/'pool'))
+        env={k:v for k,v in os.environ.items() if not k.startswith('GIT_')}
+        env.update(GIT_CONFIG_GLOBAL=str(config),GIT_CONFIG_NOSYSTEM='1',GIT_ALLOW_PROTOCOL='file',GIT_TERMINAL_PROMPT='0',GIT_TEST_ASSUME_DIFFERENT_OWNER='1')
+        untrusted=self.root/'untrusted-config';untrusted.write_bytes(config.read_bytes())
+        subprocess.run(['git','config','--file',str(untrusted),'--unset-all','safe.directory'],check=True)
+        denied=subprocess.run(['git','clone','--quiet',self.parent['repository'],str(self.root/'denied')],env=dict(env,GIT_CONFIG_GLOBAL=str(untrusted)),capture_output=True)
+        self.assertNotEqual(denied.returncode,0)
+        self.assertIn(b'dubious ownership',denied.stderr)
+        accepted=subprocess.run(['git','clone','--quiet','--recurse-submodules',self.parent['repository'],str(self.root/'accepted')],env=env,capture_output=True)
+        self.assertEqual(accepted.returncode,0,accepted.stderr)

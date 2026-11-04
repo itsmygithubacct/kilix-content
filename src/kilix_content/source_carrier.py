@@ -280,6 +280,8 @@ class Carrier:
                 shutil.rmtree(checkout)
             for repository, relative in repositories.items():
                 url = (destination / relative).as_uri()
+                # Provisioning creates a root-owned read-only pool for target-user Git.
+                _git(stage, 'config', '--file', str(config), '--add', 'safe.directory', str(destination / relative))
                 for canonical in (repository, repository + '.git'):
                     _git(stage, 'config', '--file', str(config), '--add', 'url.' + url + '.insteadOf', canonical)
             _git(stage, 'config', '--file', str(config), 'protocol.file.allow', 'always')
