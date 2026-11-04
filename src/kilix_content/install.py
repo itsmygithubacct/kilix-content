@@ -1179,7 +1179,10 @@ class Installer:
     def asset_destination(self, spec: AssetSpec) -> str:
         asset_id = spec.asset_id
         parent = os.path.join(self.root, "assets")
-        destination = os.path.abspath(os.path.join(parent, asset_id))
+        # New immutable revisions can coexist with an earlier selection. The
+        # manifest binds every installed byte, including the required notices;
+        # source/catalog rollback selects its previous directory directly.
+        destination = os.path.abspath(os.path.join(parent, spec.install_name))
         if os.path.dirname(destination) != os.path.abspath(parent):
             raise InstallError(f"asset id is not a safe path component: {asset_id!r}")
         return destination

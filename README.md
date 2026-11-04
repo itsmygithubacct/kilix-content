@@ -137,6 +137,12 @@ modification notices and runtime source. It is installed through
 Other model assets retain their upstream-only source requirement. First-use
 consent and archive/member checksums apply to both derivatives.
 
+An asset can opt into `"storage": "versioned"` to keep each installed manifest
+in its own directory. Use `Installer.asset_destination(spec)` to resolve that
+directory. Upgrades preserve earlier bytes and receipts, and restoring an
+earlier catalog selects its earlier installation. A changed manifest still
+requires its own covering receipt; failed installs leave earlier versions intact.
+
 Model assets are normally fetched from upstream on first use, after their
 licence screen has been shown and a typed agreement recorded. On an air-gapped
 or metered machine, or when the same model is already installed on another

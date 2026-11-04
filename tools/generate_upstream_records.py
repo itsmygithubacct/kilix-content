@@ -294,6 +294,7 @@ def build_archive_asset(pin: dict) -> dict:
         },
         "stream": "F104",
         "version": pin["version"],
+        **({"storage": pin["storage"]} if "storage" in pin else {}),
     }
 
 

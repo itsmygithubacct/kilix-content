@@ -13,6 +13,7 @@ from kilix_content.first_use import install_with_agreement, needs_agreement, pre
 from kilix_content.install import Installer, InstallError
 from kilix_content.model import AssetSpec, CatalogError
 from kilix_license import load_determined_records, load_determined_texts, typed_agreement_line
+from kilix_license.errors import CoverageRefused
 
 ROOT=Path(__file__).resolve().parents[1]
 module_spec=importlib.util.spec_from_file_location('lfm2_asset_generator',ROOT/'tools/generate_upstream_records.py')
@@ -129,6 +130,66 @@ class LFM2FirstUseTests(unittest.TestCase):
     def install(self,**kwargs):
         return install_with_agreement(self.spec,installer=self.installer,store=self.store,
             records=self.records,texts=self.texts,supplied=str(self.supplied),**kwargs)
+
+    def revised_model(self, payload=b'revised fixture weights'):
+        value = self.spec.to_mapping()
+        value['storage'] = 'versioned'
+        model = next(item for item in value['files'] if item['path'] == 'model.gguf')
+        delta = len(payload) - model['bytes']
+        model.update(bytes=len(payload), sha256=hashlib.sha256(payload).hexdigest())
+        value['sizes']['installed_bytes'] += delta
+        value['sizes']['temporary_bytes'] += delta
+        self.spec = AssetSpec.from_mapping(value)
+        (self.supplied/'model.gguf').write_bytes(payload)
+
+    def test_versioned_update_preserves_legacy_install_and_rollback(self):
+        old_spec = self.spec
+        self.install(typed_text=typed_agreement_line(self.record), screen=io.BytesIO())
+        old_path = Path(self.installer.asset_destination(old_spec))
+        original = (old_path/'model.gguf').read_bytes()
+        self.revised_model()
+        self.install(typed_text=typed_agreement_line(self.record), screen=io.BytesIO())
+        new_path = Path(self.installer.asset_destination(self.spec))
+        self.assertNotEqual(old_path, new_path)
+        self.assertEqual((old_path/'model.gguf').read_bytes(), original)
+        self.assertEqual((new_path/'model.gguf').read_bytes(), (self.supplied/'model.gguf').read_bytes())
+        # Rolling back the catalog reselects the old verified bytes and receipt.
+        selected = self.installer.ensure_supplied_asset(old_spec, supplied='not-read',
+            store=self.store, records=self.records, notices=self.texts)
+        self.assertEqual(selected, (str(old_path),))
+
+    def test_versioned_update_requires_its_own_manifest_receipt(self):
+        self.install(typed_text=typed_agreement_line(self.record), screen=io.BytesIO())
+        old_path = Path(self.installer.asset_destination(self.spec))
+        self.revised_model()
+        self.assertTrue(needs_agreement(self.spec, records=self.records, store=self.store))
+        with self.assertRaises(CoverageRefused):
+            self.installer.ensure_supplied_asset(self.spec, supplied=str(self.supplied),
+                store=self.store, records=self.records, notices=self.texts)
+        self.assertTrue(old_path.is_dir())
+        self.assertFalse(Path(self.installer.asset_destination(self.spec)).exists())
+
+    def test_failed_versioned_install_preserves_previous_revision(self):
+        self.revised_model(b'first versioned fixture')
+        old_spec = self.spec
+        self.install(typed_text=typed_agreement_line(self.record), screen=io.BytesIO())
+        old_path = Path(self.installer.asset_destination(old_spec))
+        original = (old_path/'model.gguf').read_bytes()
+        self.revised_model(b'second versioned fixture')
+        (self.supplied/'model.gguf').write_bytes(b'corrupt replacement')
+        with self.assertRaises(InstallError):
+            self.install(typed_text=typed_agreement_line(self.record), screen=io.BytesIO())
+        self.assertFalse(Path(self.installer.asset_destination(self.spec)).exists())
+        self.assertEqual((old_path/'model.gguf').read_bytes(), original)
+
+    def test_versioned_storage_round_trips_and_refuses_unknown_layout(self):
+        self.revised_model()
+        value = self.spec.to_mapping()
+        self.assertEqual(value['storage'], 'versioned')
+        self.assertEqual(AssetSpec.from_mapping(value), self.spec)
+        value['storage'] = '../elsewhere'
+        with self.assertRaises(CatalogError):
+            AssetSpec.from_mapping(value)
 
     def test_full_terms_and_modification_notice_are_displayed_before_agreement(self):
         screen=present_asset(self.spec,self.record,self.texts,receipts=self.store,
