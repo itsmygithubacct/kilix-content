@@ -1301,18 +1301,37 @@ class Installer:
         partial_dir = os.path.join(os.path.dirname(self.asset_destination(spec)), ".partial", spec.digest)
         if spec.source_mode == "upstream-archive":
             archive_path = os.path.join(stage, ".download")
-            report(f"fetching {spec.asset_id} …")
-            fetch_exact(
-                spec.url,
-                archive_path,
-                expected_bytes=spec.archive_bytes,
-                expected_sha256=spec.archive_sha256,
-                deadline=deadline,
-                cancelled=cancelled,
-                progress=progress,
-                partial_dir=partial_dir,
-                installed_bytes=spec.installed_bytes,
-            )
+            cache = self.env.get("KILIX_CONTENT_ARCHIVE_CACHE", "/usr/local/share/kilix/model-archives")
+            cached = os.path.join(cache, spec.archive_sha256) if cache else ""
+            if cached and os.path.lexists(cached):
+                # Called only after the same licence coverage gate as a fetch.
+                # Hold the verified descriptor: a path replacement cannot
+                # substitute other bytes between verification and copying.
+                report(f"verifying cached {spec.asset_id} …")
+                with SuppliedFile.open_beneath(cache, spec.archive_sha256) as supplied:
+                    if supplied.bytes != spec.archive_bytes or supplied.sha256 != spec.archive_sha256:
+                        raise InstallError(f"cached archive size or checksum mismatch: {spec.asset_id}")
+                    if cancelled is not None and cancelled():
+                        raise InstallError("cached archive installation cancelled")
+                    supplied.copy_to(archive_path)
+                    supplied.revalidate()
+                # Validate the copy too, including concurrent in-place writes.
+                with SuppliedFile.open(archive_path) as staged:
+                    if staged.bytes != spec.archive_bytes or staged.sha256 != spec.archive_sha256:
+                        raise InstallError(f"cached archive changed while copying: {spec.asset_id}")
+            else:
+                report(f"fetching {spec.asset_id} …")
+                fetch_exact(
+                    spec.url,
+                    archive_path,
+                    expected_bytes=spec.archive_bytes,
+                    expected_sha256=spec.archive_sha256,
+                    deadline=deadline,
+                    cancelled=cancelled,
+                    progress=progress,
+                    partial_dir=partial_dir,
+                    installed_bytes=spec.installed_bytes,
+                )
             if spec.archive_format == "zip":
                 with zipfile.ZipFile(archive_path) as archive:
                     safe_extract_zip(archive, extract)

@@ -265,3 +265,14 @@ remain with Plebian-OS, the desktop provider, and each application.
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+## Offline archive cache
+
+Upstream archives may be staged by the operating-system installer in
+`/usr/local/share/kilix/model-archives/<archive_sha256>`. The installer checks
+that file against the asset's exact archive size and SHA-256 and installs it
+through the normal manifest verification and atomic selection path. An absent
+entry falls back to the pinned download; a corrupt entry refuses installation.
+The cache creates no licence receipt and does not bypass agreement.
+`KILIX_CONTENT_ARCHIVE_CACHE` selects another cache directory (an empty value
+disables cache lookup). Old archive digests can coexist for rollback.

@@ -5,9 +5,11 @@ import json
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 
 from kilix_license.agreement import capture_agreement, typed_agreement_line
+from kilix_license.errors import CoverageRefused
 from kilix_license.catalog import load_determined_records, load_determined_texts
 from kilix_license.receipts import receipt_from_agreement
 from kilix_license.store import ReceiptStore
@@ -80,6 +82,67 @@ class UpstreamInstallTests(unittest.TestCase):
         self.assertTrue((root / "conf/model.conf").is_file())
         self.assertTrue((root / "notices/LICENSE-apache-2.0.txt").is_file())
         self.assertEqual((root / "notices/LICENSE-apache-2.0.txt").read_bytes(), self.notice)
+
+    def _cached_spec(self):
+        archive = vosk_fixture_zip()
+        spec = self._spec(archive, self.upstream.add("/cached.zip", archive))
+        cache = self.scratch / "archive-cache"
+        cache.mkdir()
+        cached = cache / spec.archive_sha256
+        cached.write_bytes(archive)
+        self.installer.env["KILIX_CONTENT_ARCHIVE_CACHE"] = str(cache)
+        return spec, cached
+
+    def test_verified_archive_cache_installs_without_fetch(self):
+        spec, cached = self._cached_spec()
+        self._authorize(spec)
+        with patch("kilix_content.install.fetch_exact") as fetch:
+            installed = self.installer.ensure_upstream_asset(
+                spec, store=self.store, records=self.records, notices=self.texts)
+            fetch.assert_not_called()
+        self.assertTrue((Path(installed[0]) / "conf/model.conf").is_file())
+        self.assertEqual(_sha(cached.read_bytes()), spec.archive_sha256)
+
+    def test_corrupt_cache_refuses_without_fallback_or_selection(self):
+        spec, cached = self._cached_spec()
+        self._authorize(spec)
+        cached.write_bytes(b"x" * cached.stat().st_size)
+        with patch("kilix_content.install.fetch_exact") as fetch:
+            with self.assertRaisesRegex(InstallError, "cached archive size or checksum"):
+                self.installer.ensure_upstream_asset(
+                    spec, store=self.store, records=self.records, notices=self.texts)
+            fetch.assert_not_called()
+        self.assertFalse(Path(self.installer.asset_destination(spec)).exists())
+
+    def test_cache_symlink_is_refused(self):
+        spec, cached = self._cached_spec()
+        self._authorize(spec)
+        other = cached.with_name("other")
+        cached.rename(other)
+        cached.symlink_to(other)
+        with patch("kilix_content.install.fetch_exact") as fetch:
+            with self.assertRaises(InstallError):
+                self.installer.ensure_upstream_asset(
+                    spec, store=self.store, records=self.records, notices=self.texts)
+            fetch.assert_not_called()
+
+    def test_receipt_is_required_before_cache_access(self):
+        spec, _ = self._cached_spec()
+        with patch("kilix_content.install.SuppliedFile.open_beneath") as opened, \
+                patch("kilix_content.install.fetch_exact") as fetch:
+            with self.assertRaises(CoverageRefused):
+                self.installer.ensure_upstream_asset(
+                    spec, store=self.store, records=self.records, notices=self.texts)
+            opened.assert_not_called()
+            fetch.assert_not_called()
+
+    def test_missing_cache_uses_normal_download(self):
+        spec, cached = self._cached_spec()
+        cached.unlink()
+        self._authorize(spec)
+        installed = self.installer.ensure_upstream_asset(
+            spec, store=self.store, records=self.records, notices=self.texts)
+        self.assertTrue((Path(installed[0]) / "conf/model.conf").is_file())
 
     def test_extra_member_refused(self) -> None:
         archive = vosk_fixture_zip(extra={"extra.bin": b"nope"})
