@@ -25,4 +25,8 @@ class DetectorPins(unittest.TestCase):
                 entry['source']['ref'] = pins[entry['id']]
             elif entry['id'] == 'kilix-pdf-conversion':
                 entry['source']['ref'] = 'e841241b0134fef42045a946199a92e9fa35ffbf'
+            elif entry['id'] == 'kilix-help-llm':
+                entry['source']['ref'] = '82e2d76e6e114ec2c71b4c302fb9dfbf322a70e4'
+            elif entry['id'] == 'kilix-needle':
+                entry['source']['ref'] = 'f128e18fb43865b71d1f0073785ed6e5119963f2'
         self.assertEqual(before, after)
