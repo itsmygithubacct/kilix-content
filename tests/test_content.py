@@ -1045,6 +1045,40 @@ if unsafe:
         self.assertEqual((destination / "value").read_text(), "new")
         self.assertFalse(stage.exists())
 
+    def test_selection_retargets_untracked_build_paths_only(self) -> None:
+        data = self.root / "data"
+        destination = data / "playalong"
+        stage = data / ".playalong.install-test"
+        script_dir = stage / ".venv" / "bin"
+        script_dir.mkdir(parents=True)
+        launcher = script_dir / "kilix-playalong"
+        launcher.write_text(f"#!{stage}/.venv/bin/python\n", encoding="utf-8")
+        pointer = stage / ".venv" / "lib" / "app.pth"
+        pointer.parent.mkdir()
+        pointer.write_text(f"{stage}/src\n", encoding="utf-8")
+        binary = stage / "tool.so"
+        binary.write_bytes(b"\x00" + str(stage).encode() + b"\x00")
+        tracked = stage / "README"
+        tracked.write_text(f"built at {stage}\n", encoding="utf-8")
+        subprocess.run(["git", "init", "-q"], cwd=stage, check=True)
+        subprocess.run(["git", "add", "README"], cwd=stage, check=True)
+        installer = Installer(str(data))
+        installer._replace_stage(str(stage), str(destination))
+        selected = destination / ".venv" / "bin" / "kilix-playalong"
+        self.assertEqual(
+            selected.read_text(encoding="utf-8"),
+            f"#!{destination}/.venv/bin/python\n",
+        )
+        self.assertEqual(
+            (destination / ".venv" / "lib" / "app.pth").read_text(encoding="utf-8"),
+            f"{destination}/src\n",
+        )
+        self.assertIn(str(stage).encode(), (destination / "tool.so").read_bytes())
+        self.assertEqual(
+            (destination / "README").read_text(encoding="utf-8"),
+            f"built at {stage}\n",
+        )
+
     def test_failed_exchange_preserves_selected_destination(self) -> None:
         data = self.root / "data"
         destination = data / "fixture"

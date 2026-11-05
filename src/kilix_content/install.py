@@ -949,7 +949,75 @@ class Installer:
                 if mode & 0o022:
                     os.chmod(path, mode & ~0o022)
 
+    def _tracked_files(self, stage: str) -> set[str] | None:
+        """Return tracked paths, or None when the stage is not a Git checkout."""
+        if not os.path.lexists(os.path.join(stage, ".git")):
+            return None
+        try:
+            result = _run(
+                ["git", "ls-files", "-z"],
+                cwd=stage,
+                env=_git_environment(self.env),
+            )
+        except OSError as exc:
+            raise InstallError(
+                "could not list tracked files before selecting the install"
+            ) from exc
+        if result.returncode != 0:
+            raise InstallError(
+                "could not list tracked files before selecting the install"
+            )
+        tracked: set[str] = set()
+        for name in result.stdout.split("\0"):
+            if name:
+                tracked.add(os.path.normpath(os.path.join(stage, name)))
+        return tracked
+
+    def _retarget_build_paths(self, stage: str, destination: str) -> None:
+        """Point build outputs at the directory the stage is about to become.
+
+        A build runs in a temporary sibling. uv records that sibling in script
+        interpreters and editable paths. The sibling is removed when the stage
+        is selected, so those paths have to name the final directory or the
+        installed command cannot start. Tracked source is left unchanged, and
+        files with a NUL byte are left unchanged so a binary is not rewritten
+        at a different length.
+        """
+        stage = os.path.abspath(stage)
+        destination = os.path.abspath(destination)
+        if stage == destination:
+            return
+        needle = stage.encode()
+        replacement = destination.encode()
+        tracked = self._tracked_files(stage)
+        for directory, names, files in os.walk(stage, followlinks=False):
+            if ".git" in names:
+                names.remove(".git")
+            for name in files:
+                path = os.path.join(directory, name)
+                if tracked is not None and os.path.normpath(path) in tracked:
+                    continue
+                try:
+                    info = os.lstat(path)
+                except OSError as exc:
+                    raise InstallError("could not retarget build paths") from exc
+                if not stat.S_ISREG(info.st_mode):
+                    continue
+                try:
+                    with open(path, "rb") as handle:
+                        payload = handle.read()
+                except OSError as exc:
+                    raise InstallError("could not retarget build paths") from exc
+                if b"\x00" in payload or needle not in payload:
+                    continue
+                try:
+                    with open(path, "wb") as handle:
+                        handle.write(payload.replace(needle, replacement))
+                except OSError as exc:
+                    raise InstallError("could not retarget build paths") from exc
+
     def _replace_stage(self, stage: str, destination: str) -> None:
+        self._retarget_build_paths(stage, destination)
         if not os.path.lexists(destination):
             try:
                 os.rename(stage, destination)
