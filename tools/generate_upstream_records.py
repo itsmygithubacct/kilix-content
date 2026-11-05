@@ -75,7 +75,7 @@ LICENSORS = {
     "needle3-kilix-commands": ["Cactus Compute, Inc.", "needle-rs contributors"],
     "lfm3-kilix-commands": ["Liquid AI, Inc.", "ggml and bundled runtime contributors"],
     "lfm2-kilix-commands": ["Liquid AI, Inc.", "ggml and bundled runtime contributors"],
-    'kilix-diarization-cpu':['IIC / Alibaba Cloud','pyannote contributors','sherpa-onnx contributors','Microsoft and bundled runtime contributors'],
+    'kilix-diarization-cpu':['IIC / Alibaba Cloud','pyannote contributors','sherpa-onnx and bundled runtime contributors'],
     "whistle": ["Cactus Compute, Inc."],
     "small-en-us": ["Alpha Cephei Inc."],
     "lgraph-en-us": ["Appen", "Alpha Cephei"],

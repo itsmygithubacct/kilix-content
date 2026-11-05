@@ -2516,8 +2516,7 @@
           "licensors": [
             "IIC / Alibaba Cloud",
             "pyannote contributors",
-            "sherpa-onnx contributors",
-            "Microsoft and bundled runtime contributors"
+            "sherpa-onnx and bundled runtime contributors"
           ],
           "record_digest": "e1feb5ca5f96b9725776f22ab0541d3997779674a23600dd6d17d987977cb2d3",
           "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"

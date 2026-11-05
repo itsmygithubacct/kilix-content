@@ -23,7 +23,9 @@ class DiarizationAssetTests(unittest.TestCase):
         self.assertEqual(set(population),{'diarize-runner','lib/libonnxruntime.so','segmentation.onnx','embedding.onnx','diarization.json'})
         self.assertEqual(population['embedding.onnx'],'7cfea971b2231ed7d7dd6324de1de33f8f9dbe65bbb30cf64b4b0b203b566292')
         self.assertFalse(any('bin' in x.path and x.path!='diarize-runner' for x in self.spec.files))
-        self.assertEqual(self.spec.licenses[0].record_digest,load_determined_records().by_id(self.spec.asset_id).digest)
+        record=load_determined_records().by_id(self.spec.asset_id)
+        self.assertEqual(self.spec.licenses[0].record_digest,record.digest)
+        self.assertEqual('; '.join(self.spec.licenses[0].licensors),record.licensor)
         self.assertIn('notices/pyannote-segmentation-3-0.txt',{x.path for x in self.spec.files})
         self.assertEqual(AssetSpec.from_mapping(self.spec.to_mapping()),self.spec)
     def test_each_external_input_needs_its_own_exact_provenance(self):
