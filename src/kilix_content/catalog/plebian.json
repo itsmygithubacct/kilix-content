@@ -1449,6 +1449,51 @@
       }
     },
     {
+      "id": "kilix-find",
+      "label": "Find",
+      "kind": "app",
+      "icon": "terminal",
+      "description": "Search an explicit list of saved sources with BM25 and return exact excerpts.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-find",
+        "ref": "3fa559311502d27483ce6115d7eda9f6cfc17edd"
+      },
+      "binary": "kilix-find",
+      "build": [
+        "make",
+        "all"
+      ],
+      "dependency_hint": "needs Python 3.11 or newer, make, and SQLite with FTS5",
+      "capabilities": [
+        "filesystem-read",
+        "filesystem-write"
+      ],
+      "actions": {
+        "search": {
+          "argv": [],
+          "accepts_input": true,
+          "description": "Search the saved index"
+        },
+        "sources": {
+          "argv": [
+            "sources"
+          ],
+          "description": "List the sources in the saved index"
+        },
+        "verify": {
+          "argv": [
+            "verify"
+          ],
+          "description": "Check the saved index"
+        }
+      },
+      "launch": {
+        "mode": "terminal",
+        "preferred_size": "800x360"
+      }
+    },
+    {
       "id": "kilix-graphs",
       "label": "Graphs",
       "kind": "app",
