@@ -1449,6 +1449,71 @@
       }
     },
     {
+      "id": "playalong",
+      "label": "Playalong",
+      "kind": "app",
+      "icon": "terminal",
+      "description": "Turn a song into stems, timed lyrics, guitar tab, and an offline songbook.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-playalong",
+        "ref": "cf39bdd27d39096445136c2d756485c25300f982"
+      },
+      "binary": ".venv/bin/kilix-playalong",
+      "build": [
+        "make",
+        "setup"
+      ],
+      "dependency_hint": "needs uv 0.12.x, Python 3.10, a C compiler, make, ffmpeg, and network access for the locked command runtime",
+      "capabilities": [
+        "network",
+        "filesystem-read",
+        "filesystem-write"
+      ],
+      "actions": {
+        "list": {
+          "argv": [
+            "list"
+          ],
+          "description": "List local projects"
+        },
+        "doctor": {
+          "argv": [
+            "doctor"
+          ],
+          "description": "Inspect the locked runtime"
+        },
+        "create": {
+          "argv": [
+            "create"
+          ],
+          "accepts_input": true,
+          "description": "Create a project from a link or a file"
+        },
+        "serve": {
+          "argv": [
+            "serve"
+          ],
+          "accepts_input": true,
+          "description": "Open the player for one project"
+        },
+        "songbook": {
+          "argv": [
+            "songbook"
+          ],
+          "accepts_input": true,
+          "description": "Export an offline songbook"
+        }
+      },
+      "lifecycle": {
+        "preserve_on_failure": true
+      },
+      "launch": {
+        "mode": "terminal",
+        "preferred_size": "960x700"
+      }
+    },
+    {
       "id": "kilix-find",
       "label": "Find",
       "kind": "app",
