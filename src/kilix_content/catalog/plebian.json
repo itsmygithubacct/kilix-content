@@ -2078,7 +2078,7 @@
         {
           "bytes": 1388859040,
           "path": "model.gguf",
-          "sha256": "7295787cfa801f233dbbf576fc5e71a78473d6de2c21aab3aa6948611b64b8dd"
+          "sha256": "3fa22c105b1f80823088de21a45fd2f3dc30a4cfdc63d21037c9344585fae4dd"
         },
         {
           "bytes": 10574,
@@ -2096,9 +2096,9 @@
           "sha256": "571c0295ffbb60b79627a8956e2990826448eee7678b8d9a1e37c82bbf779f4c"
         },
         {
-          "bytes": 2151,
+          "bytes": 1545,
           "path": "notices/NOTICE.txt",
-          "sha256": "61784d401072ed5dd2c5a2999610bdff1b3a7d3a84210b19e73862b7f223245d"
+          "sha256": "65e4cd26f6f63d2ad45c64df2a6876bc33b17c4af5272c90bd44dd072b0e6601"
         },
         {
           "bytes": 897792,
@@ -2313,25 +2313,25 @@
       "provider": "kilix-needle",
       "schema": "kilix.content.asset/v3",
       "sizes": {
-        "download_bytes": 1362206287,
-        "installed_bytes": 1461501319,
-        "temporary_bytes": 2823707606
+        "download_bytes": 1362204317,
+        "installed_bytes": 1461500713,
+        "temporary_bytes": 2823705030
       },
       "source": {
-        "archive_bytes": 1362206287,
-        "archive_sha256": "b3d0ed499dfd064837bb024372a091fd8f4414df1bff2ebccdb87cadf26cb5bd",
+        "archive_bytes": 1362204317,
+        "archive_sha256": "ea03c42ce0f36d12bca1844c558c0fcaeb442887e55e1e7b76ccb3ed632c3a85",
         "format": "tar",
         "mode": "upstream-archive",
         "provenance": {
           "project": "itsmygithubacct/kilix-needle",
           "revision": "4f3aeaff96bd2381a34396e2afb40b900840b8ec",
-          "original_url": "https://github.com/itsmygithubacct/kilix-needle/releases/download/lfm2-kilix-commands-20261106-v8/lfm2-kilix-commands-20261106-v8.tar.gz"
+          "original_url": "https://github.com/itsmygithubacct/kilix-needle/releases/download/lfm2-kilix-commands-20261106-v9/lfm2-kilix-commands-20261106-v9.tar.gz"
         },
-        "root": "lfm2-kilix-commands-20261106-v8",
-        "url": "https://github.com/itsmygithubacct/kilix-needle/releases/download/lfm2-kilix-commands-20261106-v8/lfm2-kilix-commands-20261106-v8.tar.gz"
+        "root": "lfm2-kilix-commands-20261106-v9",
+        "url": "https://github.com/itsmygithubacct/kilix-needle/releases/download/lfm2-kilix-commands-20261106-v9/lfm2-kilix-commands-20261106-v9.tar.gz"
       },
       "stream": "F104",
-      "version": "lfm2-kilix-commands-20261106-v8",
+      "version": "lfm2-kilix-commands-20261106-v9",
       "storage": "versioned"
     },
     {

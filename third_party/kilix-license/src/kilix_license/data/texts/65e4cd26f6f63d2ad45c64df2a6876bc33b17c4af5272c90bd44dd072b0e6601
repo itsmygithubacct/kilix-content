@@ -1,0 +1,28 @@
+Kilix LFM2 command model — modified model notice
+
+Delivery: lfm2-kilix-commands-20261106-v9
+Weight revision: lfm2-kilix-v5e1-wse-20261106.9
+Model SHA256: 3fa22c105b1f80823088de21a45fd2f3dc30a4cfdc63d21037c9344585fae4dd
+
+This is a modified LiquidAI/LFM2-1.2B-Tool model, originally fine-tuned for
+Kilix's native command format as the V5 epoch-1 model. The upstream base
+revision is 6d24c6b7471fcbcec084935e377a5302f4b84389. Liquid AI has not endorsed
+these modifications or this application.
+
+This revision continues the direct weight-edit lineage recorded for
+lfm2-kilix-commands-20261106-v8. The file parent is
+lfm2-kilix-v5e1-wse-20261106.8, SHA256
+7295787cfa801f233dbbf576fc5e71a78473d6de2c21aab3aa6948611b64b8dd.
+Regularized squared-hinge optimization over frozen activations adjusts
+output.weight. Relative to that parent, rows 568 and 8110 differ. Optimization
+uses L-BFGS with analytic gradients; it does not backpropagate through the
+network. The model remains Q8_0. The repairs close a literal task that ends
+in a period, and they keep a valid empty answer ahead of an opening bracket.
+They do not eliminate all generation errors.
+
+The CPU runtime is llama.cpp revision
+620d2225cc436ab0b001e3200e590e3b286ef9ab, unchanged from the prior delivery.
+The original model licence is in LICENSE-LFM.txt. Runtime software licences
+and notices are in LICENSE-runtime.txt; the Kilix adapter licence is in
+LICENSE-kilix-needle.txt. Those licence texts are unchanged. This modification
+notice does not replace or waive any upstream licence term.
