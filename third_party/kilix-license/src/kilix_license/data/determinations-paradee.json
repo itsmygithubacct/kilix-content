@@ -1,0 +1,25 @@
+{
+  "authority": {
+    "licence_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "model": "paradee-8m-v1.2",
+    "source": "https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.2/resolve/ed2934d4df8a4fd891e29584c5e1104649409765/onnx/paradee_int8.onnx"
+  },
+  "records": [
+    {
+      "advisories": [],
+      "binding_conditions": [],
+      "components": [],
+      "decision_class": "affirmative",
+      "id": "paradee-8m-v1.2",
+      "licence_ids": [
+        "Apache-2.0"
+      ],
+      "licence_text_id": "debian/common-licenses/Apache-2.0",
+      "licensor": "Sahil Mahendrakar",
+      "schema": "kilix.license.record/v1",
+      "statements": [],
+      "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    }
+  ],
+  "schema": "kilix.license.paradee-determination/v1"
+}

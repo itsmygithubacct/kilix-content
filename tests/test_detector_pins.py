@@ -17,11 +17,11 @@ class DetectorPins(unittest.TestCase):
             self.assertEqual(catalog.require(name).ref, ref)
         root = Path(__file__).resolve().parents[1]
         before = json.loads(subprocess.check_output([
-            'git', 'show', '98aa076100aee09847499977fb8731a30551a95d:src/kilix_content/catalog/plebian.json'], cwd=root))
+            'git', 'show', 'bc7ab69d6e0089729c7113b58563f3f0f0186301:src/kilix_content/catalog/plebian.json'], cwd=root))
         after = json.loads((root / 'src/kilix_content/catalog/plebian.json').read_bytes())
         for document in (before, after):
             document['assets'] = [asset for asset in document['assets']
-                                  if asset['id'] not in ('lfm2-kilix-commands', 'lfm3-kilix-commands')]
+                                  if asset['id'] not in ('lfm2-kilix-commands', 'lfm3-kilix-commands', 'paradee-8m-v1.2')]
         self.assertEqual(before['assets'], after['assets'])
         for entry in before['content']:
             if entry['id'] in pins:

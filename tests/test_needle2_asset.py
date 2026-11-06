@@ -96,6 +96,8 @@ class Needle2AssetTests(unittest.TestCase):
                                 if asset_id == 'lfm2-kilix-commands' else
                                 _pinned('determinations-female02.sha256')
                                 if asset_id == 'kilix-female-02' else
+                                _pinned('determinations-paradee.sha256')
+                                if asset_id == 'paradee-8m-v1.2' else
                                 _pinned('determinations-basic-pitch.sha256')
                                 if asset_id == 'basic-pitch-icassp-2022-onnx' else release)
                     self.assertEqual(record.determinations_sha256, expected)

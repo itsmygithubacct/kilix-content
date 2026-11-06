@@ -4,6 +4,10 @@ All notable changes to `kilix-license` are recorded here.
 
 ## Unreleased
 
+- Paradee 1.2 (`paradee-8m-v1.2`) has its own determination pin and record.
+  The weights stay upstream. The receipt names Sahil Mahendrakar and
+  Apache-2.0. It is not a release model and does not move another digest.
+
 - An **application authority**, `determinations-apps.json` with its own pin
   and its own `app-records/` directory, for models an application fetches
   for itself. Every record cites the digest of the determinations file it

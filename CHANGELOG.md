@@ -16,6 +16,10 @@ pre-1.0.
 
 ### Changed
 
+- Catalogue Paradee 1.2 as an optional upstream int8 ONNX. The weights stay
+  upstream. The licence receipt names Sahil Mahendrakar and Apache-2.0.
+  kilix-license moves `06226636` to `7de1b709`.
+
 - Support the independently licensed LFM2 command-model derivative through
   Needle's versioned release archive, with full first-use terms and notices.
 

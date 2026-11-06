@@ -1,0 +1,23 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "paradee-8m-v1.2",
+  "label": "Paradee 1.2 (af_heart, am_puck, bf_isabella, bm_fable)",
+  "mode": "upstream-files",
+  "license_record_id": "paradee-8m-v1.2",
+  "provider": "paradee",
+  "consumer_schema": "kilix.paradee.models/v1",
+  "version": "ed2934d4df8a4fd891e29584c5e1104649409765",
+  "provenance": {
+    "project": "sahilmahendrakar/Paradee-8M-v1.2",
+    "revision": "ed2934d4df8a4fd891e29584c5e1104649409765",
+    "original_url": "https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.2/resolve/ed2934d4df8a4fd891e29584c5e1104649409765/onnx/paradee_int8.onnx"
+  },
+  "members": [
+    {
+      "path": "onnx/paradee_int8.onnx",
+      "url": "https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.2/resolve/ed2934d4df8a4fd891e29584c5e1104649409765/onnx/paradee_int8.onnx",
+      "bytes": 8462119,
+      "sha256": "a6989796692ac173597e15d405c971989202d5c73cfad65f22e90bd7b6c97da1"
+    }
+  ]
+}

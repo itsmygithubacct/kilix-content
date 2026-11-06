@@ -11,11 +11,11 @@ class CommandModelReleaseTests(unittest.TestCase):
     def test_selected_release_and_unrelated_assets(self):
         root = Path(__file__).resolve().parents[1]
         before = json.loads(subprocess.check_output([
-            'git', 'show', '92f6dbc6cdddeb97dd38ee4500bb1441bd1e838f:src/kilix_content/catalog/plebian.json'], cwd=root))
+            'git', 'show', 'bc7ab69d6e0089729c7113b58563f3f0f0186301:src/kilix_content/catalog/plebian.json'], cwd=root))
         after = json.loads((root / 'src/kilix_content/catalog/plebian.json').read_bytes())
         for document in (before, after):
             document['assets'] = [a for a in document['assets']
-                                  if a['id'] not in ('lfm2-kilix-commands', 'lfm3-kilix-commands')]
+                                  if a['id'] not in ('lfm2-kilix-commands', 'lfm3-kilix-commands', 'paradee-8m-v1.2')]
         self.assertEqual(before['assets'], after['assets'])
         spec = verified_packaged_catalog().require_asset('lfm2-kilix-commands')
         self.assertEqual(spec.version, 'lfm2-kilix-commands-20261104-v8')

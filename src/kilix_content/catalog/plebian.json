@@ -3785,6 +3785,61 @@
     },
     {
       "compatibility": {
+        "consumer_schema": "kilix.paradee.models/v1",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 11358,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "bytes": 8462119,
+          "path": "onnx/paradee_int8.onnx",
+          "sha256": "a6989796692ac173597e15d405c971989202d5c73cfad65f22e90bd7b6c97da1"
+        }
+      ],
+      "id": "paradee-8m-v1.2",
+      "label": "Paradee 1.2 (af_heart, am_puck, bf_isabella, bm_fable)",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "Sahil Mahendrakar"
+          ],
+          "record_digest": "a224ad2d6f53efee4959e27a55cfda1dc88e8dbcda2b81327f5bd78782f1eeb8",
+          "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "provider": "paradee",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 8462119,
+        "installed_bytes": 8473477,
+        "temporary_bytes": 8473477
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "onnx/paradee_int8.onnx",
+            "url": "https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.2/resolve/ed2934d4df8a4fd891e29584c5e1104649409765/onnx/paradee_int8.onnx"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "sahilmahendrakar/Paradee-8M-v1.2",
+          "revision": "ed2934d4df8a4fd891e29584c5e1104649409765",
+          "original_url": "https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.2/resolve/ed2934d4df8a4fd891e29584c5e1104649409765/onnx/paradee_int8.onnx"
+        }
+      },
+      "stream": "F104",
+      "version": "ed2934d4df8a4fd891e29584c5e1104649409765"
+    },
+    {
+      "compatibility": {
         "consumer_schema": "kilix.bonsai.runtime",
         "maximum": 1,
         "minimum": 1

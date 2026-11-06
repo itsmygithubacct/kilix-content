@@ -125,6 +125,8 @@ class ContentTests(unittest.TestCase):
                     or entry.install_id == "kilix-tui-utils"
                 ):
                     expected_build = ("make", "runtime")
+                elif entry.content_id == "playalong":
+                    expected_build = ("make", "setup")
                 else:
                     expected_build = ("make", "all")
                 if entry.repository == "https://github.com/itsmygithubacct/kilix-games":
