@@ -29,7 +29,7 @@ class DetectorPins(unittest.TestCase):
             elif entry['id'] == 'kilix-pdf-conversion':
                 entry['source']['ref'] = 'e841241b0134fef42045a946199a92e9fa35ffbf'
             elif entry['id'] == 'kilix-needle':
-                entry['source']['ref'] = '8408183f909a7052bb14cc974a869909234d8bca'
+                entry['source']['ref'] = '073f5e031f6bfc9123ea841bdf9ea30e1d73712c'
         # Help has its own source/action contract and can evolve independently
         # of detector selection. Retain the byte comparison for every other app.
         for document in (before, after):

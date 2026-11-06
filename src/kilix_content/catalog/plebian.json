@@ -1755,7 +1755,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-needle",
-        "ref": "8408183f909a7052bb14cc974a869909234d8bca"
+        "ref": "073f5e031f6bfc9123ea841bdf9ea30e1d73712c"
       },
       "binary": "kilix-needle",
       "build": [
@@ -1855,7 +1855,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-help-llm",
-        "ref": "41dd050560a6d0b8067b57fa76ab333e05e6bc72"
+        "ref": "4abc52e9236899a05738807d32a3431270b6a3c2"
       },
       "binary": "kilix-help-llm",
       "build": [
