@@ -16,6 +16,10 @@ pre-1.0.
 
 ### Changed
 
+- Select Ask weight `lfm2-kilix-v5e1-wse-20261106.8` as `lfm2-kilix-commands`.
+  Delivery `lfm2-kilix-commands-20261106-v8` replaces `lfm2-kilix-commands-20261106-v4`.
+  The modified-model notice is `61784d40`. kilix-license moves `a516f392` to `be1bf18d`.
+
 - Select Ask weight `lfm2-kilix-v5e1-wse-20261106.4` as `lfm2-kilix-commands`.
   Delivery `lfm2-kilix-commands-20261106-v4` replaces `lfm2-kilix-commands-20261104-v8`.
   The modified-model notice is `a71fadf0`. kilix-license moves `7de1b709` to `a516f392`.
