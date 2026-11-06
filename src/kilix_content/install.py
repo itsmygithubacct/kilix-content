@@ -1747,7 +1747,15 @@ class Installer:
                 return ready
             if os.path.lexists(destination):
                 raise InstallError("refusing to replace an unverified asset selection")
-            stage = tempfile.mkdtemp(prefix=".asset-install-", dir=parent)
+            try:
+                stage = tempfile.mkdtemp(prefix=".asset-install-", dir=parent)
+            except OSError as exc:
+                # Quota (EDQUOT) and a full volume (ENOSPC) must fail as an
+                # install error. mkdtemp either creates the directory or
+                # raises, so this path has no stage to remove.
+                raise InstallError(
+                    "could not create asset staging directory"
+                ) from exc
             try:
                 output = populate(stage)
                 if self._verify_asset_directory(spec, output) is None:
@@ -1796,6 +1804,81 @@ class Installer:
                 "installed asset failed final verification and could not be "
                 f"withdrawn: {destination}"
             ) from exc
+
+    def remove_selected_asset(self, spec: AssetSpec) -> None:
+        """Remove one selected catalog asset unless a runtime holds it.
+
+        A runtime holds the selected directory itself with a shared flock,
+        opened ``O_DIRECTORY|O_NOFOLLOW``. Removal takes that same lock
+        exclusively and does not wait. A held directory, a symlink, or any
+        other non-directory is left untouched, including a tree the symlink
+        names. The lock is the selected directory, not the Voicebox package
+        lock and not the installer's transient ``.{asset_id}.lock``.
+        """
+        destination = self.asset_destination(spec)
+        try:
+            info = os.lstat(destination)
+        except FileNotFoundError as exc:
+            raise InstallError("catalog asset is not selected") from exc
+        except OSError as exc:
+            raise InstallError(
+                f"catalog asset could not be removed: {destination}"
+            ) from exc
+        if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+            raise InstallError(
+                "refusing to remove a catalog asset that is not a directory: "
+                f"{destination}"
+            )
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC
+        try:
+            descriptor = os.open(destination, flags)
+        except OSError as exc:
+            raise InstallError(
+                "refusing to remove a catalog asset that is not a directory: "
+                f"{destination}"
+            ) from exc
+        try:
+            opened = os.fstat(descriptor)
+            if (
+                not stat.S_ISDIR(opened.st_mode)
+                or opened.st_uid != os.geteuid()
+                or opened.st_dev != info.st_dev
+                or opened.st_ino != info.st_ino
+            ):
+                raise InstallError(
+                    "refusing to remove a catalog asset that is not a directory: "
+                    f"{destination}"
+                )
+            try:
+                fcntl.flock(descriptor, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise InstallError(
+                    f"catalog asset is in use: {destination}"
+                ) from exc
+            try:
+                current = os.lstat(destination)
+            except OSError as exc:
+                raise InstallError(
+                    f"catalog asset could not be removed: {destination}"
+                ) from exc
+            if (
+                stat.S_ISLNK(current.st_mode)
+                or not stat.S_ISDIR(current.st_mode)
+                or current.st_dev != opened.st_dev
+                or current.st_ino != opened.st_ino
+            ):
+                raise InstallError(
+                    "refusing to remove a catalog asset that is not a directory: "
+                    f"{destination}"
+                )
+            try:
+                shutil.rmtree(destination)
+            except OSError as exc:
+                raise InstallError(
+                    f"catalog asset could not be removed: {destination}"
+                ) from exc
+        finally:
+            os.close(descriptor)
 
     def ensure_upstream_asset(
         self,
