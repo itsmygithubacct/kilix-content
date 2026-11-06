@@ -16,6 +16,10 @@ pre-1.0.
 
 ### Changed
 
+- Select Ask weight `lfm2-kilix-v5e1-wse-20261106.4` as `lfm2-kilix-commands`.
+  Delivery `lfm2-kilix-commands-20261106-v4` replaces `lfm2-kilix-commands-20261104-v8`.
+  The modified-model notice is `a71fadf0`. kilix-license moves `7de1b709` to `a516f392`.
+
 - Catalogue Paradee 1.2 as an optional upstream int8 ONNX. The weights stay
   upstream. The licence receipt names Sahil Mahendrakar and Apache-2.0.
   kilix-license moves `06226636` to `7de1b709`.

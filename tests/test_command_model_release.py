@@ -18,7 +18,7 @@ class CommandModelReleaseTests(unittest.TestCase):
                                   if a['id'] not in ('lfm2-kilix-commands', 'lfm3-kilix-commands', 'paradee-8m-v1.2')]
         self.assertEqual(before['assets'], after['assets'])
         spec = verified_packaged_catalog().require_asset('lfm2-kilix-commands')
-        self.assertEqual(spec.version, 'lfm2-kilix-commands-20261104-v8')
+        self.assertEqual(spec.version, 'lfm2-kilix-commands-20261106-v4')
         model = next(f for f in spec.files if f.path == 'model.gguf')
-        self.assertEqual(model.sha256, '7815032c4bdd44fbde002ec734ef3dd8eb14a8a44214b395738dae6e55ce897d')
+        self.assertEqual(model.sha256, 'fbfdad0b592d7a0b5f59d3260e3b27867e2b4f367aebcc2981fd6348bb3b6897')
         self.assertEqual(model.bytes, 1388859040)
