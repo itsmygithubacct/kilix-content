@@ -34,6 +34,10 @@ PIN_NAMES = (
     # Owner determination 2026-09-29: the default Kilix dictation model on
     # capable hardware, run by kilix-whisper-stt (faster-whisper).
     "faster-whisper-small-en.json",
+    # Same MIT determination as faster-whisper-small-en (OpenAI weights,
+    # SYSTRAN CTranslate2 conversion). Medium English is a second model,
+    # not a new licence.
+    "faster-whisper-medium-en.json",
     "piper-en-us-kristin-medium.json",
     "kilix-female-02.json",
     "paradee-8m-v1.2.json",

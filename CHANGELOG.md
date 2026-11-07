@@ -14,6 +14,12 @@ pre-1.0.
 
 ## Unreleased
 
+### Added
+
+- Catalogue faster-whisper medium English (`faster-whisper-medium-en`,
+  Systran revision `a29b04bd`) as a second Whisper dictation model. It reuses
+  the MIT determination of `faster-whisper-small-en`; kilix-license is unchanged.
+
 ### Changed
 
 - Select Ask weight `lfm2-kilix-v5e1-wse-20261106.4` as `lfm2-kilix-commands`.

@@ -14,11 +14,12 @@ class PDFPinTests(unittest.TestCase):
         root=Path(__file__).resolve().parents[1]
         before=json.loads(subprocess.check_output(['git','show','bc7ab69d6e0089729c7113b58563f3f0f0186301:src/kilix_content/catalog/plebian.json'],cwd=root))
         after=json.loads((root/'src/kilix_content/catalog/plebian.json').read_bytes())
-        self.assertEqual(len(after['assets']),40)
+        self.assertEqual(len(after['assets']),41)
         for document in (before, after):
             document['assets']=[asset for asset in document['assets']
                                 if asset['id'] not in ('basic-pitch-icassp-2022-onnx',
                                                        'paradee-8m-v1.2',
+                                                       'faster-whisper-medium-en',
                                                        'lfm2-kilix-commands', 'lfm3-kilix-commands')]
         self.assertEqual(before['assets'],after['assets'])
         # Application actions can advance independently of model asset bytes.

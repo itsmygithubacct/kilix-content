@@ -3648,6 +3648,98 @@
     },
     {
       "compatibility": {
+        "consumer_schema": "kilix.whisper.models/v1",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 1337,
+          "path": "README.md",
+          "sha256": "ab3ddd3b6af4ea0ef353cb80004f26613ba33217f81652fc13738d3b098c7675"
+        },
+        {
+          "bytes": 2643,
+          "path": "config.json",
+          "sha256": "4a1848ebabe7938d9797c15a2e8e4ce1d36e6fd4a43d096ae5955257c67c7962"
+        },
+        {
+          "bytes": 1527904330,
+          "path": "model.bin",
+          "sha256": "11b220779aea4c6f3ce9d2549c8a95ea869ed84066864b999531ef53e594fe5b"
+        },
+        {
+          "bytes": 1063,
+          "path": "notices/LICENSE-mit.txt",
+          "sha256": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d"
+        },
+        {
+          "bytes": 2128466,
+          "path": "tokenizer.json",
+          "sha256": "929c5252409436dce1b38a75d1abbcb5e132d170d8e324e4e04ed915fa2d22df"
+        },
+        {
+          "bytes": 422309,
+          "path": "vocabulary.txt",
+          "sha256": "ff77588746d3a2595d32ab5b69ffd7b95ce2441ac57533cb66fc3eb575a115cf"
+        }
+      ],
+      "id": "faster-whisper-medium-en",
+      "label": "faster-whisper-medium-en",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "mit",
+          "licensors": [
+            "OpenAI",
+            "SYSTRAN"
+          ],
+          "record_digest": "3e64fa1bbdfff99f176f524473f02396fff13f4f81fff66229f158d6bbb34a4c",
+          "text_sha256": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d"
+        }
+      ],
+      "provider": "kilix-whisper-stt",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 1530459085,
+        "installed_bytes": 1530460148,
+        "temporary_bytes": 1530460148
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "README.md",
+            "url": "https://huggingface.co/Systran/faster-whisper-medium.en/resolve/a29b04bd15381511a9af671baec01072039215e3/README.md"
+          },
+          {
+            "path": "config.json",
+            "url": "https://huggingface.co/Systran/faster-whisper-medium.en/resolve/a29b04bd15381511a9af671baec01072039215e3/config.json"
+          },
+          {
+            "path": "model.bin",
+            "url": "https://huggingface.co/Systran/faster-whisper-medium.en/resolve/a29b04bd15381511a9af671baec01072039215e3/model.bin"
+          },
+          {
+            "path": "tokenizer.json",
+            "url": "https://huggingface.co/Systran/faster-whisper-medium.en/resolve/a29b04bd15381511a9af671baec01072039215e3/tokenizer.json"
+          },
+          {
+            "path": "vocabulary.txt",
+            "url": "https://huggingface.co/Systran/faster-whisper-medium.en/resolve/a29b04bd15381511a9af671baec01072039215e3/vocabulary.txt"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "Systran/faster-whisper-medium.en",
+          "revision": "a29b04bd15381511a9af671baec01072039215e3",
+          "original_url": "https://huggingface.co/Systran/faster-whisper-medium.en/resolve/a29b04bd15381511a9af671baec01072039215e3/model.bin"
+        }
+      },
+      "stream": "F104",
+      "version": "a29b04bd15381511a9af671baec01072039215e3"
+    },
+    {
+      "compatibility": {
         "consumer_schema": "kilix.piper.models/v1",
         "maximum": 1,
         "minimum": 1
