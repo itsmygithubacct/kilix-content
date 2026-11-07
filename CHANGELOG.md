@@ -14,6 +14,14 @@ pre-1.0.
 
 ## Unreleased
 
+### Added
+
+- Catalogue faster-whisper medium English (`faster-whisper-medium-en`,
+  Systran revision `a29b04bd`) as a second Whisper dictation model. It cites
+  its own kilix-license record (owner determination 2026-11-07), whose terms
+  are those of `faster-whisper-small-en`; the vendored kilix-license moves to
+  `7c70078f`, which adds that record and moves no other record digest.
+
 ### Changed
 
 - Deliver LFM2's terms as a notice, by the owner's 2026-11-07 determination.

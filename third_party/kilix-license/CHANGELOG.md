@@ -4,6 +4,13 @@ All notable changes to `kilix-license` are recorded here.
 
 ## Unreleased
 
+- Whisper medium.en (`faster-whisper-medium-en`, Systran revision `a29b04bd`)
+  has its own determination pin and record, on the owner's determination of
+  2026-11-07 (`licence-evidence-whisper-medium-en-2026-11-07`). Its terms are
+  those of `faster-whisper-small-en`: MIT, licensors OpenAI and SYSTRAN, the
+  Whisper copyright statement and the model card caution. The weights stay
+  upstream and are downloaded on first use. No other record digest moves.
+
 - LFM2 (`lfm2-kilix-commands`) terms are a notice, Debian style, by the owner's
   determination of 2026-11-07. The LFM Open License v1.0 text and its
   commercial-use limitation are still shown and shipped with the model, and

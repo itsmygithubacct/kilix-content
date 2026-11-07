@@ -34,6 +34,9 @@ PIN_NAMES = (
     # Owner determination 2026-09-29: the default Kilix dictation model on
     # capable hardware, run by kilix-whisper-stt (faster-whisper).
     "faster-whisper-small-en.json",
+    # Owner determination 2026-11-07: Whisper medium English, a second
+    # dictation model with its own record and small.en's MIT terms.
+    "faster-whisper-medium-en.json",
     "piper-en-us-kristin-medium.json",
     "kilix-female-02.json",
     "paradee-8m-v1.2.json",
@@ -85,6 +88,7 @@ LICENSORS = {
     "qwen3-tts-1.7b-voicedesign": ["Alibaba Cloud"],
     "whisper-tiny-ggml": ["OpenAI"],
     "faster-whisper-small-en": ["OpenAI", "SYSTRAN"],
+    "faster-whisper-medium-en": ["OpenAI", "SYSTRAN"],
     "piper-en-us-kristin-medium": ["Bryce Beattie"],
     "kilix-female-02": ["itsmygithubacct"],
     "paradee-8m-v1.2": ["Sahil Mahendrakar"],
