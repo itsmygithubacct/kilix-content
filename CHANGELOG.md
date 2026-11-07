@@ -16,6 +16,16 @@ pre-1.0.
 
 ### Changed
 
+- Deliver LFM2's terms as a notice, by the owner's 2026-11-07 determination.
+  The vendored kilix-license `0984dd222bcb7f97859222b0dc2303b9225191fe` makes
+  the commercial-use limitation informational, so the `lfm2-kilix-commands`
+  licence record decision is `record`. Its full terms are still shown and
+  shipped, and no typed agreement is taken. The terms are not waived.
+- Select Needle `3a8e41c52f32f963c4bbeadfbec69b200f13eafe`. Ask reads an
+  unquoted spaced path only when that exact path exists, and refuses when two
+  existing paths read the request differently. A bare right, left or down
+  before an explicit path is the placement. The LFM2 install shows the terms
+  and confirms the install without a typed agreement.
 - Select Ask weight `lfm2-kilix-v5e1-wse-20261106.9` as `lfm2-kilix-commands`.
   Delivery `lfm2-kilix-commands-20261106-v9` replaces `lfm2-kilix-commands-20261106-v8`.
   The modified-model notice is `65e4cd26`. kilix-license moves `be1bf18d` to `65e5ae07`.

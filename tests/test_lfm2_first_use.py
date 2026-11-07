@@ -50,6 +50,26 @@ class LFM2FirstUseTests(unittest.TestCase):
                 destination=self.supplied/member.path;destination.parent.mkdir(exist_ok=True)
                 destination.write_bytes(self.texts.get(member.sha256))
 
+    def answer(self):
+        # LFM2's terms are a notice (owner determination 2026-11-07) and take no
+        # typed agreement; LFM3 still takes one.
+        if self.record.expected_decision == 'record':
+            return None
+        return typed_agreement_line(self.record)
+
+    def test_lfm2_terms_are_a_notice_and_take_no_typed_agreement(self):
+        if self.asset_id != 'lfm2-kilix-commands':
+            self.skipTest('LFM3 keeps its typed agreement')
+        from kilix_license.errors import AgreementRequired
+        self.assertEqual(self.record.expected_decision, 'record')
+        with self.assertRaises(AgreementRequired):
+            self.install(typed_text=typed_agreement_line(self.record), screen=io.BytesIO())
+        self.assertEqual(list(self.store.root.glob('*.json')), [])
+        self.assertIsNotNone(self.install(typed_text=None, screen=io.BytesIO()))
+        receipt, = [__import__('json').loads(p.read_bytes()) for p in self.store.root.glob('*.json')]
+        self.assertEqual(receipt['decision'], 'record')
+        self.assertNotIn('yes', __import__('json').dumps(receipt))
+
     def add_producer_notice(self):
         payload=b'Pinned producer notice fixture.\n'
         member={'path':'notices/PRODUCER.txt','bytes':len(payload),
@@ -90,7 +110,7 @@ class LFM2FirstUseTests(unittest.TestCase):
         with mock.patch('kilix_content.install.fetch_exact',side_effect=fetch):
             return install_with_agreement(self.spec,installer=self.installer,store=self.store,
                 records=self.records,texts=self.texts,
-                typed_text=typed_agreement_line(self.record),screen=io.BytesIO())
+                typed_text=self.answer(),screen=io.BytesIO())
 
     def test_archive_reuses_exact_notices_including_a_pinned_producer_notice(self):
         self.add_producer_notice()
@@ -115,7 +135,7 @@ class LFM2FirstUseTests(unittest.TestCase):
 
     def test_offline_bundle_preserves_its_extra_pinned_producer_notice(self):
         self.add_producer_notice()
-        self.assertIsNotNone(self.install(typed_text=typed_agreement_line(self.record),screen=io.BytesIO()))
+        self.assertIsNotNone(self.install(typed_text=self.answer(),screen=io.BytesIO()))
         destination=Path(self.installer.asset_destination(self.spec))
         self.assertEqual((destination/'notices/PRODUCER.txt').read_bytes(),
                          (self.supplied/'notices/PRODUCER.txt').read_bytes())
@@ -124,7 +144,7 @@ class LFM2FirstUseTests(unittest.TestCase):
         self.add_producer_notice()
         (self.supplied/'notices/PRODUCER.txt').write_bytes(b'changed')
         with self.assertRaises(InstallError):
-            self.install(typed_text=typed_agreement_line(self.record),screen=io.BytesIO())
+            self.install(typed_text=self.answer(),screen=io.BytesIO())
         self.assertFalse(Path(self.installer.asset_destination(self.spec)).exists())
 
     def install(self,**kwargs):
@@ -144,11 +164,11 @@ class LFM2FirstUseTests(unittest.TestCase):
 
     def test_versioned_update_preserves_legacy_install_and_rollback(self):
         old_spec = self.spec
-        self.install(typed_text=typed_agreement_line(self.record), screen=io.BytesIO())
+        self.install(typed_text=self.answer(), screen=io.BytesIO())
         old_path = Path(self.installer.asset_destination(old_spec))
         original = (old_path/'model.gguf').read_bytes()
         self.revised_model()
-        self.install(typed_text=typed_agreement_line(self.record), screen=io.BytesIO())
+        self.install(typed_text=self.answer(), screen=io.BytesIO())
         new_path = Path(self.installer.asset_destination(self.spec))
         self.assertNotEqual(old_path, new_path)
         self.assertEqual((old_path/'model.gguf').read_bytes(), original)
@@ -159,7 +179,7 @@ class LFM2FirstUseTests(unittest.TestCase):
         self.assertEqual(selected, (str(old_path),))
 
     def test_versioned_update_requires_its_own_manifest_receipt(self):
-        self.install(typed_text=typed_agreement_line(self.record), screen=io.BytesIO())
+        self.install(typed_text=self.answer(), screen=io.BytesIO())
         old_path = Path(self.installer.asset_destination(self.spec))
         self.revised_model()
         self.assertTrue(needs_agreement(self.spec, records=self.records, store=self.store))
@@ -172,13 +192,13 @@ class LFM2FirstUseTests(unittest.TestCase):
     def test_failed_versioned_install_preserves_previous_revision(self):
         self.revised_model(b'first versioned fixture')
         old_spec = self.spec
-        self.install(typed_text=typed_agreement_line(self.record), screen=io.BytesIO())
+        self.install(typed_text=self.answer(), screen=io.BytesIO())
         old_path = Path(self.installer.asset_destination(old_spec))
         original = (old_path/'model.gguf').read_bytes()
         self.revised_model(b'second versioned fixture')
         (self.supplied/'model.gguf').write_bytes(b'corrupt replacement')
         with self.assertRaises(InstallError):
-            self.install(typed_text=typed_agreement_line(self.record), screen=io.BytesIO())
+            self.install(typed_text=self.answer(), screen=io.BytesIO())
         self.assertFalse(Path(self.installer.asset_destination(self.spec)).exists())
         self.assertEqual((old_path/'model.gguf').read_bytes(), original)
 
@@ -205,7 +225,7 @@ class LFM2FirstUseTests(unittest.TestCase):
         self.assertFalse(Path(self.installer.asset_destination(self.spec)).exists())
 
     def test_fixture_agreement_imports_exact_notices_and_bytes_without_a_download(self):
-        result=self.install(typed_text=typed_agreement_line(self.record),screen=io.BytesIO())
+        result=self.install(typed_text=self.answer(),screen=io.BytesIO())
         self.assertIsNotNone(result)
         self.assertFalse(needs_agreement(self.spec,records=self.records,store=self.store))
         destination=Path(self.installer.asset_destination(self.spec))
@@ -216,7 +236,7 @@ class LFM2FirstUseTests(unittest.TestCase):
     def test_corrupt_offline_weights_do_not_install(self):
         (self.supplied/'model.gguf').write_bytes(b'changed')
         with self.assertRaises(InstallError):
-            self.install(typed_text=typed_agreement_line(self.record),screen=io.BytesIO())
+            self.install(typed_text=self.answer(),screen=io.BytesIO())
         self.assertFalse(Path(self.installer.asset_destination(self.spec)).exists())
 
     def test_owned_derivative_route_cannot_be_reused_for_other_models_or_hosts(self):

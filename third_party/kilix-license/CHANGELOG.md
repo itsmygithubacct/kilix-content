@@ -4,6 +4,13 @@ All notable changes to `kilix-license` are recorded here.
 
 ## Unreleased
 
+- LFM2 (`lfm2-kilix-commands`) terms are a notice, Debian style, by the owner's
+  determination of 2026-11-07. The LFM Open License v1.0 text and its
+  commercial-use limitation are still shown and shipped with the model, and
+  are not waived. The limitation no longer takes a typed agreement, and the
+  record is informational, so coverage is a `record` receipt that claims no
+  agreement. The record digest moves to `e4d08e2c`. LFM3 is unchanged.
+
 - Paradee 1.2 (`paradee-8m-v1.2`) has its own determination pin and record.
   The weights stay upstream. The receipt names Sahil Mahendrakar and
   Apache-2.0. It is not a release model and does not move another digest.

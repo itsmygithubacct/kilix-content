@@ -29,7 +29,11 @@ class DetectorPins(unittest.TestCase):
             elif entry['id'] == 'kilix-pdf-conversion':
                 entry['source']['ref'] = 'e841241b0134fef42045a946199a92e9fa35ffbf'
             elif entry['id'] == 'kilix-needle':
-                entry['source']['ref'] = '073f5e031f6bfc9123ea841bdf9ea30e1d73712c'
+                entry['source']['ref'] = '3a8e41c52f32f963c4bbeadfbec69b200f13eafe'
+                # Owner determination 2026-11-07: LFM2's terms are a notice.
+                entry['dependency_hint'] = entry['dependency_hint'].replace(
+                    'after licence review and acceptance;',
+                    'after showing its licence terms, which are a notice and take no agreement;')
         # Help has its own source/action contract and can evolve independently
         # of detector selection. Retain the byte comparison for every other app.
         for document in (before, after):

@@ -23,7 +23,7 @@
         {
           "id": "commercial-use-limitation",
           "text_sha256": "17f031acfa9fd5163a13f1ddd51e28df17c536d6969c6f65efff24309dde1e77",
-          "agreement_required": true,
+          "agreement_required": false,
           "text_id": "liquid-ai/lfm-open-license-v1/commercial-use"
         }
       ],
@@ -34,7 +34,7 @@
           "text_sha256": "65e4cd26f6f63d2ad45c64df2a6876bc33b17c4af5272c90bd44dd072b0e6601"
         }
       ],
-      "decision_class": "affirmative",
+      "decision_class": "informational",
       "licence_ids": [
         "LFM-Open-License-1.0",
         "MIT",
@@ -44,5 +44,12 @@
       "licence_text_id": "liquid-ai/lfm-open-license-v1",
       "schema": "kilix.license.record/v1"
     }
-  ]
+  ],
+  "owner_determination": {
+    "date": "2026-11-07",
+    "decision": "debian-style",
+    "owner_words": "1: debian-style.",
+    "question": "How the image delivers LFM2's published terms: (1) notice-only, Debian style; (2) image acceptance labelled honestly; (3) a user agreement prompt.",
+    "effect": "The LFM Open License v1.0 commercial-use limitation is delivered as a notice with the model, like a Debian non-free package: its full text is shown and shipped, and no typed agreement is taken or recorded. The terms are not waived. Coverage is a record receipt, which claims no agreement."
+  }
 }

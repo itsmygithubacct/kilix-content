@@ -1755,14 +1755,14 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-needle",
-        "ref": "073f5e031f6bfc9123ea841bdf9ea30e1d73712c"
+        "ref": "3a8e41c52f32f963c4bbeadfbec69b200f13eafe"
       },
       "binary": "kilix-needle",
       "build": [
         "make",
         "all"
       ],
-      "dependency_hint": "needs Python 3.11 or newer and make on x86-64 Linux; `kilix-needle install --commands` installs the default LFM2 Ask model after licence review and acceptance; `kilix-needle install --commands needle3` installs the optional Needle 3 model for x86-64-v3 CPUs; exact grammar requests need no model. Legacy Needle 2 jobs use their separately installed Apache-2.0 engine. Desktop actions use xdotool, xprop and python3-xlib; `kilix-needle setup` changes settings only when run",
+      "dependency_hint": "needs Python 3.11 or newer and make on x86-64 Linux; `kilix-needle install --commands` installs the default LFM2 Ask model after showing its licence terms, which are a notice and take no agreement; `kilix-needle install --commands needle3` installs the optional Needle 3 model for x86-64-v3 CPUs; exact grammar requests need no model. Legacy Needle 2 jobs use their separately installed Apache-2.0 engine. Desktop actions use xdotool, xprop and python3-xlib; `kilix-needle setup` changes settings only when run",
       "capabilities": [
         "kilix-control",
         "session-read",
@@ -2300,13 +2300,13 @@
       "label": "lfm2-kilix-commands",
       "licenses": [
         {
-          "decision": "affirmative",
+          "decision": "informational",
           "id": "lfm-open-license-1.0",
           "licensors": [
             "Liquid AI, Inc.",
             "ggml and bundled runtime contributors"
           ],
-          "record_digest": "9db4f6745db84b5554907fdf78332599fbcecfeb87ec2d3151f57f59b05bd000",
+          "record_digest": "e4d08e2c53ab514e1e2ca2a812c64895519487d707c441703978bd0f245b5016",
           "text_sha256": "4d28ca14dedc0b3d0fcc2b3339f0e79931faa33874f3d24f522183a8fc70068c"
         }
       ],

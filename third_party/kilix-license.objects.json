@@ -1,7 +1,7 @@
 {
-  "commit": "tree e1880ef67b029af5fcb0aa5b371cedd9b7519570\nparent be1bf18d903b071d7a3eb73239ddb3a147197d6d\nauthor itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1794002217 -0800\ncommitter itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1794002217 -0800\n\nRecord the 20261106.9 modified-model notice.\n\nThe LFM2 statement now names weight lfm2-kilix-v5e1-wse-20261106.9. The licence text and the runtime notice are unchanged. The previous notice text stays available for earlier receipts.\n",
+  "commit": "tree 402baf370d75cc29b8e7275fd26d28718c57d310\nparent 65e5ae07d78039ac5a2fd1aabba3c83524f5893f\nauthor itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1794089781 -0800\ncommitter itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1794089781 -0800\n\nDeliver the LFM2 terms as a notice, Debian style.\n\nOwner determination 2026-11-07. The LFM Open License v1.0 text and its\ncommercial-use limitation are still shown and shipped with the model,\nand are not waived. The limitation no longer takes a typed agreement,\nand the record is informational, so coverage is a record receipt that\nclaims no agreement. The LFM2 record digest becomes e4d08e2c. LFM3 is\nunchanged.\n",
   "excluded_top_level": [".gitignore", ".python-version", "Makefile", "PUBLICATION.md", "tests", "tools", "uv.lock"],
-  "pin": "65e5ae07d78039ac5a2fd1aabba3c83524f5893f",
+  "pin": "0984dd222bcb7f97859222b0dc2303b9225191fe",
   "schema": "kilix-content.vendored-git-objects/v1",
   "trees": {
     "0637f9c78d82d43f2dd617530535f0522b6dafe3": [
@@ -10,11 +10,27 @@
     "0be6329204102186d66de6a840ddde5eea9f87de": [
       ["100644", "lfm3-kilix-commands.json", "645e240a88b4ae58b31c68c97275a15eebad9637"]
     ],
+    "402baf370d75cc29b8e7275fd26d28718c57d310": [
+      ["100644", ".gitignore", "7e74013359efce08b816f3b27b6a941e96ce87a2"],
+      ["100644", ".python-version", "04e207918ddc86409a934bfdaf92dbbf0f8ac1cc"],
+      ["100644", "CHANGELOG.md", "016016e3cb157f36db5aa41be631accb58e3ca85"],
+      ["100644", "LICENSE", "41c7d40b05d38a4b9dc2f71fab9c1f32a3567734"],
+      ["100644", "Makefile", "c3f9f06dc69429ccaed15523608522d110f85e28"],
+      ["100644", "NOTICE", "2da879fa9340526fc8c05392d6d0d8b895f1b089"],
+      ["100644", "PUBLICATION.md", "ad0e4496f9a6bcfde3b260844fa09ad721c1ef1c"],
+      ["100644", "README.md", "0caa10f7450339c73b8e08a7992f360babaa3619"],
+      ["100644", "VERSION", "6e8bf73aa550d4c57f6f35830f1bcdc7a4a62f38"],
+      ["100644", "pyproject.toml", "cc4808e843bd0d5ffb45767e63190a4afee4024a"],
+      ["40000", "src", "70972468aef0e1f5f6e2f0c8f2f087a7f2a9ab49"],
+      ["40000", "tests", "5d0c4eb71f83c16ab5f290cf0653f80e91d5566f"],
+      ["40000", "tools", "9052a834514fe52daeac69d062ffaae7a4bb6e2e"],
+      ["100644", "uv.lock", "43e09590b109b26f4fcbdf9b2ee5428fadfba778"]
+    ],
     "5edf68119fd728a8e506acb7f133c209a25cea91": [
       ["100644", "kilix-female-02.json", "61d9b46882a8fddab1c0e97396ef0e61fadca094"]
     ],
-    "643643050b76e0e0424e3d06139c3e04178ef196": [
-      ["40000", "kilix_license", "cfaef600ad210c8916bbc2e24b8086021374ba2a"]
+    "70972468aef0e1f5f6e2f0c8f2f087a7f2a9ab49": [
+      ["40000", "kilix_license", "c097a8445aefbb04a4f71aa576adb78df14d7b91"]
     ],
     "77111a91e4fd0ca3d4045018ab804367a7bb947d": [
       ["100644", "basic-pitch-icassp-2022-onnx.json", "4a5a53b7bcd0c15ede1c6008ad0d4a107a37fa85"]
@@ -124,50 +140,17 @@
       ["100644", "fa152afc73238001c008ff67f5b8a3c6d645cfb714a3900a37a2481a8e75d748", "97a2b0bdc0857923eba59279b40f6d0cbbb4a177"],
       ["100644", "fc55213eb3512d92ec49628697f592ab85526b05abdad2b3e79ab2ceaa0778b7", "6c5aee5efe7ec1b48f7c9cfb2a5f1930e67ff27a"]
     ],
-    "a6a1eae830ba027bbb335afa1532e38d8088e9a1": [
-      ["40000", "app-records", "dadcbb744332fd9c4891dc2272ccdb64320cf52a"],
-      ["40000", "basic-pitch-records", "77111a91e4fd0ca3d4045018ab804367a7bb947d"],
-      ["100644", "determinations-apps.json", "ccba54ff35066b4a71d5249cec331eb1eefd546f"],
-      ["100644", "determinations-apps.sha256", "f57c2db9b977daba177101c06a1b76846839697c"],
-      ["100644", "determinations-basic-pitch.json", "3c3f666beb7642461d06c08c896e5cf7fb6076ee"],
-      ["100644", "determinations-basic-pitch.sha256", "5360a2b13cf8a432953188b32b8611a51c805f24"],
-      ["100644", "determinations-diarization.json", "5f5c1de13d65dfdd7974618ed59d1bb0dc35a308"],
-      ["100644", "determinations-diarization.sha256", "dd468689a996f81edaeb24ff2b25f41fd6d95a91"],
-      ["100644", "determinations-female02.json", "0ae87973a021debf426b00061e747150ba00c487"],
-      ["100644", "determinations-female02.sha256", "6cbf21d4a4be0147b3988835b2d3d99fcf8cccf3"],
-      ["100644", "determinations-lfm2.json", "e8f5377fbdd9fe9a3b96bc56680cce19bf9beb4d"],
-      ["100644", "determinations-lfm2.sha256", "f1a9affe3a2a0fc1b4c56e991ca8812cd5fb06f6"],
-      ["100644", "determinations-lfm3.json", "dd9c139b04663663ec1aabc88ed911677ac67183"],
-      ["100644", "determinations-lfm3.sha256", "456e2c684dc84b2432c92600c6c2c0d589ac3046"],
-      ["100644", "determinations-needle3.json", "c29582998c0a3a90da0f6a078ce107e6e70b8b98"],
-      ["100644", "determinations-needle3.sha256", "db34c02c8e461f3292e26a6ea56feb3f0fde6b69"],
-      ["100644", "determinations-paradee.json", "8a26ca166cc4d09060bbe4092d902e7234ebd9c9"],
-      ["100644", "determinations-paradee.sha256", "9b8598184ea793ae2d970ef9af595f55d42c6974"],
-      ["100644", "determinations.json", "5c9ee66be8ff840cb4f3e041a39548e60189617d"],
-      ["100644", "determinations.sha256", "2182e7f3dc569894f329a70db551876a33c02f25"],
-      ["40000", "diarization-records", "0637f9c78d82d43f2dd617530535f0522b6dafe3"],
-      ["40000", "female02-records", "5edf68119fd728a8e506acb7f133c209a25cea91"],
-      ["40000", "lfm2-records", "f25f0946c9c636db41fc98aeaf60265e8f1a6f04"],
-      ["40000", "lfm3-records", "0be6329204102186d66de6a840ddde5eea9f87de"],
-      ["40000", "needle3-records", "c29fa4f9ff323b8b1f65cbdc573c910ba053df38"],
-      ["40000", "paradee-records", "bd836770d2be3df22f438b2c764a6a66e9470823"],
-      ["40000", "records", "dcc7e1d280cf3acdf7d72187cc09101bde403e8f"],
-      ["40000", "texts", "7c6f49b1a210fb0efe1203353168f5e3ea6f81b3"]
-    ],
     "bd836770d2be3df22f438b2c764a6a66e9470823": [
       ["100644", "paradee-8m-v1.2.json", "5b441c5b887517f5d8cd3d786c91058e443eaf82"]
     ],
-    "c29fa4f9ff323b8b1f65cbdc573c910ba053df38": [
-      ["100644", "needle3-kilix-commands.json", "a283c70f725bb877751be0614f061f6e5149b7f3"]
-    ],
-    "cfaef600ad210c8916bbc2e24b8086021374ba2a": [
+    "c097a8445aefbb04a4f71aa576adb78df14d7b91": [
       ["100644", "__init__.py", "94b65761bbc18e55e05d26b13fb69722a7a9bdd0"],
       ["100644", "agreement.py", "22c359c4afc567db1bf56be7c6df237d9324dc23"],
       ["100644", "basic_pitch.py", "e99ca97a87df06109c31e1ddf3f0b547b03a3aa9"],
       ["100644", "catalog.py", "1f5326fc9beba5f9c30e97fc7a5d212e15d6327b"],
       ["100644", "changed.py", "6b07ce42c06f786126174bf482b8350ece2823f7"],
       ["100644", "coverage.py", "4debef2b4150bdd7a4161457b8c9ced013120108"],
-      ["40000", "data", "a6a1eae830ba027bbb335afa1532e38d8088e9a1"],
+      ["40000", "data", "d5f22894502fdfa1c9b198f35d5590b0ffa50938"],
       ["100644", "diarization.py", "345f94472f91631ec566202353fb600354210ce6"],
       ["100644", "digest.py", "fa0e7cc8d0dd8716b57f29309694791dfaef919f"],
       ["100644", "errors.py", "67efed6718ee0fc5d327aa9e8fdc69fc0c3bb5d7"],
@@ -186,6 +169,39 @@
       ["100644", "standard_policy.py", "9ccbbd8076633a658685a9dfacbbe74e33e23047"],
       ["100644", "store.py", "4139555a5661f38d66b17d0794cae4c1712bd87b"],
       ["100644", "texts.py", "6d95a9a91dd7f396d453569f05ef0000f2b88b4f"]
+    ],
+    "c29fa4f9ff323b8b1f65cbdc573c910ba053df38": [
+      ["100644", "needle3-kilix-commands.json", "a283c70f725bb877751be0614f061f6e5149b7f3"]
+    ],
+    "d5f22894502fdfa1c9b198f35d5590b0ffa50938": [
+      ["40000", "app-records", "dadcbb744332fd9c4891dc2272ccdb64320cf52a"],
+      ["40000", "basic-pitch-records", "77111a91e4fd0ca3d4045018ab804367a7bb947d"],
+      ["100644", "determinations-apps.json", "ccba54ff35066b4a71d5249cec331eb1eefd546f"],
+      ["100644", "determinations-apps.sha256", "f57c2db9b977daba177101c06a1b76846839697c"],
+      ["100644", "determinations-basic-pitch.json", "3c3f666beb7642461d06c08c896e5cf7fb6076ee"],
+      ["100644", "determinations-basic-pitch.sha256", "5360a2b13cf8a432953188b32b8611a51c805f24"],
+      ["100644", "determinations-diarization.json", "5f5c1de13d65dfdd7974618ed59d1bb0dc35a308"],
+      ["100644", "determinations-diarization.sha256", "dd468689a996f81edaeb24ff2b25f41fd6d95a91"],
+      ["100644", "determinations-female02.json", "0ae87973a021debf426b00061e747150ba00c487"],
+      ["100644", "determinations-female02.sha256", "6cbf21d4a4be0147b3988835b2d3d99fcf8cccf3"],
+      ["100644", "determinations-lfm2.json", "32fac6c322ee51aeaceee859e067787941820508"],
+      ["100644", "determinations-lfm2.sha256", "90ccc28fad959b9cb0d7b4615d9263a052cf08d4"],
+      ["100644", "determinations-lfm3.json", "dd9c139b04663663ec1aabc88ed911677ac67183"],
+      ["100644", "determinations-lfm3.sha256", "456e2c684dc84b2432c92600c6c2c0d589ac3046"],
+      ["100644", "determinations-needle3.json", "c29582998c0a3a90da0f6a078ce107e6e70b8b98"],
+      ["100644", "determinations-needle3.sha256", "db34c02c8e461f3292e26a6ea56feb3f0fde6b69"],
+      ["100644", "determinations-paradee.json", "8a26ca166cc4d09060bbe4092d902e7234ebd9c9"],
+      ["100644", "determinations-paradee.sha256", "9b8598184ea793ae2d970ef9af595f55d42c6974"],
+      ["100644", "determinations.json", "5c9ee66be8ff840cb4f3e041a39548e60189617d"],
+      ["100644", "determinations.sha256", "2182e7f3dc569894f329a70db551876a33c02f25"],
+      ["40000", "diarization-records", "0637f9c78d82d43f2dd617530535f0522b6dafe3"],
+      ["40000", "female02-records", "5edf68119fd728a8e506acb7f133c209a25cea91"],
+      ["40000", "lfm2-records", "e28e5dcbb126e43606fd2af7a2da5aff2c0c07e1"],
+      ["40000", "lfm3-records", "0be6329204102186d66de6a840ddde5eea9f87de"],
+      ["40000", "needle3-records", "c29fa4f9ff323b8b1f65cbdc573c910ba053df38"],
+      ["40000", "paradee-records", "bd836770d2be3df22f438b2c764a6a66e9470823"],
+      ["40000", "records", "dcc7e1d280cf3acdf7d72187cc09101bde403e8f"],
+      ["40000", "texts", "7c6f49b1a210fb0efe1203353168f5e3ea6f81b3"]
     ],
     "dadcbb744332fd9c4891dc2272ccdb64320cf52a": [
       ["100644", "needle2-runtime.json", "da5f64c7d6b50d94b221f894ab05b6740bf088bf"],
@@ -225,24 +241,8 @@
       ["100644", "yolox_s.json", "25c84caa492aa6530741ff8948c11bd2a43121ec"],
       ["100644", "yolox_tiny.json", "044206ccbd28c4848db7bd43edf9839d1ba80489"]
     ],
-    "e1880ef67b029af5fcb0aa5b371cedd9b7519570": [
-      ["100644", ".gitignore", "7e74013359efce08b816f3b27b6a941e96ce87a2"],
-      ["100644", ".python-version", "04e207918ddc86409a934bfdaf92dbbf0f8ac1cc"],
-      ["100644", "CHANGELOG.md", "c2a6c66045fe695d0715adf742ef7b63e9d07f2f"],
-      ["100644", "LICENSE", "41c7d40b05d38a4b9dc2f71fab9c1f32a3567734"],
-      ["100644", "Makefile", "c3f9f06dc69429ccaed15523608522d110f85e28"],
-      ["100644", "NOTICE", "2da879fa9340526fc8c05392d6d0d8b895f1b089"],
-      ["100644", "PUBLICATION.md", "ad0e4496f9a6bcfde3b260844fa09ad721c1ef1c"],
-      ["100644", "README.md", "0caa10f7450339c73b8e08a7992f360babaa3619"],
-      ["100644", "VERSION", "6e8bf73aa550d4c57f6f35830f1bcdc7a4a62f38"],
-      ["100644", "pyproject.toml", "cc4808e843bd0d5ffb45767e63190a4afee4024a"],
-      ["40000", "src", "643643050b76e0e0424e3d06139c3e04178ef196"],
-      ["40000", "tests", "b69f82837819493b5345a67a795e60b599718903"],
-      ["40000", "tools", "9052a834514fe52daeac69d062ffaae7a4bb6e2e"],
-      ["100644", "uv.lock", "43e09590b109b26f4fcbdf9b2ee5428fadfba778"]
-    ],
-    "f25f0946c9c636db41fc98aeaf60265e8f1a6f04": [
-      ["100644", "lfm2-kilix-commands.json", "a570ca65be02121516ea9bdc6f3d626b1c814759"]
+    "e28e5dcbb126e43606fd2af7a2da5aff2c0c07e1": [
+      ["100644", "lfm2-kilix-commands.json", "b6b06c245dd25ea297b980a52d1ecf3299abdf1c"]
     ]
   }
 }
