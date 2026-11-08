@@ -1,0 +1,61 @@
+{
+  "schema": "kilix.license.demucs-determination/v1",
+  "authority": {
+    "repository": "https://github.com/adefossez/demucs",
+    "revision": "eeac1d15891af95b1288d2884b95baa3e5baa96c",
+    "files": [
+      {
+        "path": "5c90dfd2-34c22ccb.th",
+        "url": "https://dl.fbaipublicfiles.com/demucs/hybrid_transformer/5c90dfd2-34c22ccb.th",
+        "bytes": 54996327,
+        "sha256": "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd"
+      }
+    ],
+    "files_list_path": "demucs/remote/files.txt",
+    "files_list_sha256": "7258eee911e5963e6270983d7072832e90e1ed96b25bb26aadf12f9867109bf9",
+    "files_list_line": "5c90dfd2-34c22ccb.th",
+    "bag_definition": {
+      "path": "demucs/remote/htdemucs_6s.yaml",
+      "bytes": 21,
+      "sha256": "207405151270af8fd81c2373c25d27950916682ac91dca7884a11ce13dad6f58",
+      "text": "models: ['5c90dfd2']",
+      "meaning": "htdemucs_6s is the single model 5c90dfd2 with default weights, so Demucs loads it by that signature and the bag definition is not installed."
+    },
+    "licence_path": "LICENSE",
+    "licence_bytes": 1087,
+    "licence_sha256": "cf9b17822d1fcd4ff32ccbe14183386fb3adf6f2ff92dc184130823f7fc28173",
+    "readme_sha256": "59ab8a3595cd5ec8dd853821ca2b377804f397be8467a082920f1c44e0d59d35",
+    "readme_licence_line": "Demucs is released under the MIT license as found in the [LICENSE](LICENSE) file.",
+    "relicensing": {
+      "commit": "25dada5a68a7ceecd831a113e5712512312e4a3f",
+      "date": "2020-04-13",
+      "line": "- 13/04/2020: **Demucs released under MIT**: We are happy to release Demucs under the MIT licence.",
+      "previous": "CC BY-NC 4.0"
+    },
+    "weights_published": "2022-12-07 (Last-Modified of the weights file; files.txt entry added by 2be7f29 'preparing v4 release')",
+    "same_text_as": "encodec-converter-runtime-code",
+    "owner_request": {
+      "date": "2026-11-08",
+      "words": "route kilix split properly through kilix-license."
+    },
+    "scope": "Meta's unchanged htdemucs_6s weights file, as the pinned Demucs source names and checks it, downloaded by the user on first use and never shipped. The Demucs Python package, its dependencies and any separated audio are not covered.",
+    "unproved": "Demucs publishes no licence for its pretrained weights apart from the repository's MIT statement. The training data (MUSDB18-HQ and 800 further songs) and its terms are not established by this record."
+  },
+  "records": [
+    {
+      "schema": "kilix.license.record/v1",
+      "id": "demucs-htdemucs-6s",
+      "licensor": "Meta Platforms, Inc. and affiliates",
+      "licence_ids": [
+        "MIT"
+      ],
+      "licence_text_id": "github.com/adefossez/demucs/LICENSE",
+      "text_sha256": "cf9b17822d1fcd4ff32ccbe14183386fb3adf6f2ff92dc184130823f7fc28173",
+      "decision_class": "affirmative",
+      "advisories": [],
+      "binding_conditions": [],
+      "components": [],
+      "statements": []
+    }
+  ]
+}

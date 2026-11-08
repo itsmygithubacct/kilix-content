@@ -6646,6 +6646,61 @@
       },
       "stream": "F104",
       "version": "9991303bba609a3b93089d13ec80d1d495083596"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.split.demucs/v1",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 54996327,
+          "path": "models/5c90dfd2-34c22ccb.th",
+          "sha256": "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd"
+        },
+        {
+          "bytes": 1087,
+          "path": "notices/LICENSE-mit.txt",
+          "sha256": "cf9b17822d1fcd4ff32ccbe14183386fb3adf6f2ff92dc184130823f7fc28173"
+        }
+      ],
+      "id": "demucs-htdemucs-6s",
+      "label": "Demucs htdemucs_6s six-source separator (unchanged upstream weights)",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "mit",
+          "licensors": [
+            "Meta Platforms, Inc. and affiliates"
+          ],
+          "record_digest": "02f182d709f425adce6d8bb3d69b13aab3e2f976bd8aaf32b3b8eab6c04ae75b",
+          "text_sha256": "cf9b17822d1fcd4ff32ccbe14183386fb3adf6f2ff92dc184130823f7fc28173"
+        }
+      ],
+      "provider": "kilix-split",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 54996327,
+        "installed_bytes": 54997414,
+        "temporary_bytes": 54997414
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "models/5c90dfd2-34c22ccb.th",
+            "url": "https://dl.fbaipublicfiles.com/demucs/hybrid_transformer/5c90dfd2-34c22ccb.th"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "adefossez/demucs",
+          "revision": "eeac1d15891af95b1288d2884b95baa3e5baa96c",
+          "original_url": "https://dl.fbaipublicfiles.com/demucs/hybrid_transformer/5c90dfd2-34c22ccb.th"
+        }
+      },
+      "stream": "F104",
+      "version": "eeac1d15891af95b1288d2884b95baa3e5baa96c"
     }
   ]
 }

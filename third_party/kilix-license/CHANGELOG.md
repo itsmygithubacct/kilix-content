@@ -4,6 +4,18 @@ All notable changes to `kilix-license` are recorded here.
 
 ## Unreleased
 
+- Demucs htdemucs_6s (`demucs-htdemucs-6s`), the six-source separator `kilix
+  split` runs, has its own determination pin and record, at the owner's request
+  of 2026-11-08 to route `kilix split` through kilix-license. The record pins
+  Meta's original weights file `5c90dfd2-34c22ccb.th` as adefossez/demucs
+  `eeac1d15` names it (its `htdemucs_6s.yaml` is that one model with default
+  weights, recorded as evidence), and shows the repository's MIT text
+  (licensor Meta Platforms, Inc. and affiliates; relicensed from CC BY-NC 4.0 on
+  2020-04-13), the text the EnCodec converter record already carries. Demucs
+  publishes no separate weights licence, and the training data's terms are not
+  established; the determination says both. The weights stay upstream and are
+  downloaded on first use. No other record digest moves.
+
 - Whisper medium.en (`faster-whisper-medium-en`, Systran revision `a29b04bd`)
   has its own determination pin and record, on the owner's determination of
   2026-11-07 (`licence-evidence-whisper-medium-en-2026-11-07`). Its terms are

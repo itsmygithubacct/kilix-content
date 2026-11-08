@@ -16,6 +16,15 @@ pre-1.0.
 
 ### Added
 
+- Catalogue Demucs htdemucs_6s (`demucs-htdemucs-6s`), the six-source separator
+  `kilix split` runs, at the owner's request of 2026-11-08 to route `kilix split`
+  through kilix-license. The asset is Meta's unchanged weights file
+  `5c90dfd2-34c22ccb.th` from dl.fbaipublicfiles.com, exactly as adefossez/demucs
+  `eeac1d15` names it, plus the Demucs MIT text. It cites its own record,
+  `demucs-htdemucs-6s` (MIT, licensor Meta Platforms, Inc. and affiliates). The
+  vendored kilix-license moves to `e05278d5`, which adds that record in a family
+  of its own and moves no other record digest. The catalog guards now count 42
+  assets and leave the new asset out of their comparison.
 - Catalogue faster-whisper medium English (`faster-whisper-medium-en`,
   Systran revision `a29b04bd`) as a second Whisper dictation model. It cites
   its own kilix-license record (owner determination 2026-11-07), whose terms

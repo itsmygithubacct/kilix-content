@@ -1,0 +1,24 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "demucs-htdemucs-6s",
+  "mode": "upstream-files",
+  "license_record_id": "demucs-htdemucs-6s",
+  "provider": "kilix-split",
+  "consumer_schema": "kilix.split.demucs/v1",
+  "version": "eeac1d15891af95b1288d2884b95baa3e5baa96c",
+  "label": "Demucs htdemucs_6s six-source separator (unchanged upstream weights)",
+  "provenance": {
+    "project": "adefossez/demucs",
+    "revision": "eeac1d15891af95b1288d2884b95baa3e5baa96c",
+    "original_url": "https://dl.fbaipublicfiles.com/demucs/hybrid_transformer/5c90dfd2-34c22ccb.th"
+  },
+  "members": [
+    {
+      "path": "models/5c90dfd2-34c22ccb.th",
+      "url": "https://dl.fbaipublicfiles.com/demucs/hybrid_transformer/5c90dfd2-34c22ccb.th",
+      "bytes": 54996327,
+      "sha256": "34c22ccb381c6f9fdbf324f04e1e2fe21aaaf293f5ded163a162697ff9a02ddd"
+    }
+  ],
+  "provenance_scope": "Meta's unchanged htdemucs_6s weights file, exactly as demucs/remote/files.txt at the pinned revision names it; no conversion. htdemucs_6s.yaml names this single model with default weights, so kilix split loads it by its signature 5c90dfd2. The Demucs Python package and its dependencies, installed by kilix split --install, are outside this asset."
+}

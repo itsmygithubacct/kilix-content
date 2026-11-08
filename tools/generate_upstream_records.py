@@ -72,10 +72,14 @@ PIN_NAMES = (
     "needle2-runtime.json",
     "needle2-train.json",
     "basic-pitch-icassp-2022-onnx.json",
+    # Owner request 2026-11-08: route kilix split through kilix-license. Meta's
+    # htdemucs_6s weights under the Demucs MIT licence, in a family of its own.
+    "demucs-htdemucs-6s.json",
 )
 
 LICENSORS = {
     "basic-pitch-icassp-2022-onnx": ["Spotify AB"],
+    "demucs-htdemucs-6s": ["Meta Platforms, Inc. and affiliates"],
     "needle3-kilix-commands": ["Cactus Compute, Inc.", "needle-rs contributors"],
     "lfm3-kilix-commands": ["Liquid AI, Inc.", "ggml and bundled runtime contributors"],
     "lfm2-kilix-commands": ["Liquid AI, Inc.", "ggml and bundled runtime contributors"],

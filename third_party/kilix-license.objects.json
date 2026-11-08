@@ -1,7 +1,7 @@
 {
-  "commit": "tree 4bd62951532c6896e7a07060e8bc20a26497e68d\nparent 0984dd222bcb7f97859222b0dc2303b9225191fe\nauthor itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1794092179 -0800\ncommitter itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1794092179 -0800\n\nDetermine Whisper medium.en (faster-whisper) first-use terms.\n\nThe owner determined faster-whisper-medium-en on 2026-11-07: MIT,\nlicensors OpenAI (weights) and SYSTRAN (CTranslate2 conversion), the same\nterms as faster-whisper-small-en. The record pins Systran/faster-whisper-\nmedium.en at a29b04bd, its four files and its model card, and carries\nsmall.en's Whisper MIT text, copyright statement and card caution exactly.\n\nIt is its own family (determinations-whisper-medium.json with its own pin\nand records directory), so no existing record digest moves. Until now the\nmedium catalog asset cited the small.en record, whose determination names\na different artifact.\n",
+  "commit": "tree c0b9cba57821c9a48d74e6d9c34aef33f73f057f\nparent 99add45d584da03d97c36a298a6cc51da93a977b\nauthor itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1794134626 -0800\ncommitter itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1794134626 -0800\n\nPin only the Demucs weights file; keep the bag definition as evidence.\n\nkilix-content requires every file of an upstream-files asset to come from\nits provenance host. The weights are on dl.fbaipublicfiles.com and the\n21-byte htdemucs_6s.yaml is on GitHub. That yaml names the single model\n5c90dfd2 with default weights, and Demucs loads a bag of one exactly as\nthat model, so kilix split asks for the signature and the yaml is not\ninstalled. The record now pins only the weights file and records the yaml,\nwith its digest and text, as evidence for what htdemucs_6s is. The record\nterms and digest are unchanged; only its determination pin moves.\n",
   "excluded_top_level": [".gitignore", ".python-version", "Makefile", "PUBLICATION.md", "tests", "tools", "uv.lock"],
-  "pin": "7c70078f8da3d21cc0ee9d0e9a0a133a06bc1a42",
+  "pin": "e05278d5539236d6c3a34e3a32d0030f4164a722",
   "schema": "kilix-content.vendored-git-objects/v1",
   "trees": {
     "0637f9c78d82d43f2dd617530535f0522b6dafe3": [
@@ -10,14 +10,15 @@
     "0be6329204102186d66de6a840ddde5eea9f87de": [
       ["100644", "lfm3-kilix-commands.json", "645e240a88b4ae58b31c68c97275a15eebad9637"]
     ],
-    "49bbf1decec7853be75a9fb1e2fb10894419e4e6": [
+    "1b713291f4ff65a64d19fabb33db18392223ff53": [
       ["100644", "__init__.py", "94b65761bbc18e55e05d26b13fb69722a7a9bdd0"],
       ["100644", "agreement.py", "22c359c4afc567db1bf56be7c6df237d9324dc23"],
       ["100644", "basic_pitch.py", "e99ca97a87df06109c31e1ddf3f0b547b03a3aa9"],
-      ["100644", "catalog.py", "fa370845d8782233e1baa9a09eea78dfd9709047"],
+      ["100644", "catalog.py", "e37e22ea66be986db01558c3d38dc480a03d76cf"],
       ["100644", "changed.py", "6b07ce42c06f786126174bf482b8350ece2823f7"],
       ["100644", "coverage.py", "4debef2b4150bdd7a4161457b8c9ced013120108"],
-      ["40000", "data", "ae5dddfce7a4d426e9ff20b579c717ad25333acc"],
+      ["40000", "data", "cf4ed24beee4ac14ef1d497c9b661bedee06716b"],
+      ["100644", "demucs.py", "db943d3943609ad78dab89c45eb4dbb2559f912d"],
       ["100644", "diarization.py", "345f94472f91631ec566202353fb600354210ce6"],
       ["100644", "digest.py", "fa0e7cc8d0dd8716b57f29309694791dfaef919f"],
       ["100644", "errors.py", "67efed6718ee0fc5d327aa9e8fdc69fc0c3bb5d7"],
@@ -38,21 +39,8 @@
       ["100644", "texts.py", "6d95a9a91dd7f396d453569f05ef0000f2b88b4f"],
       ["100644", "whisper_medium.py", "997046976a87f579731228467e2f96bb407a2311"]
     ],
-    "4bd62951532c6896e7a07060e8bc20a26497e68d": [
-      ["100644", ".gitignore", "7e74013359efce08b816f3b27b6a941e96ce87a2"],
-      ["100644", ".python-version", "04e207918ddc86409a934bfdaf92dbbf0f8ac1cc"],
-      ["100644", "CHANGELOG.md", "432c4d0b0393d7756003f0ef798ab8698930152d"],
-      ["100644", "LICENSE", "41c7d40b05d38a4b9dc2f71fab9c1f32a3567734"],
-      ["100644", "Makefile", "c3f9f06dc69429ccaed15523608522d110f85e28"],
-      ["100644", "NOTICE", "2da879fa9340526fc8c05392d6d0d8b895f1b089"],
-      ["100644", "PUBLICATION.md", "ad0e4496f9a6bcfde3b260844fa09ad721c1ef1c"],
-      ["100644", "README.md", "0caa10f7450339c73b8e08a7992f360babaa3619"],
-      ["100644", "VERSION", "6e8bf73aa550d4c57f6f35830f1bcdc7a4a62f38"],
-      ["100644", "pyproject.toml", "f7c2bc6176e7e1c39d8355b6c778285d9fc323fb"],
-      ["40000", "src", "ac479d962f6278a319a66bcf355781115f529fa5"],
-      ["40000", "tests", "9d5a0a72fc5ab5e0416b577c1812991b42f8b963"],
-      ["40000", "tools", "7addf02a19818773d83b33b076bb632bb923d0e8"],
-      ["100644", "uv.lock", "43e09590b109b26f4fcbdf9b2ee5428fadfba778"]
+    "5b572601a43c1d34b8f9b8412143c99ac28a7aea": [
+      ["100644", "demucs-htdemucs-6s.json", "91f31755c408f4fb063af5cd1e871f3a5e46c942"]
     ],
     "5edf68119fd728a8e506acb7f133c209a25cea91": [
       ["100644", "kilix-female-02.json", "61d9b46882a8fddab1c0e97396ef0e61fadca094"]
@@ -168,16 +156,41 @@
       ["100644", "fa152afc73238001c008ff67f5b8a3c6d645cfb714a3900a37a2481a8e75d748", "97a2b0bdc0857923eba59279b40f6d0cbbb4a177"],
       ["100644", "fc55213eb3512d92ec49628697f592ab85526b05abdad2b3e79ab2ceaa0778b7", "6c5aee5efe7ec1b48f7c9cfb2a5f1930e67ff27a"]
     ],
-    "ac479d962f6278a319a66bcf355781115f529fa5": [
-      ["40000", "kilix_license", "49bbf1decec7853be75a9fb1e2fb10894419e4e6"]
+    "a8847e69d8dbaacc9e24ddf845cc1c2ff98103bc": [
+      ["40000", "kilix_license", "1b713291f4ff65a64d19fabb33db18392223ff53"]
     ],
-    "ae5dddfce7a4d426e9ff20b579c717ad25333acc": [
+    "bd836770d2be3df22f438b2c764a6a66e9470823": [
+      ["100644", "paradee-8m-v1.2.json", "5b441c5b887517f5d8cd3d786c91058e443eaf82"]
+    ],
+    "c0b9cba57821c9a48d74e6d9c34aef33f73f057f": [
+      ["100644", ".gitignore", "7e74013359efce08b816f3b27b6a941e96ce87a2"],
+      ["100644", ".python-version", "04e207918ddc86409a934bfdaf92dbbf0f8ac1cc"],
+      ["100644", "CHANGELOG.md", "8f51536848a88884f037aadc216ed10b7117e660"],
+      ["100644", "LICENSE", "41c7d40b05d38a4b9dc2f71fab9c1f32a3567734"],
+      ["100644", "Makefile", "c3f9f06dc69429ccaed15523608522d110f85e28"],
+      ["100644", "NOTICE", "2da879fa9340526fc8c05392d6d0d8b895f1b089"],
+      ["100644", "PUBLICATION.md", "ad0e4496f9a6bcfde3b260844fa09ad721c1ef1c"],
+      ["100644", "README.md", "0caa10f7450339c73b8e08a7992f360babaa3619"],
+      ["100644", "VERSION", "6e8bf73aa550d4c57f6f35830f1bcdc7a4a62f38"],
+      ["100644", "pyproject.toml", "c32adb9ca9d7dc548486b0a8af8f02464dd769ac"],
+      ["40000", "src", "a8847e69d8dbaacc9e24ddf845cc1c2ff98103bc"],
+      ["40000", "tests", "72b97ac8ad4c2ad4cd7ada7bb650d73c50511e76"],
+      ["40000", "tools", "c8b8bd14dbdae88f6f2653a0376055d35aefcba0"],
+      ["100644", "uv.lock", "43e09590b109b26f4fcbdf9b2ee5428fadfba778"]
+    ],
+    "c29fa4f9ff323b8b1f65cbdc573c910ba053df38": [
+      ["100644", "needle3-kilix-commands.json", "a283c70f725bb877751be0614f061f6e5149b7f3"]
+    ],
+    "cf4ed24beee4ac14ef1d497c9b661bedee06716b": [
       ["40000", "app-records", "dadcbb744332fd9c4891dc2272ccdb64320cf52a"],
       ["40000", "basic-pitch-records", "77111a91e4fd0ca3d4045018ab804367a7bb947d"],
+      ["40000", "demucs-records", "5b572601a43c1d34b8f9b8412143c99ac28a7aea"],
       ["100644", "determinations-apps.json", "ccba54ff35066b4a71d5249cec331eb1eefd546f"],
       ["100644", "determinations-apps.sha256", "f57c2db9b977daba177101c06a1b76846839697c"],
       ["100644", "determinations-basic-pitch.json", "3c3f666beb7642461d06c08c896e5cf7fb6076ee"],
       ["100644", "determinations-basic-pitch.sha256", "5360a2b13cf8a432953188b32b8611a51c805f24"],
+      ["100644", "determinations-demucs.json", "5e6e69531a3a022f66c11463dc463330d3895309"],
+      ["100644", "determinations-demucs.sha256", "fb83caf8658b77639d3ca6dca7ec880abe9af11c"],
       ["100644", "determinations-diarization.json", "5f5c1de13d65dfdd7974618ed59d1bb0dc35a308"],
       ["100644", "determinations-diarization.sha256", "dd468689a996f81edaeb24ff2b25f41fd6d95a91"],
       ["100644", "determinations-female02.json", "0ae87973a021debf426b00061e747150ba00c487"],
@@ -203,12 +216,6 @@
       ["40000", "records", "dcc7e1d280cf3acdf7d72187cc09101bde403e8f"],
       ["40000", "texts", "7c6f49b1a210fb0efe1203353168f5e3ea6f81b3"],
       ["40000", "whisper-medium-records", "68652fe576ac5f5d659472303036376e0c3899e5"]
-    ],
-    "bd836770d2be3df22f438b2c764a6a66e9470823": [
-      ["100644", "paradee-8m-v1.2.json", "5b441c5b887517f5d8cd3d786c91058e443eaf82"]
-    ],
-    "c29fa4f9ff323b8b1f65cbdc573c910ba053df38": [
-      ["100644", "needle3-kilix-commands.json", "a283c70f725bb877751be0614f061f6e5149b7f3"]
     ],
     "dadcbb744332fd9c4891dc2272ccdb64320cf52a": [
       ["100644", "needle2-runtime.json", "da5f64c7d6b50d94b221f894ab05b6740bf088bf"],
