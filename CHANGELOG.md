@@ -33,6 +33,9 @@ pre-1.0.
 
 ### Changed
 
+- The vendored kilix-license moves to `80aab439`, which records the owner's
+  determination of the `demucs-htdemucs-6s` terms (2026-11-08). Only that
+  determination pin moves; no record digest and no catalog asset changes.
 - Deliver LFM2's terms as a notice, by the owner's 2026-11-07 determination.
   The vendored kilix-license `0984dd222bcb7f97859222b0dc2303b9225191fe` makes
   the commercial-use limitation informational, so the `lfm2-kilix-commands`

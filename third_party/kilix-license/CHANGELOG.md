@@ -13,7 +13,10 @@ All notable changes to `kilix-license` are recorded here.
   (licensor Meta Platforms, Inc. and affiliates; relicensed from CC BY-NC 4.0 on
   2020-04-13), the text the EnCodec converter record already carries. Demucs
   publishes no separate weights licence, and the training data's terms are not
-  established; the determination says both. The weights stay upstream and are
+  established; the determination says both. The owner adopted these terms as
+  the owner's determination on 2026-11-08
+  (`licence-evidence-demucs-htdemucs-6s-2026-11-08`), which the generator now
+  requires; the record digest does not move. The weights stay upstream and are
   downloaded on first use. No other record digest moves.
 
 - Whisper medium.en (`faster-whisper-medium-en`, Systran revision `a29b04bd`)

@@ -1,6 +1,8 @@
 """Separately pinned terms for the Demucs htdemucs_6s pretrained weights.
 
-The artifact is Meta's original release of the six-source Hybrid Transformer
+The owner determined these terms on 2026-11-08, adopting the builder's reading
+of the upstream evidence below with its two gaps stated (no weights-specific
+licence; training data terms not established). The artifact is Meta's original release of the six-source Hybrid Transformer
 Demucs model: the one weights file that the pinned Demucs source (adefossez/
 demucs at eeac1d15) names in demucs/remote/files.txt and checks by sha256
 prefix. Its htdemucs_6s.yaml names that single model with default weights, so
@@ -33,6 +35,9 @@ RELICENSING_COMMIT = "25dada5a68a7ceecd831a113e5712512312e4a3f"
 LICENCE_SHA256 = "cf9b17822d1fcd4ff32ccbe14183386fb3adf6f2ff92dc184130823f7fc28173"
 LICENSOR = "Meta Platforms, Inc. and affiliates"
 LICENCE_TEXT_ID = "github.com/adefossez/demucs/LICENSE"
+# The owner's determination, kept with its evidence outside this repository.
+OWNER_RECORD = ("licence-evidence-demucs-htdemucs-6s-2026-11-08/OWNER-DETERMINATION-demucs-htdemucs-6s.md",
+                3506, "c58b90a793b5a0866253d5351de0cc61000f05835daf6736a0ae3a2e2e22def0")
 
 
 def generate_demucs_records(directory):
@@ -56,6 +61,9 @@ def generate_demucs_records(directory):
             or authority.get("readme_licence_line") != README_LICENCE_LINE
             or (authority.get("relicensing") or {}).get("commit") != RELICENSING_COMMIT):
         raise ValueError("unexpected Demucs licence evidence")
+    if tuple((authority.get("owner_record") or {}).get(k)
+             for k in ("path", "bytes", "sha256")) != OWNER_RECORD:
+        raise ValueError("Demucs terms lack the owner's determination")
     if authority.get("licence_sha256") != LICENCE_SHA256:
         raise ValueError("Demucs licence is not displayed")
     record = LicenseRecord.from_mapping(dict(data["records"][0], determinations_sha256=pin))
