@@ -21,7 +21,10 @@ pre-1.0.
   the commercial-use limitation informational, so the `lfm2-kilix-commands`
   licence record decision is `record`. Its full terms are still shown and
   shipped, and no typed agreement is taken. The terms are not waived.
-- Select Needle `3a8e41c52f32f963c4bbeadfbec69b200f13eafe`. Ask reads an
+- Select Needle `5cbff3172224d5277adee5a3c826ee4b0698917a`, which vendors this
+  catalog's LFM2 delivery and notice record (content `81f2321b`) so its install
+  and runtime read the same terms the image records. Its parent `3a8e41c5`
+  still vendored the v8 delivery with the agreement record. Ask reads an
   unquoted spaced path only when that exact path exists, and refuses when two
   existing paths read the request differently. A bare right, left or down
   before an explicit path is the placement. The LFM2 install shows the terms

@@ -29,7 +29,7 @@ class DetectorPins(unittest.TestCase):
             elif entry['id'] == 'kilix-pdf-conversion':
                 entry['source']['ref'] = 'e841241b0134fef42045a946199a92e9fa35ffbf'
             elif entry['id'] == 'kilix-needle':
-                entry['source']['ref'] = '3a8e41c52f32f963c4bbeadfbec69b200f13eafe'
+                entry['source']['ref'] = '5cbff3172224d5277adee5a3c826ee4b0698917a'
                 # Owner determination 2026-11-07: LFM2's terms are a notice.
                 entry['dependency_hint'] = entry['dependency_hint'].replace(
                     'after licence review and acceptance;',
