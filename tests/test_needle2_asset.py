@@ -103,7 +103,9 @@ class Needle2AssetTests(unittest.TestCase):
                                 _pinned('determinations-whisper-medium.sha256')
                                 if asset_id == 'faster-whisper-medium-en' else
                                 _pinned('determinations-demucs.sha256')
-                                if asset_id == 'demucs-htdemucs-6s' else release)
+                                if asset_id == 'demucs-htdemucs-6s' else
+                                _pinned('determinations-whisper-large-v3.sha256')
+                                if asset_id == 'faster-whisper-large-v3' else release)
                     self.assertEqual(record.determinations_sha256, expected)
 
     def test_version_is_the_revision(self) -> None:

@@ -4,6 +4,24 @@ All notable changes to `kilix-license` are recorded here.
 
 ## Unreleased
 
+- Whisper large-v3 (`faster-whisper-large-v3`, Systran revision `edaa852e`)
+  has its own determination pin and record, on the owner's determination of
+  2026-11-08 (`licence-evidence-whisper-large-v3-2026-11-08`), which the
+  generator requires. Its terms are those of `faster-whisper-medium-en`: MIT,
+  licensors OpenAI and SYSTRAN, the Whisper copyright statement and the model
+  card caution. It pins five files, including `preprocessor_config.json`
+  (large-v3 has 128 mel bins). Kilix Playalong offers it for lyrics that are
+  not in English; the user downloads it only after answering yes.
+- Demucs htdemucs_6s and Whisper medium.en each gain a `distribution` entry,
+  on the owner's distribution decision of 2026-11-08, which the generator
+  requires. From Plebian-OS 0.2.3 RC5 the Demucs weights also ship in the
+  installation image with the MIT text beside them, and both models are
+  installed by default for Kilix Playalong unless the machine's configuration
+  declines: the model wizard's kilix-playalong page answered no, or
+  `KILIX_PLAYALONG_MODELS=0` in the shared settings file. medium.en is still
+  never shipped; an online upgrade downloads it from the source. The terms
+  and both record digests are unchanged; only the determination pins move.
+
 - Demucs htdemucs_6s (`demucs-htdemucs-6s`), the six-source separator `kilix
   split` runs, has its own determination pin and record, at the owner's request
   of 2026-11-08 to route `kilix split` through kilix-license. The record pins

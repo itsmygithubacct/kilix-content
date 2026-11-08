@@ -35,7 +35,24 @@
       "sha256": "6ac0416bdb3f9bb23da7acd57af79055b70ba8b02766891e6abef97eb21b9940"
     },
     "precedent": "faster-whisper-small-en",
-    "scope": "Unchanged upstream CTranslate2 conversion files of OpenAI Whisper medium.en, downloaded by the user on first use and never shipped. The licence text, statement and advisory are the faster-whisper-small-en ones; only the artifact differs."
+    "scope": "Unchanged upstream CTranslate2 conversion files of OpenAI Whisper medium.en, downloaded from the source and never shipped. The user downloads it on first use for dictation. From Plebian-OS 0.2.3 RC5 an online upgrade also downloads it by default for Kilix Playalong unless the machine's configuration declines (see distribution). The licence text, statement and advisory are the faster-whisper-small-en ones; only the artifact differs.",
+    "distribution": {
+      "since": "Plebian-OS 0.2.3 RC5",
+      "image": "Not in the installation image. The offline provisioning of a fresh install does not download it.",
+      "upgrade": "An online upgrade downloads the pinned files from huggingface.co and verifies each against its pinned size and sha256 before installing.",
+      "declined_by": [
+        "the model wizard's kilix-playalong page answered no",
+        "KILIX_PLAYALONG_MODELS=0 in the shared settings file"
+      ],
+      "authorization": "standard distribution policy (MIT, no additional terms)",
+      "condition": "Unchanged. The MIT notice condition attaches to redistribution, which does not occur: the bytes come from the source.",
+      "owner_record": {
+        "path": "licence-evidence-whisper-medium-en-2026-11-07/OWNER-DISTRIBUTION-whisper-medium-en-2026-11-08.md",
+        "bytes": 2515,
+        "sha256": "6798bb899670fc0c1ce3b11bf07fcd0afe6ca9447f15ecde3714a74600850a65"
+      },
+      "decided_by": "The owner, 2026-11-08 12:29:34Z, verbatim: \"Both\" (\"medium.en is installed by default. A new large-v3 record is offered for non-English songs and installed only after a yes.\"), \"Demucs in ISO, Whisper online (Recommended)\", and for the opt-out \"Either one\". The licence terms are unchanged."
+    }
   },
   "records": [
     {

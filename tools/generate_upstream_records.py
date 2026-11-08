@@ -75,6 +75,9 @@ PIN_NAMES = (
     # Owner request 2026-11-08: route kilix split through kilix-license. Meta's
     # htdemucs_6s weights under the Demucs MIT licence, in a family of its own.
     "demucs-htdemucs-6s.json",
+    # Owner determination 2026-11-08: Whisper large-v3 for Kilix Playalong
+    # lyrics in any language, installed only after a yes; medium.en's terms.
+    "faster-whisper-large-v3.json",
 )
 
 LICENSORS = {
@@ -93,6 +96,7 @@ LICENSORS = {
     "whisper-tiny-ggml": ["OpenAI"],
     "faster-whisper-small-en": ["OpenAI", "SYSTRAN"],
     "faster-whisper-medium-en": ["OpenAI", "SYSTRAN"],
+    "faster-whisper-large-v3": ["OpenAI", "SYSTRAN"],
     "piper-en-us-kristin-medium": ["Bryce Beattie"],
     "kilix-female-02": ["itsmygithubacct"],
     "paradee-8m-v1.2": ["Sahil Mahendrakar"],

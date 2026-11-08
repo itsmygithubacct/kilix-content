@@ -11,7 +11,10 @@ MIT licence (README "License" and LICENSE at that commit; relicensed from
 CC BY-NC 4.0 on 2020-04-13). No separate licence is published for the
 weights. The record shows that MIT text, the one Meta's EnCodec converter
 record already carries. It lives in its own family so that no existing record
-digest moves. This file does not fetch the weights.
+digest moves. On 2026-11-08 the owner also decided its distribution: from
+Plebian-OS 0.2.3 RC5 the weights ship in the image with the MIT text beside
+them and install by default for Kilix Playalong unless declined. This file does
+not fetch the weights.
 """
 from .digest import sha256_hex, load_json_object
 from .generate import load_pin, load_text_file
@@ -38,6 +41,12 @@ LICENCE_TEXT_ID = "github.com/adefossez/demucs/LICENSE"
 # The owner's determination, kept with its evidence outside this repository.
 OWNER_RECORD = ("licence-evidence-demucs-htdemucs-6s-2026-11-08/OWNER-DETERMINATION-demucs-htdemucs-6s.md",
                 3506, "c58b90a793b5a0866253d5351de0cc61000f05835daf6736a0ae3a2e2e22def0")
+# The owner's 2026-11-08 distribution decision: the weights also ship in the
+# Plebian-OS image (MIT notice beside them) and install by default for Kilix
+# Playalong unless declined. The terms above are unchanged by it.
+DISTRIBUTION_RECORD = (
+    "licence-evidence-demucs-htdemucs-6s-2026-11-08/OWNER-DISTRIBUTION-demucs-htdemucs-6s-2026-11-08.md",
+    2683, "70c4baa8d8df919ddf0023ab12a8ef7edf43e84f3ff9895e6493c6a464067322")
 
 
 def generate_demucs_records(directory):
@@ -64,6 +73,9 @@ def generate_demucs_records(directory):
     if tuple((authority.get("owner_record") or {}).get(k)
              for k in ("path", "bytes", "sha256")) != OWNER_RECORD:
         raise ValueError("Demucs terms lack the owner's determination")
+    if tuple(((authority.get("distribution") or {}).get("owner_record") or {}).get(k)
+             for k in ("path", "bytes", "sha256")) != DISTRIBUTION_RECORD:
+        raise ValueError("Demucs distribution lacks the owner's decision")
     if authority.get("licence_sha256") != LICENCE_SHA256:
         raise ValueError("Demucs licence is not displayed")
     record = LicenseRecord.from_mapping(dict(data["records"][0], determinations_sha256=pin))

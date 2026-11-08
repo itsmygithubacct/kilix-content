@@ -4,8 +4,10 @@ The owner determined Systran/faster-whisper-medium.en at a29b04bd on
 2026-11-07: MIT, licensors OpenAI (weights) and SYSTRAN (CTranslate2
 conversion), the same terms as faster-whisper-small-en. The record reuses that
 licence text, statement and advisory; only the artifact differs. It lives in
-its own family so that no release record digest moves. This file does not
-fetch the weights.
+its own family so that no release record digest moves. On 2026-11-08 the
+owner also decided its distribution: from Plebian-OS 0.2.3 RC5 an online
+upgrade downloads it by default for Kilix Playalong unless declined; it is still
+never shipped. This file does not fetch the weights.
 """
 from .digest import sha256_hex, load_json_object
 from .generate import load_pin, load_text_file
@@ -26,6 +28,12 @@ CARD_SHA256 = "ab3ddd3b6af4ea0ef353cb80004f26613ba33217f81652fc13738d3b098c7675"
 LICENCE_SHA256 = "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d"
 STATEMENTS = (("whisper-notice-copyright", "94536c807e7ad8257102a5db0496db0bf1753fc8b32cba9188e337d9796db7d0"),)
 ADVISORIES = (("whisper-card-caution", "0e9d0d19fa02b8f246d9902d93a2b0b0fac7cb07a518257ffa7d102d1c37c638"),)
+# The owner's 2026-11-08 distribution decision: an online upgrade downloads it
+# by default for Kilix Playalong unless declined. Still never shipped; the
+# terms above are unchanged by it.
+DISTRIBUTION_RECORD = (
+    "licence-evidence-whisper-medium-en-2026-11-07/OWNER-DISTRIBUTION-whisper-medium-en-2026-11-08.md",
+    2515, "6798bb899670fc0c1ce3b11bf07fcd0afe6ca9447f15ecde3714a74600850a65")
 
 
 def generate_whisper_medium_records(directory):
@@ -43,6 +51,9 @@ def generate_whisper_medium_records(directory):
         raise ValueError("unexpected Whisper medium upstream binding")
     if authority.get("card_sha256") != CARD_SHA256 or authority.get("card_licence_line") != "license: mit":
         raise ValueError("unexpected Whisper medium model card")
+    if tuple(((authority.get("distribution") or {}).get("owner_record") or {}).get(k)
+             for k in ("path", "bytes", "sha256")) != DISTRIBUTION_RECORD:
+        raise ValueError("Whisper medium distribution lacks the owner's decision")
     if authority.get("licence_sha256") != LICENCE_SHA256:
         raise ValueError("Whisper medium licence is not displayed")
     record = LicenseRecord.from_mapping(dict(data["records"][0], determinations_sha256=pin))

@@ -44,8 +44,25 @@
       "sha256": "c58b90a793b5a0866253d5351de0cc61000f05835daf6736a0ae3a2e2e22def0"
     },
     "determined_by": "The owner, 2026-11-08 12:31:18Z, verbatim: \"Make it my determination (Recommended)\". The owner adopted the builder's reading of the upstream evidence, with both gaps in unproved stated.",
-    "scope": "Meta's unchanged htdemucs_6s weights file, as the pinned Demucs source names and checks it, downloaded by the user on first use and never shipped. The Demucs Python package, its dependencies and any separated audio are not covered.",
-    "unproved": "Demucs publishes no licence for its pretrained weights apart from the repository's MIT statement. The training data (MUSDB18-HQ and 800 further songs) and its terms are not established by this record."
+    "scope": "Meta's unchanged htdemucs_6s weights file, as the pinned Demucs source names and checks it. The user downloads it on first use (kilix split --install). From Plebian-OS 0.2.3 RC5 it also ships in the installation image with Meta's MIT text beside it, and is installed by default for Kilix Playalong unless the machine's configuration declines (see distribution). The Demucs Python package, its dependencies and any separated audio are not covered.",
+    "unproved": "Demucs publishes no licence for its pretrained weights apart from the repository's MIT statement. The training data (MUSDB18-HQ and 800 further songs) and its terms are not established by this record.",
+    "distribution": {
+      "since": "Plebian-OS 0.2.3 RC5",
+      "image": "The installation image carries the weights file and notices/LICENSE-mit.txt (the Demucs LICENSE) in one archive. A fresh install installs the asset from it.",
+      "upgrade": "An online upgrade downloads the weights from the pinned URL. Both routes verify the pinned size and sha256 before installing.",
+      "declined_by": [
+        "the model wizard's kilix-playalong page answered no",
+        "KILIX_PLAYALONG_MODELS=0 in the shared settings file"
+      ],
+      "authorization": "standard distribution policy (MIT, no additional terms), as for basic-pitch-icassp-2022-onnx",
+      "condition": "The image redistributes the weights, so the MIT notice condition applies: the licence text travels with them in the image archive and stays in the installed asset.",
+      "owner_record": {
+        "path": "licence-evidence-demucs-htdemucs-6s-2026-11-08/OWNER-DISTRIBUTION-demucs-htdemucs-6s-2026-11-08.md",
+        "bytes": 2683,
+        "sha256": "70c4baa8d8df919ddf0023ab12a8ef7edf43e84f3ff9895e6493c6a464067322"
+      },
+      "decided_by": "The owner, 2026-11-08 12:29:34Z, verbatim: \"Demucs in ISO, Whisper online (Recommended)\", and for the opt-out \"Either one\". The licence terms are unchanged."
+    }
   },
   "records": [
     {

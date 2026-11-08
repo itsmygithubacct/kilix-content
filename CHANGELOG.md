@@ -33,6 +33,19 @@ pre-1.0.
 
 ### Changed
 
+- Catalogue Whisper large-v3 (`faster-whisper-large-v3`, Systran revision
+  `edaa852e`) for Kilix Playalong lyrics that are not in English. Its provider
+  is `kilix-playalong` and it is installed only after a yes. It cites its own
+  record, `faster-whisper-large-v3` (MIT, licensors OpenAI and SYSTRAN, the
+  terms of `faster-whisper-medium-en`), and carries the Whisper MIT text. Its
+  six files include `preprocessor_config.json`, which large-v3's 128 mel bins
+  need.
+- The vendored kilix-license moves to `f8486ed3`, which adds that record and
+  gives `demucs-htdemucs-6s` and `faster-whisper-medium-en` the owner's
+  distribution entry (Playalong's default install; Demucs also in the image).
+  Their record digests are unchanged, so no existing asset changes.
+- Select Kilix Playalong `a11a0219`: every model it runs is a catalogued asset
+  with a licence receipt, verified before use, and it never downloads one.
 - The vendored kilix-license moves to `80aab439`, which records the owner's
   determination of the `demucs-htdemucs-6s` terms (2026-11-08). Only that
   determination pin moves; no record digest and no catalog asset changes.

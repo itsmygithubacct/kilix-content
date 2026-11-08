@@ -1,0 +1,72 @@
+{
+  "schema": "kilix.license.whisper-large-v3-determination/v1",
+  "authority": {
+    "repository": "https://huggingface.co/Systran/faster-whisper-large-v3",
+    "revision": "edaa852ec7e145841d8ffdb056a99866b5f0a478",
+    "files": [
+      {
+        "path": "config.json",
+        "bytes": 2394,
+        "sha256": "a9306624f5ec14270a014b647e5c316b6e03a662c369758d1b90697a7b0655b9"
+      },
+      {
+        "path": "model.bin",
+        "bytes": 3087284237,
+        "sha256": "69f74147e3334731bc3a76048724833325d2ec74642fb52620eda87352e3d4f1"
+      },
+      {
+        "path": "preprocessor_config.json",
+        "bytes": 340,
+        "sha256": "7ccc62c6f2765af1f3b46c00c9b5894426835a05021c8b9c01eecb6dfb542711"
+      },
+      {
+        "path": "tokenizer.json",
+        "bytes": 2480617,
+        "sha256": "6d8cbd7cd0d8d5815e478dac67b85a26bbe77c1f5e0c6d76d1ce2abc0e5f21ca"
+      },
+      {
+        "path": "vocabulary.json",
+        "bytes": 1068114,
+        "sha256": "c69260f2ab26d659b7c398f9a2b2b48ed0df16c3b47d7326782fd9cba71690c1"
+      }
+    ],
+    "card_bytes": 2052,
+    "card_sha256": "39e96252229f5a3d0141dc81afb65a36fd205461ac21e5b70f2cd1248ef0082c",
+    "card_licence_line": "license: mit",
+    "licence_sha256": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d",
+    "owner_record": {
+      "path": "licence-evidence-whisper-large-v3-2026-11-08/OWNER-DETERMINATION-whisper-large-v3.md",
+      "bytes": 3218,
+      "sha256": "8d8c1cf3648b52e13ae0a55aee9bb23c295dcb3619e89dcf3f50717c2fced311"
+    },
+    "precedent": "faster-whisper-medium-en",
+    "scope": "Unchanged upstream CTranslate2 conversion files of OpenAI Whisper large-v3, downloaded by the user from the source only after a yes on the first-use screen, never shipped and never installed by default. Kilix Playalong offers it for lyrics that are not in English. The licence text, statement and advisory are the faster-whisper-small-en and faster-whisper-medium-en ones; only the artifact differs."
+  },
+  "records": [
+    {
+      "advisories": [
+        {
+          "id": "whisper-card-caution",
+          "text_sha256": "0e9d0d19fa02b8f246d9902d93a2b0b0fac7cb07a518257ffa7d102d1c37c638"
+        }
+      ],
+      "binding_conditions": [],
+      "components": [],
+      "decision_class": "affirmative",
+      "id": "faster-whisper-large-v3",
+      "licence_ids": [
+        "MIT"
+      ],
+      "licence_text_id": "kilix/config/model_notices#whisper",
+      "licensor": "OpenAI; SYSTRAN",
+      "schema": "kilix.license.record/v1",
+      "statements": [
+        {
+          "id": "whisper-notice-copyright",
+          "text_sha256": "94536c807e7ad8257102a5db0496db0bf1753fc8b32cba9188e337d9796db7d0"
+        }
+      ],
+      "text_sha256": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d"
+    }
+  ]
+}
