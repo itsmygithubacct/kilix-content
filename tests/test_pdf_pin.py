@@ -10,7 +10,7 @@ class PDFPinTests(unittest.TestCase):
         catalog=verified_packaged_catalog()
         self.assertEqual(catalog.require('kilix-pdf-conversion').ref,'e841241b0134fef42045a946199a92e9fa35ffbf')
         self.assertEqual(catalog.require('kilix-help-llm').ref,'4abc52e9236899a05738807d32a3431270b6a3c2')
-        self.assertEqual(catalog.require('kilix-needle').ref,'5cbff3172224d5277adee5a3c826ee4b0698917a')
+        self.assertEqual(catalog.require('kilix-needle').ref,'a887e2fae221272aece6b7b9aef143df8bc7ba64')
         root=Path(__file__).resolve().parents[1]
         before=json.loads(subprocess.check_output(['git','show','bc7ab69d6e0089729c7113b58563f3f0f0186301:src/kilix_content/catalog/plebian.json'],cwd=root))
         after=json.loads((root/'src/kilix_content/catalog/plebian.json').read_bytes())
