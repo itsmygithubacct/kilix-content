@@ -83,6 +83,8 @@ make benchmark
 | `first_use.install_with_agreement(...)` | Screen, agreement, receipt, then install a model asset |
 | `Installer.ensure_supplied_asset(...)` | Install a model asset from files already on disk, with no network |
 
+![Part of the `kilix install` list: games, runtimes, sound banks and tools, with download and disk sizes](docs/images/kilix-install.png)
+
 ## How it works
 
 ```
