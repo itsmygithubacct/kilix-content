@@ -1,0 +1,74 @@
+{
+  "authority": {
+    "edit_changes": [
+      "the edit is scaled to one third (alpha 2 of 6)",
+      "it is applied to the Q8_0 GGUF conversion and quantized",
+      "it is packaged with new GGUF metadata"
+    ],
+    "edit_licence_sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+    "edit_licensor": "the authors of \"LLMs can understand and write neural network weights\"",
+    "edit_source": "https://github.com/RikiyaT/lm_understand-logs",
+    "edit_source_commit": "4d09ba6d6a7e891dd8063974dfe81b3d78e3494f",
+    "edit_source_licence_file_sha256": "395f7febedfda6b5498ca36cfe3344d3986659ce4385dd8b03d2d75604250a8e",
+    "edit_source_path": "exp8_math/runs/p50c/edit",
+    "licence_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "model": "qwen-0.8b-no-loop-02",
+    "model_bytes": 833592416,
+    "model_sha256": "e4d6e93eb644da62e0c5ac0b7b188b4c2cbf31f07a7dcfd42764b6236f96d8a0",
+    "modifier": "itsmygithubacct",
+    "parent": "ggml-org/Qwen3.5-0.8B-GGUF",
+    "parent_revision": "807dfd9a6fadbf703207aac3bfb0b2b3040d077c",
+    "parent_sha256": "37ae482d336108d23516fa35e8e0c4126688d81018b87178a18d752a1357814f",
+    "source": "https://github.com/itsmygithubacct/kilix-llm/releases/download/qwen-0.8b-no-loop-02/qwen-0.8b-no-loop-02.gguf",
+    "upstream": "Qwen/Qwen3.5-0.8B",
+    "upstream_licence_file_sha256": "bbedc3fda3305820b977265f01b8619d87570a6739de3a5582c3464840f1e57a",
+    "upstream_licensor": "Alibaba Cloud",
+    "upstream_revision": "2fc06364715b967f1860aea9cf38778875588b17"
+  },
+  "owner_determination": {
+    "approved": "The Apache-2.0 licence record as proposed: licensor Alibaba Cloud (Qwen), itsmygithubacct as the modifier, and the modified-model notice (the model card's last paragraph and the GGUF's general.description). The CC BY 4.0 component for the adapted weight edit, with its attribution notice, covered by the standard distribution policy like kilix-female-02, so the wizard does not ask for a separate typed answer. itsmygithubacct is the modifier only, not a licensor.",
+    "components": {
+      "apache-2.0": "approved",
+      "cc-by-4.0": "approved"
+    },
+    "date": "2026-11-09"
+  },
+  "records": [
+    {
+      "advisories": [],
+      "binding_conditions": [],
+      "components": [
+        {
+          "exception_text_sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411",
+          "id": "weight-edit-from-lm-understand-logs",
+          "role": "CC BY 4.0 weight edit adapted from lm_understand-logs exp8_math/runs/p50c/edit"
+        }
+      ],
+      "decision_class": "affirmative",
+      "id": "qwen-0.8b-no-loop-02",
+      "licence_ids": [
+        "Apache-2.0",
+        "CC-BY-4.0"
+      ],
+      "licence_text_id": "debian/common-licenses/Apache-2.0",
+      "licensor": "Alibaba Cloud / Qwen; the authors of \"LLMs can understand and write neural network weights\"",
+      "schema": "kilix.license.record/v1",
+      "statements": [
+        {
+          "id": "modified-model",
+          "text_sha256": "2569309df198a85501c07065c837ecf18d48a0387208cfdb755702f3be2d9b44"
+        },
+        {
+          "id": "weight-edit-attribution",
+          "text_sha256": "a4e74ed6c5f68677ebe95445696de6d9e2f789b5f63184d95a7a70a5f8cd962f"
+        },
+        {
+          "id": "weight-edit-source-licence",
+          "text_sha256": "395f7febedfda6b5498ca36cfe3344d3986659ce4385dd8b03d2d75604250a8e"
+        }
+      ],
+      "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    }
+  ],
+  "schema": "kilix.license.noloop02-determination/v1"
+}

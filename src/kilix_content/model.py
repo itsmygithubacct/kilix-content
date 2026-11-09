@@ -1040,6 +1040,20 @@ class AssetSpec:
                     "https://github.com/itsmygithubacct/kilix-voice/releases/download/kilix-female-02-epoch80/kilix-female-02.onnx",
                     "https://github.com/itsmygithubacct/kilix-voice/releases/download/kilix-female-02-epoch80/kilix-female-02.onnx.json",
                 })
+            # Owner direction 2026-11-09: qwen-0.8b-no-loop-02 is an option for
+            # kilix avatar and kilix chat, loaded through kilix-llm. It is a
+            # modified Qwen3.5-0.8B that itsmygithubacct publishes as one file
+            # from the kilix-llm release. No other Kilix-hosted file is admitted.
+            if (asset_id == "qwen-0.8b-no-loop-02" and provider == "kilix-llm"
+                    and consumer_schema == "kilix.llm.models/v1"
+                    and source_mode == "upstream-files"
+                    and licenses[0].license_id == "apache-2.0"
+                    and provenance_project == "itsmygithubacct/kilix-llm"
+                    and provenance_revision == "4267e55277de7ab3d3380a561a1f5f0d58261f18"
+                    and version == "qwen-0.8b-no-loop-02"):
+                owned_file_urls = frozenset({
+                    "https://github.com/itsmygithubacct/kilix-llm/releases/download/qwen-0.8b-no-loop-02/qwen-0.8b-no-loop-02.gguf",
+                })
             if (asset_id in ("lfm2-kilix-commands", "lfm3-kilix-commands") and provider == "kilix-needle"
                     and consumer_schema == "kilix.commands.model/v1"
                     and source_mode == "upstream-archive"

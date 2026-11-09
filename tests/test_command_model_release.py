@@ -15,7 +15,7 @@ class CommandModelReleaseTests(unittest.TestCase):
         after = json.loads((root / 'src/kilix_content/catalog/plebian.json').read_bytes())
         for document in (before, after):
             document['assets'] = [a for a in document['assets']
-                                  if a['id'] not in ('lfm2-kilix-commands', 'lfm3-kilix-commands', 'paradee-8m-v1.2')]
+                                  if a['id'] not in ('lfm2-kilix-commands', 'lfm3-kilix-commands', 'paradee-8m-v1.2', 'qwen-0.8b-no-loop-02')]
         self.assertEqual(before['assets'], after['assets'])
         spec = verified_packaged_catalog().require_asset('lfm2-kilix-commands')
         self.assertEqual(spec.version, 'lfm2-kilix-commands-20261106-v9')

@@ -16,6 +16,16 @@ pre-1.0.
 
 ### Changed
 
+- Catalogue `qwen-0.8b-no-loop-02`, a modified Qwen3.5-0.8B GGUF, for
+  kilix-llm (provider `kilix-llm`, consumer schema `kilix.llm.models/v1`). Only
+  its one file on the `itsmygithubacct/kilix-llm` release is admitted. The
+  licence record has an Apache-2.0 row (Alibaba Cloud / Qwen; itsmygithubacct
+  is the modifier) and a CC BY 4.0 row for the weight edit, and the asset ships
+  both texts, the modification notice, the attribution and the edit source's
+  licence file. The vendored kilix-license is
+  `0bc59ccc75c7fbad28022bbf8259389b03e6d8c4`, where the owner approved both
+  components and the standard distribution policy covers the CC BY 4.0 text.
+  The other catalog assets are unchanged.
 - Deliver LFM2's terms as a notice, by the owner's 2026-11-07 determination.
   The vendored kilix-license `0984dd222bcb7f97859222b0dc2303b9225191fe` makes
   the commercial-use limitation informational, so the `lfm2-kilix-commands`
