@@ -4,6 +4,15 @@ All notable changes to `kilix-license` are recorded here.
 
 ## Unreleased
 
+- `qwen-0.8b-no-loop-02` has its own determination pin and record. It is
+  Qwen3.5-0.8B under Apache-2.0 (Alibaba Cloud), modified by itsmygithubacct,
+  with a weight edit adapted from CC BY 4.0 material by the authors of "LLMs
+  can understand and write neural network weights". The owner approved both
+  components on 2026-11-09. The CC BY 4.0 legal code is a component text; the
+  standard distribution policy covers exactly that pinned text for this
+  record, like kilix-female-02, so the wizard asks no separate question.
+  itsmygithubacct is the modifier, not a licensor.
+
 - Whisper large-v3 (`faster-whisper-large-v3`, Systran revision `edaa852e`)
   has its own determination pin and record, on the owner's determination of
   2026-11-08 (`licence-evidence-whisper-large-v3-2026-11-08`), which the

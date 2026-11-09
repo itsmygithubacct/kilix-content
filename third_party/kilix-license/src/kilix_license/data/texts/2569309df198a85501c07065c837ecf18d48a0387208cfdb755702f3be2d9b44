@@ -1,0 +1,30 @@
+qwen-0.8b-no-loop-02 — modified model notice
+
+Model: qwen-0.8b-no-loop-02.gguf
+Model SHA256: e4d6e93eb644da62e0c5ac0b7b188b4c2cbf31f07a7dcfd42764b6236f96d8a0
+Modified by: itsmygithubacct
+
+This is a modified version of Qwen/Qwen3.5-0.8B, upstream revision
+2fc06364715b967f1860aea9cf38778875588b17. The file parent is
+Qwen3.5-0.8B-Q8_0.gguf from ggml-org/Qwen3.5-0.8B-GGUF revision
+807dfd9a6fadbf703207aac3bfb0b2b3040d077c, SHA256
+37ae482d336108d23516fa35e8e0c4126688d81018b87178a18d752a1357814f. Two tensors
+changed, blk.15.ffn_down.weight and blk.19.ffn_down.weight. The other 333
+tensors, the tokenizer, the chat template and the architecture are
+byte-identical to the parent.
+
+The model card says:
+
+Qwen3.5-0.8B is Copyright 2026 Alibaba Cloud and is licensed under the Apache
+License 2.0 (`LICENSE`). This file is a modified version. The modification is
+described above and in the GGUF's `general.description`.
+
+The GGUF's general.description is:
+
+Modified from Qwen/Qwen3.5-0.8B (Q8_0): one third of a published edit (alpha 2 of 6) applied to 64 ffn_down columns in layers 15 and 19, to reduce thinking-mode loops. Edit by the authors of 'LLMs can understand and write neural network weights' (CC BY 4.0). Apache-2.0.
+
+The Apache License 2.0 text is in LICENSE-apache-2.0.txt. The weight change is
+adapted from material licensed under CC BY 4.0: its attribution is in
+weight-edit-attribution.txt, the CC BY 4.0 legal code in LICENSE-cc-by-4.0.txt
+and the source repository's licence file in LICENSE-lm_understand-logs.txt.
+This modification notice does not replace or waive any upstream licence term.

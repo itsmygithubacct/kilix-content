@@ -21,7 +21,7 @@ class DetectorPins(unittest.TestCase):
         after = json.loads((root / 'src/kilix_content/catalog/plebian.json').read_bytes())
         for document in (before, after):
             document['assets'] = [asset for asset in document['assets']
-                                  if asset['id'] not in ('lfm2-kilix-commands', 'lfm3-kilix-commands', 'paradee-8m-v1.2',
+                                  if asset['id'] not in ('lfm2-kilix-commands', 'lfm3-kilix-commands', 'paradee-8m-v1.2', 'qwen-0.8b-no-loop-02',
                                                 'faster-whisper-medium-en', 'demucs-htdemucs-6s',
                                                 'faster-whisper-large-v3')]
         self.assertEqual(before['assets'], after['assets'])

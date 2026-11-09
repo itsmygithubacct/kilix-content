@@ -1,0 +1,23 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "qwen-0.8b-no-loop-02",
+  "label": "Qwen3.5 0.8B no-loop 02",
+  "mode": "upstream-files",
+  "license_record_id": "qwen-0.8b-no-loop-02",
+  "provider": "kilix-llm",
+  "consumer_schema": "kilix.llm.models/v1",
+  "version": "qwen-0.8b-no-loop-02",
+  "provenance": {
+    "project": "itsmygithubacct/kilix-llm",
+    "revision": "4267e55277de7ab3d3380a561a1f5f0d58261f18",
+    "original_url": "https://github.com/itsmygithubacct/kilix-llm/releases/download/qwen-0.8b-no-loop-02/qwen-0.8b-no-loop-02.gguf"
+  },
+  "members": [
+    {
+      "path": "qwen-0.8b-no-loop-02.gguf",
+      "url": "https://github.com/itsmygithubacct/kilix-llm/releases/download/qwen-0.8b-no-loop-02/qwen-0.8b-no-loop-02.gguf",
+      "bytes": 833592416,
+      "sha256": "e4d6e93eb644da62e0c5ac0b7b188b4c2cbf31f07a7dcfd42764b6236f96d8a0"
+    }
+  ]
+}

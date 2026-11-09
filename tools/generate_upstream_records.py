@@ -40,6 +40,9 @@ PIN_NAMES = (
     "piper-en-us-kristin-medium.json",
     "kilix-female-02.json",
     "paradee-8m-v1.2.json",
+    # Owner direction 2026-11-09: an option for kilix avatar and kilix chat,
+    # loaded through kilix-llm, from the kilix-llm release.
+    "qwen-0.8b-no-loop-02.json",
     "vibevoice-asr-bitnet.json",
     "yolox_s.json",
     "yolox_tiny.json",
@@ -100,6 +103,7 @@ LICENSORS = {
     "piper-en-us-kristin-medium": ["Bryce Beattie"],
     "kilix-female-02": ["itsmygithubacct"],
     "paradee-8m-v1.2": ["Sahil Mahendrakar"],
+    "qwen-0.8b-no-loop-02": ["Alibaba Cloud / Qwen"],
     "vibevoice-asr-bitnet": ["Microsoft Corporation"],
     "yolox_s": ["Megvii (Base Detection / Megvii Inc.)"],
     "yolox_tiny": ["Megvii (Base Detection / Megvii Inc.)"],
@@ -160,6 +164,23 @@ COMPONENT_LICENSE_ROWS = {
         "licensors": ["Meta Platforms, Inc."],
         "notice_path": "notices/LICENSE-llama-3-community.txt",
     },
+    # qwen-0.8b-no-loop-02: the weight edit is adapted from CC BY 4.0 material.
+    # The owner has not yet signed off this component (kilix-license
+    # determinations-noloop02.json, owner_determination).
+    "weight-edit-from-lm-understand-logs": {
+        "decision": "affirmative",
+        "license_id": "cc-by-4.0",
+        "licensors": ['the authors of "LLMs can understand and write neural network weights"'],
+        "notice_path": "notices/LICENSE-cc-by-4.0.txt",
+    },
+}
+
+# qwen-0.8b-no-loop-02's modification notice, CC BY attribution and the edit
+# source's own licence file, at the names those notices refer to.
+NOLOOP02_STATEMENT_PATHS = {
+    "modified-model": "notices/modified-model.txt",
+    "weight-edit-attribution": "notices/weight-edit-attribution.txt",
+    "weight-edit-source-licence": "notices/LICENSE-lm_understand-logs.txt",
 }
 
 
@@ -226,6 +247,9 @@ def notice_files(record) -> list[dict[str, object]]:
         for item in record.statements:
             files.append(notice_blob(item.text_sha256,'notices/'+item.id+'.txt',record.id))
         return files
+    if record.id == 'qwen-0.8b-no-loop-02':
+        for statement in record.statements:
+            files.append(notice_blob(statement.text_sha256, NOLOOP02_STATEMENT_PATHS[statement.id], record.id))
     for component in record.components:
         extra = COMPONENT_LICENSE_ROWS.get(component.id)
         if extra is None:

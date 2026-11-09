@@ -33,6 +33,17 @@ pre-1.0.
 
 ### Changed
 
+- Catalogue `qwen-0.8b-no-loop-02`, a modified Qwen3.5-0.8B GGUF, for
+  kilix-llm (provider `kilix-llm`, consumer schema `kilix.llm.models/v1`). Only
+  its one file on the `itsmygithubacct/kilix-llm` release is admitted. The
+  licence record has an Apache-2.0 row (Alibaba Cloud / Qwen; itsmygithubacct
+  is the modifier) and a CC BY 4.0 row for the weight edit, and the asset ships
+  both texts, the modification notice, the attribution and the edit source's
+  licence file. The vendored kilix-license is
+  `2737f321c49371c08d2b624190fda7719a13a52a` (the RC6
+  pin `f8486ed3` plus this record), where the owner approved both
+  components and the standard distribution policy covers the CC BY 4.0 text.
+  The other catalog assets are unchanged.
 - Catalogue Whisper large-v3 (`faster-whisper-large-v3`, Systran revision
   `edaa852e`) for Kilix Playalong lyrics that are not in English. Its provider
   is `kilix-playalong` and it is installed only after a yes. It cites its own

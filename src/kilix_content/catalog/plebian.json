@@ -3932,6 +3932,90 @@
     },
     {
       "compatibility": {
+        "consumer_schema": "kilix.llm.models/v1",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 11358,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "bytes": 18657,
+          "path": "notices/LICENSE-cc-by-4.0.txt",
+          "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+        },
+        {
+          "bytes": 1819,
+          "path": "notices/LICENSE-lm_understand-logs.txt",
+          "sha256": "395f7febedfda6b5498ca36cfe3344d3986659ce4385dd8b03d2d75604250a8e"
+        },
+        {
+          "bytes": 1607,
+          "path": "notices/modified-model.txt",
+          "sha256": "2569309df198a85501c07065c837ecf18d48a0387208cfdb755702f3be2d9b44"
+        },
+        {
+          "bytes": 1229,
+          "path": "notices/weight-edit-attribution.txt",
+          "sha256": "a4e74ed6c5f68677ebe95445696de6d9e2f789b5f63184d95a7a70a5f8cd962f"
+        },
+        {
+          "bytes": 833592416,
+          "path": "qwen-0.8b-no-loop-02.gguf",
+          "sha256": "e4d6e93eb644da62e0c5ac0b7b188b4c2cbf31f07a7dcfd42764b6236f96d8a0"
+        }
+      ],
+      "id": "qwen-0.8b-no-loop-02",
+      "label": "Qwen3.5 0.8B no-loop 02",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "Alibaba Cloud / Qwen"
+          ],
+          "record_digest": "f5a93c984528e50574f42f04d8d9403a217bec2c49f88b5f94980e385f7abcc0",
+          "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "decision": "affirmative",
+          "id": "cc-by-4.0",
+          "licensors": [
+            "the authors of \"LLMs can understand and write neural network weights\""
+          ],
+          "record_digest": "f5a93c984528e50574f42f04d8d9403a217bec2c49f88b5f94980e385f7abcc0",
+          "text_sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+        }
+      ],
+      "provider": "kilix-llm",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 833592416,
+        "installed_bytes": 833627086,
+        "temporary_bytes": 833627086
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "qwen-0.8b-no-loop-02.gguf",
+            "url": "https://github.com/itsmygithubacct/kilix-llm/releases/download/qwen-0.8b-no-loop-02/qwen-0.8b-no-loop-02.gguf"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "itsmygithubacct/kilix-llm",
+          "revision": "4267e55277de7ab3d3380a561a1f5f0d58261f18",
+          "original_url": "https://github.com/itsmygithubacct/kilix-llm/releases/download/qwen-0.8b-no-loop-02/qwen-0.8b-no-loop-02.gguf"
+        }
+      },
+      "stream": "F104",
+      "version": "qwen-0.8b-no-loop-02"
+    },
+    {
+      "compatibility": {
         "consumer_schema": "kilix.bonsai.runtime",
         "maximum": 1,
         "minimum": 1
