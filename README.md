@@ -1,260 +1,130 @@
 # kilix-content
 
-`kilix-content` is the unprivileged content catalog and installer shared by
-Kilix-hosted desktops. It gives games and applications one declarative record
-for identity, immutable source, build command, capabilities, launch mode, and
-preferred geometry. Schema version 2 can separate an immutable package from
-the applications it provides, so one checkout and build can expose several
-catalog IDs without duplicating source or installation state. Schema version 3
-adds argv-only named actions, accepted input types, host command vectors, and
-lifecycle/fallback policy.
+The pinned catalog of games, applications and model assets that Kilix can
+install, and the unprivileged installer that fetches, builds, verifies and
+selects them for the desktop user.
 
-The installer accepts only argument arrays; it never invokes a shell. Managed
-Git content is fetched at an exact 40-character commit into a private staging
-directory, checked out detached, initialized recursively, built, verified, and
-atomically selected. Every fetch and build command is bounded by the
-installer's `command_timeout` (an hour by default), so a stalled network peer
-or wedged build fails with a diagnostic instead of blocking forever; pass
-`command_timeout=None` to wait without bound. Concurrent installations of one
-package are serialized through a transient lock file below the content root,
-so simultaneous launchers share a single fetch and build: the waiter adopts
-the winner's selected result instead of repeating it. Readiness checks bind the default managed directory and
-any configured Git checkout to the expected origin, commit, detached state,
-clean tracked state, and initialized submodules. An explicitly different plain
-directory remains a trusted user-managed executable override. Archive helpers
-require an exact SHA-256, reject absolute paths, traversal, links, and special
-files, and default to at most 100,000 members and 8 GiB of expanded regular-file
-data.
+Ships in Plebian-OS 0.2.3 as a submodule of
+[Kilix](https://github.com/itsmygithubacct/kilix#readme)
+(`third_party/kilix-content`). Users reach it through `kilix install`,
+`kilix app`, `kilix games play` and `kilix models`, and through every desktop's
+application and game menus.
 
-This is deliberately a user-level component. Plebian-OS may pin the catalog and
-install declared operating-system capabilities, but privileged provisioning
-must not execute catalog build commands. Kilix performs content builds as the
-desktop user below its application data directory.
+## What it does
 
-## Use
+- Holds one catalog, [`src/kilix_content/catalog/plebian.json`](src/kilix_content/catalog/plebian.json):
+  at this commit 1 package, 55 content entries (37 applications, 16 games,
+  2 tools) and 43 model assets. See [docs/catalog.md](docs/catalog.md) for the
+  full list.
+- Installs Git content at an exact 40-character commit, builds it with an
+  argv-only command (never a shell), verifies the checkout and atomically
+  selects the result below a user-owned directory.
+- Shares one checkout and build between applications that one package
+  provides: the `kilix-tui-utils` package (built with `make runtime`) provides
+  16 of the applications.
+- Installs model assets only after their licence screen has been shown and,
+  where the licence requires it, an explicit agreement has been recorded as a
+  receipt. Every file is checked against its recorded size and SHA-256.
+- Verifies its own catalog bytes against a pinned digest before anything acts
+  on them.
+- Never elevates privileges, resolves system packages or runs a catalog build
+  as root.
+
+## Quick start
+
+As a Kilix user, the catalog is reached through the `kilix` command:
+
+```sh
+kilix install                      # list everything installable, marked if installed
+kilix install kilix-graphs         # install one catalog entry by ID
+kilix install --update kilix-graphs
+kilix games play terminal-lander   # install a game if needed, then start it
+kilix models list                  # model assets and their licence identities
+kilix models install <asset>       # show the licence screen, ask, then install
+```
+
+As a library (the package declares Python 3.10 or newer and no third-party
+dependencies; it puts its vendored kilix-license on `sys.path` itself):
 
 ```python
 from kilix_content import Installer, default_catalog
 
-catalog = default_catalog()
-game = catalog.require("terminal-lander")
+game = default_catalog().require("terminal-lander")
 installer = Installer("/absolute/user/data/games")
-
 executable = installer.ready(game) or installer.ensure(game, print)
 ```
 
-Package-provided applications use the same API. Given a schema-version-2
-catalog named `shared_catalog`, each flattened `ContentSpec` carries the
-package source/build metadata for compatibility, while `install_id` selects
-the shared directory:
-
-```python
-files = shared_catalog.require("kilix-file")
-system = shared_catalog.require("kilix-system-center")
-
-assert files.install_id == system.install_id == "kilix-tui-utils"
-assert shared_catalog.provided_by("kilix-tui-utils") == (files, system)
-
-files_executable = installer.ensure(files, print)
-system_executable = installer.ready(system)
-
-# One package verification, one independent executable result per app.
-readiness = installer.ready_provided(
-    shared_catalog.provided_by("kilix-tui-utils")
-)
-```
-
-Schema-version-3 application metadata stays data all the way to the host:
-
-```python
-files = default_catalog().require("kilix-file")
-open_action = files.require_action("open")
-
-assert open_action.argv == ("--open",)
-assert open_action.accepts_input
-assert "application/pdf" in files.accepts
-assert files.lifecycle.degrades_inplace
-```
-
-`command` is an argv vector for a system-owned application such as
-`["kilix", "bonsai"]`; it is mutually exclusive with a package-relative
-`binary`. Actions add only trusted fixed argv and declare separately whether
-one caller-supplied input may be appended. They are never shell strings.
-
-Kilix Lander and Kilix Brokeout retain the catalog IDs `terminal-lander` and
-`kitty-brokeout`, respectively, so existing installations and preferences do
-not need migration.
-
-Applications with specialized licensed payloads can use a `custom` catalog
-entry while reusing `download()`, `safe_extract_tar()`, and
-`safe_extract_zip()` for their bounded setup procedure.
-
-`download()` writes a private sibling of its destination, computes SHA-256 as
-bytes arrive, and uses one atomic replacement only after validation succeeds.
-A failed mirror therefore leaves any existing destination intact, and a
-destination symlink is replaced rather than followed.
-
-## Catalog contract
-
-The packaged `plebian.json` catalog uses schema version 3. Schema version 2
-added a top-level `packages` array. Each package owns an installable Git/archive
-source, build argv, and dependency hint. A content entry may reference it by
-`package` and owns its own ID, executable path, label, capabilities, launch
-mode, and geometry. Package references cannot override source/build fields;
-unknown, duplicate, unused, non-installable, or conflicting package identities
-are rejected. Schema version 1 and direct `ContentSpec` construction remain
-compatible. Schema version 3 adds `command`, `actions`, `accepts`, and
-`lifecycle`; older schemas reject those fields instead of silently dropping
-host policy.
-
-Installable Git entries and packages require an immutable commit, relative
-executable path, and optional build argv. Make-based entries always name their
-intended target explicitly so an included dependency fragment cannot silently
-become the build's default target. Most use `all`; Kilix PDF Conversion uses
-its pinned `runtime` target. Capabilities are
-declarative labels for the host; they are not commands or package names. Launch
-modes are `terminal`, `run`, `xpane`, `browse`, `window`, or `custom`.
-Lifecycle metadata covers single-instance intent, Kilix-session requirements,
-in-place degradation, failure preservation, and bounded startup timeouts.
-
-Catalog parsing rejects duplicate or unknown fields, unknown source/launch
-modes, duplicate or unsafe IDs, mismatched package metadata, wrong scalar
-types, mutable Git refs, malformed digests, absolute executable paths, and
-parent-path escapes before any installation begins. JSON input is limited to
-1 MiB and to 4,096 package/content records apiece. The packaged catalog is
-immutable and cached after its first validated load.
-
-## Installing a model asset from bytes you already hold
-
-The `lfm2-kilix-commands` asset is a Kilix-trained derivative of the pinned
-Liquid AI model. Its archive is published by `kilix-needle`, with the LFM Open
-License v1.0, runtime licences and a modification notice. The catalog permits
-its named, versioned release archive under this owned-model route. The optional
-`needle3-kilix-commands` asset similarly packages the Kilix-trained Needle 3 V9
-epoch-1 model, its cached CPU runtime, original Apache-2.0 and MIT licences,
-modification notices and runtime source. It is installed through
-`kilix-needle install --commands needle3`; LFM2 remains the Ask default.
-Other model assets retain their upstream-only source requirement. First-use
-consent and archive/member checksums apply to both derivatives.
-
-An asset can opt into `"storage": "versioned"` to keep each installed manifest
-in its own directory. Use `Installer.asset_destination(spec)` to resolve that
-directory. Upgrades preserve earlier bytes and receipts, and restoring an
-earlier catalog selects its earlier installation. A changed manifest still
-requires its own covering receipt; failed installs leave earlier versions intact.
-
-Model assets are normally fetched from upstream on first use, after their
-licence screen has been shown and a typed agreement recorded. On an air-gapped
-or metered machine, or when the same model is already installed on another
-machine, the bytes can be supplied instead of fetched:
-
-```python
-from kilix_content import Installer, verified_packaged_catalog
-from kilix_content.first_use import install_with_agreement
-
-spec = verified_packaged_catalog().require_asset("vosk-model-small-en-us-0.15")
-installed = install_with_agreement(
-    spec,
-    installer=Installer("/absolute/user/data/models"),
-    store=receipt_store, records=records, texts=texts,
-    typed_text=typed_line,          # the same agreement every install needs
-    screen=sys.stdout.buffer,
-    supplied="/media/usb/vosk-model-small-en-us-0.15",
-)
-```
-
-`supplied` is a directory holding the asset's installed files **at their
-manifest paths** — the layout an installed asset already has, so a tree copied
-from another machine can be handed over unchanged. For an archive-sourced
-asset that is the extracted archive root; for a converted asset it is the
-conversion's output.
-
-This path makes **no network request of any kind**: no fetch, no name lookup,
-no connection. Nothing else about it is different. The licence screen, the
-typed agreement, the receipt and the coverage check are the same code the
-downloading path runs, and the bytes get the same verification:
-
-- every file is opened once, walking each path component below the supplied
-  directory relative to its parent with `O_NOFOLLOW` (so no symlink beneath
-  it is followed, at any depth), and checked against the manifest's size and
-  digest through a descriptor that is never reopened, so a file swapped or
-  rewritten between the check and the copy is refused;
-- a supplied directory whose path holds a C0, DEL or C1 control character is
-  refused before the licence screen is written, because that path is printed
-  on the consent screen;
-- the licence notices are written from the packaged licence authority, never
-  from the supplied directory, so a supplier cannot substitute the text that
-  was agreed to;
-- the staged tree must match the manifest exactly before it is selected — a
-  file the manifest does not list is not installed.
-
-`Installer.ensure_supplied_asset(spec, supplied=..., store=..., records=...,
-notices=...)` is the same install without the screen, for a caller that
-already holds a covering receipt.
-
-There is no `user-supplied` *source mode* in the catalog, and adding one back
-is not how this works: at asset/v3 the manifest determines the installed tree
-for every mode alike, so supply is an acquisition available for **all** of
-them rather than a record shape that marks a few.
-
-## Converter prerequisites
-
-For explicitly accepted `upstream-convert` models,
-`Installer.resolve_converter(spec, report)` resolves system software or builds
-the exact packaged Content tool before any model inputs are fetched. It raises
-`ConverterPrerequisiteError` when the packaged model needs external software;
-the caller can offer a separate opt-in setup step. Content never invokes an
-administrator command. Normal model installation also performs this check.
-
-## Packaged catalog verification
-
-`default_catalog()` parses the packaged `plebian.json` without comparing it to
-the digest pinned in `kilix_content/receipt.py`. Anything that **acts** on the
-catalog — installing an asset, admitting an installed one — should call the
-verified entry point instead:
-
-```python
-from kilix_content import verified_packaged_catalog
-
-catalog = verified_packaged_catalog()   # refuses unless the bytes are pinned
-```
-
-It reads `catalog/plebian.json` **once**, compares those bytes against
-`_CATALOG_SHA256` and the frozen asset/v3 schema against
-`_ASSET_V3_SCHEMA_SHA256`, raises `RuntimeError` on either mismatch, and then
-parses **the bytes it just verified** — it does not re-open the file.
-
-That distinction is the whole value of the entry point, and it is not
-theoretical. An earlier shape verified one read and parsed a second, and it
-could return a tampered catalog two ways: a tamper landing between the two
-reads was never noticed, and because `default_catalog()` is `lru_cache`d, a
-caller that had already parsed a tampered file got that **cached** parse back
-with no race at all. So `verified_packaged_catalog()` does not call
-`default_catalog()` and is deliberately not cached: a cache here is a parse
-that can pre-date its own check. `default_catalog()` remains the unverified,
-cached parse for callers that only read metadata — never for one that acts on
-the catalog.
-
-Both names are part of a **cross-repository contract**: consumers verify the
-catalog through this repository and refuse to run when they cannot find the
-check. `receipt._verify_frozen_schema` is retained as the same function object
-under its old private name for consumers pinned at a gitlink that reaches for
-it; do not remove it until they have moved.
-
-## Test
+To run the tests from a checkout:
 
 ```sh
-make test
+make test      # unit tests with HOME, XDG_* and KILIX_* inside a scratch directory
+make pins      # the catalog and schema digests match the generator
 make benchmark
 ```
 
-Tests use local Git repositories and in-memory archives. They cover catalog
-validation, shared-package installation/readiness, fragmented installation
-failures, recursive dependency checkout, dirty/wrong-origin refusal, atomic
-replacement, traversal and symlink rejection, checksum enforcement, bounded
-child diagnostics, and executable readiness. The benchmark records cached and
-cold catalog cost, indexed lookup, managed Git verification/readiness, and a
-verified 32 MiB download.
+## Usage
+
+| Command (in Kilix) | What it does |
+|---|---|
+| `kilix install [--json]` | One table of catalog applications, games and tools, coding agents, runtimes, soundbanks and drivers |
+| `kilix install <id> [--yes]` | Install one entry with this installer |
+| `kilix install --update <id>` | Update one entry to the pinned commit |
+| `kilix app run\|window\|install\|ref <id>` | Install if needed and launch an application in place or in a window, install only, or print its pinned commit |
+| `kilix games play <id> [--setup-only]` | Install if needed and start a game |
+| `kilix models list\|show\|verify <asset>` | Inspect model assets and existing receipts without changing anything |
+| `kilix models install <asset> [--from DIR]` | Licence screen, a yes/no agreement where the licence needs one, receipt, then download (or copy from `DIR`) |
+
+| Python entry point | Use |
+|---|---|
+| `default_catalog()` | Parse the packaged catalog for metadata only (cached, not digest-checked) |
+| `verified_packaged_catalog()` | Parse the packaged catalog from bytes checked against the pinned digest; use it before acting |
+| `Installer(root).ready(spec)` / `.ensure(spec, report)` | Readiness check / install for one content entry |
+| `Installer.ready_provided(specs)` | One package verification for every application it provides |
+| `first_use.install_with_agreement(...)` | Screen, agreement, receipt, then install a model asset |
+| `Installer.ensure_supplied_asset(...)` | Install a model asset from files already on disk, with no network |
+
+## How it works
+
+```
+plebian.json ──verify digest──> Catalog ──require(id)──> ContentSpec / AssetSpec
+                                                 │
+       content (git/package) ────────────────────┤
+         fetch exact commit -> detached checkout -> submodules -> build argv
+         -> verify origin, commit, clean tree -> atomic select
+                                                 │
+       model asset ──────────────────────────────┘
+         kilix-license: record -> screen -> yes/no -> receipt
+         -> HTTPS fetch (or supplied dir, or offline archive cache)
+         -> size + SHA-256 per file -> notices from the authority -> atomic select
+```
+
+Each content entry names its source (`git`, `package`, `system`, `custom`),
+an executable path relative to its checkout or a host command vector, a launch
+mode and optional actions. Git sources must be immutable commits. The
+installer stages a fetch in a private directory, builds with the declared argv
+under a timeout (an hour by default), checks that the checkout has the
+expected origin, commit, detached state, clean tracked files and initialised
+submodules, and only then swaps it into place. A lock serialises concurrent
+installs of one package, and the waiter adopts the winner's result. Kilix
+installs applications under `~/.local/gpu_terminal/kilix/data/desktop-apps/`
+and games under `.../desktop-games/` (both follow `GPU_TERMINAL_HOME`,
+`KILIX_STORAGE_HOME` and `KILIX_DATA_HOME`). Details:
+[docs/installer.md](docs/installer.md).
+
+Model assets are asset/v3 records with exact file lists, sizes and digests,
+a source mode (`upstream-files`, `upstream-archive`, `upstream-convert` or
+`registry-manifest`), the provider program and the licence records they cite.
+Licence records, the first-use screen, agreement capture and receipts belong
+to [kilix-license](https://github.com/itsmygithubacct/kilix-license#readme),
+vendored here under `third_party/kilix-license` at a pinned commit. A licence
+whose decision is `affirmative` needs a yes before a receipt is written; an
+`informational` one is shown and recorded without a typed agreement. The
+installer refuses to select an asset unless a stored receipt covers that exact
+record and manifest. Receipts live in one store,
+`~/.local/gpu_terminal/license-receipts` by default. Plebian-OS can stage
+upstream archives in `/usr/local/share/kilix/model-archives/` and Git sources
+in a digest-bound source carrier, so an install can work offline. The archive
+cache creates no receipt and does not bypass the agreement. Details: [docs/model-assets.md](docs/model-assets.md).
 
 ## Scope
 
@@ -262,17 +132,45 @@ The package does not resolve system packages, elevate privileges, define game
 logic, choose UI policy, or update Pleb/Kilix themselves. Those responsibilities
 remain with Plebian-OS, the desktop provider, and each application.
 
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [docs/catalog.md](docs/catalog.md) | Catalog schema contract and a generated table of every package, entry and asset group |
+| [docs/installer.md](docs/installer.md) | Installer behaviour (staging, locking, readiness, archive limits) and the Python API with examples |
+| [docs/model-assets.md](docs/model-assets.md) | Installing from supplied bytes, converter prerequisites, packaged catalog verification, offline archive cache |
+| [docs/development.md](docs/development.md) | What the test suite and benchmark cover |
+| [CHANGELOG.md](CHANGELOG.md) | Catalog and installer changes by release |
+
+## Related repositories
+
+- [kilix](https://github.com/itsmygithubacct/kilix#readme): the host that
+  vendors this package and provides `kilix install`, `kilix app`,
+  `kilix games` and `kilix models`.
+- [kilix-license](https://github.com/itsmygithubacct/kilix-license#readme):
+  licence records, the verbatim first-use screen, agreements and receipts.
+- [kilix-tui-utils](https://github.com/itsmygithubacct/kilix-tui-utils#readme):
+  the catalog's one package.
+- [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme),
+  [kilix-needle](https://github.com/itsmygithubacct/kilix-needle#readme),
+  [kilix-amp](https://github.com/itsmygithubacct/kilix-amp#readme) and the
+  other repositories listed in [docs/catalog.md](docs/catalog.md): content
+  the catalog installs.
+- [kilix-95](https://github.com/itsmygithubacct/kilix-95#readme): the desktop
+  whose Start menu launches catalog entries through Kilix.
+
+## Part of Plebian-OS
+
+kilix-content is one of the repositories behind
+[Plebian-OS](https://github.com/itsmygithubacct/plebian-os#readme), a Debian
+install whose desktop is [Kilix](https://github.com/itsmygithubacct/kilix#readme)
+running the [Kilix 95](https://github.com/itsmygithubacct/kilix-95#readme)
+desktop through [Pleb](https://github.com/itsmygithubacct/pleb#readme).
+It ships inside Kilix as the `third_party/kilix-content` submodule, and every
+game, catalog application and model a user installs goes through it. The map
+of every repository and how it ships is on the
+[components page](https://github.com/itsmygithubacct/plebian-os/blob/main/docs/components.md).
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
-
-## Offline archive cache
-
-Upstream archives may be staged by the operating-system installer in
-`/usr/local/share/kilix/model-archives/<archive_sha256>`. The installer checks
-that file against the asset's exact archive size and SHA-256 and installs it
-through the normal manifest verification and atomic selection path. An absent
-entry falls back to the pinned download; a corrupt entry refuses installation.
-The cache creates no licence receipt and does not bypass agreement.
-`KILIX_CONTENT_ARCHIVE_CACHE` selects another cache directory (an empty value
-disables cache lookup). Old archive digests can coexist for rollback.
