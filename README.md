@@ -27,8 +27,8 @@ application and game menus.
   receipt. Every file is checked against its recorded size and SHA-256.
 - Verifies its own catalog bytes against a pinned digest before anything acts
   on them.
-- Never elevates privileges, resolves system packages or runs a catalog build
-  as root.
+- Never elevates privileges or resolves system packages; Kilix runs catalog
+  builds as the desktop user.
 
 ## Quick start
 
@@ -98,9 +98,10 @@ plebian.json ──verify digest──> Catalog ──require(id)──> Content
          -> size + SHA-256 per file -> notices from the authority -> atomic select
 ```
 
-Each content entry names its source (`git`, `package`, `system`, `custom`),
-an executable path relative to its checkout or a host command vector, a launch
-mode and optional actions. Git sources must be immutable commits. The
+Each content entry names its source (`git`, `archive`, `system` or `custom`)
+or the shared `package` that provides it, an executable path relative to its
+checkout or a host command vector, a launch mode and optional actions. Git
+sources must be immutable commits. The
 installer stages a fetch in a private directory, builds with the declared argv
 under a timeout (an hour by default), checks that the checkout has the
 expected origin, commit, detached state, clean tracked files and initialised
