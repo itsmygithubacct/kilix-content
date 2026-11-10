@@ -44,6 +44,11 @@ pre-1.0.
   pin `f8486ed3` plus this record), where the owner approved both
   components and the standard distribution policy covers the CC BY 4.0 text.
   The other catalog assets are unchanged.
+- An early end of a pinned download is reported as `interrupted` ("the
+  download stopped before the pinned size") and the partial is kept for the
+  next run. It was reported as `size-mismatch` ("upstream size differs from
+  the pin") when the stream closed before the pinned length. A Content-Length
+  or body that is longer than the pin is still `size-mismatch`.
 - Catalogue Whisper large-v3 (`faster-whisper-large-v3`, Systran revision
   `edaa852e`) for Kilix Playalong lyrics that are not in English. Its provider
   is `kilix-playalong` and it is installed only after a yes. It cites its own

@@ -26,6 +26,7 @@ _REMEDY = {
     "tls": "certificate verification failed; check SSL_CERT_FILE or proxy interception",
     "http-status": "upstream no longer serves the pinned file; nothing installed; report it",
     "size-mismatch": "upstream size differs from the pin; refusing; report it",
+    "interrupted": "the download stopped before the pinned size; re-run to resume",
     "digest-mismatch": "upstream bytes differ from the pin; refusing; report it",
     "deadline": "download exceeded its deadline; re-run to resume",
     "cancelled": "nothing installed; re-run to resume",
@@ -258,7 +259,7 @@ def fetch_exact(
             return destination
         except DownloadError as exc:
             last_error = exc
-            if exc.kind in {"cancelled", "deadline", "no-space"}:
+            if exc.kind in {"cancelled", "deadline", "no-space", "interrupted"}:
                 raise
             continue
     if last_error is not None:
@@ -443,7 +444,11 @@ def _fetch_one(
                         _delete_partial(partial)
                     raise DownloadError("size-mismatch")
             if count != expected_bytes:
-                raise DownloadError("size-mismatch")
+                # The advertised length matched the pin and the stream ended
+                # early. That is not the upstream changing size. Keep the
+                # partial so the next run can resume.
+                keep_partial = True
+                raise DownloadError("interrupted")
             actual = digest.hexdigest()
             _emit(
                 progress,

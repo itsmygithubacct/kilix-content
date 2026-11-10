@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import tempfile
 import time
@@ -72,11 +73,20 @@ class FetchExactTests(unittest.TestCase):
             self._fetch(url, expected_bytes=len(self.body), expected_sha256=_sha(self.body))
         self.assertEqual(raised.exception.kind, "size-mismatch")
 
-    def test_truncated_body_refused(self) -> None:
+    def test_truncated_body_is_an_interrupted_download(self) -> None:
         url = self.upstream.add("/trunc", self.body, kind="truncate")
+        partial = self.scratch / "partial"
         with self.assertRaises(DownloadError) as raised:
-            self._fetch(url)
-        self.assertEqual(raised.exception.kind, "size-mismatch")
+            self._fetch(url, partial_dir=str(partial))
+        self.assertEqual(raised.exception.kind, "interrupted")
+        self.assertIn("stopped before the pinned size", str(raised.exception))
+        part = partial / "0.part"
+        self.assertTrue(part.is_file())
+        self.assertGreater(part.stat().st_size, 0)
+        self.assertLess(part.stat().st_size, len(self.body))
+        sidecar = json.loads((partial / "0.part.sidecar").read_text())
+        self.assertEqual(sidecar["expected_bytes"], len(self.body))
+        self.assertEqual(sidecar["url"], url)
 
     def test_trickle_ends_by_deadline(self) -> None:
         url = self.upstream.add("/trickle", self.body, kind="trickle-body", delay=0.3)

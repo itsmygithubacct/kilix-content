@@ -165,8 +165,8 @@ COMPONENT_LICENSE_ROWS = {
         "notice_path": "notices/LICENSE-llama-3-community.txt",
     },
     # qwen-0.8b-no-loop-02: the weight edit is adapted from CC BY 4.0 material.
-    # The owner has not yet signed off this component (kilix-license
-    # determinations-noloop02.json, owner_determination).
+    # The owner approved this component on 2026-11-09 (kilix-license
+    # determinations-noloop02.json, owner_determination). The row is affirmative.
     "weight-edit-from-lm-understand-logs": {
         "decision": "affirmative",
         "license_id": "cc-by-4.0",
