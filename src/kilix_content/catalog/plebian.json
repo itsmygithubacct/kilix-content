@@ -1689,6 +1689,128 @@
       }
     },
     {
+      "id": "kilix-todo",
+      "label": "Todo",
+      "kind": "app",
+      "icon": "notepad",
+      "description": "A todo list: lists, tags, due dates and repeats, and quick add that reads them from what you type.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-todo",
+        "ref": "1806c54596dc5bb7c6bb01b3face93e01f8eb28a"
+      },
+      "binary": "kilix-todo",
+      "build": [
+        "make",
+        "all"
+      ],
+      "dependency_hint": "needs Python 3.11 or newer and make; the pixel window also needs a C compiler to build soft-raster, and draws with characters without one",
+      "capabilities": [
+        "filesystem-read",
+        "filesystem-write",
+        "persistent-state",
+        "clipboard",
+        "kitty-graphics",
+        "kitty-keyboard",
+        "kitty-mouse"
+      ],
+      "actions": {
+        "open": {
+          "argv": [
+            "gui"
+          ],
+          "description": "Open the todo list"
+        },
+        "outline": {
+          "argv": [
+            "tui",
+            "--cells"
+          ],
+          "description": "Open the todo list drawn with characters, without pixels"
+        },
+        "due": {
+          "argv": [
+            "due"
+          ],
+          "description": "List the tasks that are due or overdue"
+        },
+        "import": {
+          "argv": [
+            "import"
+          ],
+          "accepts_input": true,
+          "description": "Add the tasks from a todo.txt or kilix-todo JSON file"
+        },
+        "doctor": {
+          "argv": [
+            "doctor"
+          ],
+          "description": "Report the task file and what the window can draw"
+        }
+      },
+      "launch": {
+        "mode": "terminal",
+        "preferred_size": "1200x760"
+      }
+    },
+    {
+      "id": "kilix-scheduled-task",
+      "label": "Scheduled Tasks",
+      "kind": "app",
+      "icon": "taskmgr",
+      "description": "Commands on a schedule, said in words: systemd user timers or crontab lines, with every run and its output recorded.",
+      "source": {
+        "type": "git",
+        "repository": "https://github.com/itsmygithubacct/kilix-scheduled-task",
+        "ref": "4e7f15e74ee37516a907cede6d5375f87322460d"
+      },
+      "binary": "kilix-scheduled-task",
+      "build": [
+        "make",
+        "all"
+      ],
+      "dependency_hint": "needs Python 3.11 or newer and make; the pixel window also needs a C compiler to build soft-raster, and draws with characters without one; schedules need a systemd user session or cron",
+      "capabilities": [
+        "persistent-state",
+        "settings-write",
+        "clipboard",
+        "kitty-graphics",
+        "kitty-keyboard",
+        "kitty-mouse"
+      ],
+      "actions": {
+        "open": {
+          "argv": [
+            "gui"
+          ],
+          "description": "Open the scheduled tasks"
+        },
+        "outline": {
+          "argv": [
+            "tui",
+            "--cells"
+          ],
+          "description": "Open the scheduled tasks drawn with characters, without pixels"
+        },
+        "list": {
+          "argv": [
+            "list"
+          ],
+          "description": "List the tasks with their next and last runs"
+        },
+        "doctor": {
+          "argv": [
+            "doctor"
+          ],
+          "description": "Check every timer against its definition"
+        }
+      },
+      "launch": {
+        "mode": "terminal",
+        "preferred_size": "1200x760"
+      }
+    },
+    {
       "id": "kilix-encodec-convert-24khz",
       "label": "EnCodec 24 kHz local converter",
       "kind": "tool",

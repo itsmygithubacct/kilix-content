@@ -40,6 +40,14 @@ class DetectorPins(unittest.TestCase):
                 entry['dependency_hint'] = entry['dependency_hint'].replace(
                     'after licence review and acceptance;',
                     'after showing its licence terms, which are a notice and take no agreement;')
+        # 2026-11-10: Todo and Scheduled Tasks are added for 0.2.4. They are
+        # new entries and change no existing one. Outline passes --cells
+        # because tui is another name for gui on these two programs.
+        added = ('kilix-todo', 'kilix-scheduled-task')
+        self.assertEqual([entry['id'] for entry in before['content'] if entry['id'] in added], [])
+        self.assertEqual([entry['id'] for entry in after['content'] if entry['id'] in added],
+                         list(added))
+        after['content'] = [entry for entry in after['content'] if entry['id'] not in added]
         # Help has its own source/action contract and can evolve independently
         # of detector selection. Retain the byte comparison for every other app.
         for document in (before, after):
