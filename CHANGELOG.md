@@ -76,6 +76,10 @@ pre-1.0.
   the commercial-use limitation informational, so the `lfm2-kilix-commands`
   licence record decision is `record`. Its full terms are still shown and
   shipped, and no typed agreement is taken. The terms are not waived.
+- Select Needle `30ee74fe770a6c3b19b23e68e3a4c7dbe4deae77`. A plain ask
+  with no job exits 3, and a pane or tab listing prints without asking to
+  run it. The grammar and the vendored catalog pin are unchanged from
+  `a887e2fa`.
 - Select Needle `a887e2fae221272aece6b7b9aef143df8bc7ba64`, which vendors this
   catalog's LFM2 delivery and notice record (content `81f2321b`) so its install
   and runtime read the same terms the image records. Needle `3a8e41c5` still
