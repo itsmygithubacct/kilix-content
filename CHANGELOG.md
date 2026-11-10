@@ -16,6 +16,16 @@ pre-1.0.
 
 ### Added
 
+- Catalogue `pp-ocrv6-small-det` and `pp-ocrv6-small-rec`, PaddlePaddle's
+  PP-OCRv6 small text detector and recogniser as ONNX, for
+  kilix-pdf-conversion's page OCR. The owner determined Apache-2.0 for both
+  on 2026-11-10 and widened OD-AY from three PDF models to five. Each asset
+  holds the files page OCR reads, unchanged from Hugging Face at the pinned
+  revision, plus the Apache-2.0 text. Neither repository has a LICENSE file,
+  so that text is Debian's copy; the records' statement says so. Plebian-OS
+  ships both in the image. Select kilix-pdf-conversion
+  `2cff8ffde2a64367ca2e3e567acfcb740866fb9f`, which adds page OCR. The
+  vendored kilix-license moves to `596ada2ab68b9ec441674ff4da2d431559d47378`.
 - Catalogue `en-core-web-sm-3.8.0`, the spaCy English model Paradee uses
   offline, and add `config.json` to the Paradee 1.2 pin. The spaCy asset
   cites `en-core-web-sm-3.8.0` (MIT, licensor ExplosionAI GmbH) and ships

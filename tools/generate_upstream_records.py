@@ -66,6 +66,12 @@ PIN_NAMES = (
     "granite-docling-258m.json",
     "documentfigureclassifier-v2.5.json",
     "granite-vision-4.1-4b.json",
+    # Owner determination 2026-11-10, which widens OD-AY from three PDF models
+    # to five: "go with Apache-2.0, note the reality. 2: go with 5. ship them
+    # with the image if they are small." kilix-pdf-conversion page OCR's
+    # PP-OCRv6 small detector and recogniser, shipped in the Plebian-OS image.
+    "pp-ocrv6-small-det.json",
+    "pp-ocrv6-small-rec.json",
     # OD-AR: both EnCodec checkpoints, downloaded from upstream on first use
     # under CC BY-NC 4.0 and converted locally (R4-068).
     "encodec-24khz-stateful.json",
@@ -127,6 +133,8 @@ LICENSORS = {
     "granite-docling-258m": ["IBM"],
     "documentfigureclassifier-v2.5": ["docling-project"],
     "granite-vision-4.1-4b": ["IBM"],
+    "pp-ocrv6-small-det": ["PaddlePaddle"],
+    "pp-ocrv6-small-rec": ["PaddlePaddle"],
     "encodec-24khz-stateful": ["Meta Platforms"],
     "encodec-48khz-frame": ["Meta Platforms"],
     "needle2": ["Cactus Compute, Inc."],

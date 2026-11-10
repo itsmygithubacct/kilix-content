@@ -1,10 +1,14 @@
-"""Catalog records for the kilix-pdf-conversion [granite] engine models (R4-066, OD-AY).
+"""Catalog records for the kilix-pdf-conversion models (R4-066, OD-AY).
 
-The owner determined three models and only three: P1 Granite-Docling 258M, N1
-DocumentFigureClassifier v2.5 and N2 Granite Vision 4.1 4B
-(`licence-evidence-pdf-engines-2026-09-15/OWNER-DETERMINATION-pdf-engines.md`).
+OD-AY determined three [granite] engine models and only three: P1
+Granite-Docling 258M, N1 DocumentFigureClassifier v2.5 and N2 Granite Vision
+4.1 4B (`licence-evidence-pdf-engines-2026-09-15/OWNER-DETERMINATION-pdf-engines.md`).
+On 2026-11-10 the owner made it five, adding page OCR's PP-OCRv6 small detector
+and recogniser: "go with Apache-2.0, note the reality. 2: go with 5. ship them
+with the image if they are small."
+(`licence-evidence-pp-ocrv6-small-2026-11-10/OWNER-DETERMINATION-pp-ocrv6-small.md`).
 The Datalab/Surya checkpoints P2-P6, marker's render font, and N3 and N4 are
-not determined and must not appear here.
+still not determined and must not appear here.
 
 Each record lists every file the extra actually loads. docling asks
 huggingface_hub for a whole-repository snapshot at the pinned revision
@@ -12,6 +16,11 @@ huggingface_hub for a whole-repository snapshot at the pinned revision
 convert stage (P1), the picture-classification stage (N1, which defaults to the
 transformers engine) and the chart-extraction stage (N2). So the file list is
 the repository tree at the pin, and every digest in it is non-null.
+
+The page OCR models are loaded file by file from the verified asset directory,
+so each record lists only the files kilix-pdf-conversion's page OCR reads: the
+ONNX model, and the recogniser's character table. Their licence records are
+kilix-license's pp-ocrv6-small family, not determinations.json.
 """
 
 from __future__ import annotations
@@ -32,15 +41,9 @@ from kilix_content.first_use import license_record_for, present_asset
 from kilix_content.model import _is_kilix_hosted
 
 ROOT = Path(__file__).resolve().parents[1]
-DETERMINATIONS = (
-    ROOT
-    / "third_party"
-    / "kilix-license"
-    / "src"
-    / "kilix_license"
-    / "data"
-    / "determinations.json"
-)
+LICENSE_DATA = ROOT / "third_party" / "kilix-license" / "src" / "kilix_license" / "data"
+DETERMINATIONS = LICENSE_DATA / "determinations.json"
+OCR_DETERMINATIONS = LICENSE_DATA / "determinations-pp-ocrv6-small.json"
 CATALOG_JSON = ROOT / "src" / "kilix_content" / "catalog" / "plebian.json"
 PIN_DIR = ROOT / "tools" / "upstream-pins"
 _HEX64 = re.compile(r"^[0-9a-f]{64}$")
@@ -48,7 +51,7 @@ _HEX64 = re.compile(r"^[0-9a-f]{64}$")
 APACHE_TEXT = "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
 MIT_TEXT = "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5"
 
-MODELS = {
+ENGINE_MODELS = {
     "granite-docling-258m": {
         "record": "granite-docling-258m",
         "project": "ibm-granite/granite-docling-258M",
@@ -94,6 +97,35 @@ MODELS = {
         ),
     },
 }
+OCR_MODELS = {
+    "pp-ocrv6-small-det": {
+        "record": "pp-ocrv6-small-det",
+        "project": "PaddlePaddle/PP-OCRv6_small_det_onnx",
+        "revision": "28fe5895c24fd108c19eb3e8479f4ab385fbfc62",
+        "files": 1,
+        "licence": "apache-2.0",
+        "licensor": "PaddlePaddle",
+        "text": APACHE_TEXT,
+        "notice": "notices/LICENSE-apache-2.0.txt",
+        "reached": "page-ocr",
+        "statements": 1,
+        "weights": ("inference.onnx",),
+    },
+    "pp-ocrv6-small-rec": {
+        "record": "pp-ocrv6-small-rec",
+        "project": "PaddlePaddle/PP-OCRv6_small_rec_onnx",
+        "revision": "b8f84f0b80c529de40b4fbb3544b84fa7233a513",
+        "files": 2,
+        "licence": "apache-2.0",
+        "licensor": "PaddlePaddle",
+        "text": APACHE_TEXT,
+        "notice": "notices/LICENSE-apache-2.0.txt",
+        "reached": "page-ocr",
+        "statements": 1,
+        "weights": ("inference.onnx", "inference.yml"),
+    },
+}
+MODELS = {**ENGINE_MODELS, **OCR_MODELS}
 REMOTE_CODE = ("configuration.py", "downsampling.py", "modeling.py", "processing.py")
 # Refused in 0.2.2 (OD-AY): not determined, and no record may name them.
 REFUSED_STRINGS = (
@@ -189,7 +221,7 @@ class PdfEngineRecordTests(unittest.TestCase):
                 self.assertNotIn("assets-0.2.2-candidate", packed)
 
     def test_pins_agree_with_the_kilix_license_determination(self) -> None:
-        for asset_id, expected in MODELS.items():
+        for asset_id, expected in ENGINE_MODELS.items():
             pin = _pin(asset_id)
             entry = _determination(expected["record"])
             upstream = entry["upstream"]
@@ -214,6 +246,39 @@ class PdfEngineRecordTests(unittest.TestCase):
                     [name["name"] for name in entry["licensors"]], [record.licensor]
                 )
                 self.assertEqual(list(record.licence_ids), entry["licence"]["spdx"])
+
+    def test_ocr_pins_agree_with_the_pp_ocrv6_small_determination(self) -> None:
+        """The pins list exactly the determined files, and the record says so."""
+        data = json.loads(OCR_DETERMINATIONS.read_text(encoding="utf-8"))
+        authority = data["authority"]
+        self.assertIsNone(authority["repository_licence_file"])
+        self.assertEqual(authority["licence_sha256"], APACHE_TEXT)
+        self.assertEqual(
+            authority["owner_record"]["path"],
+            "licence-evidence-pp-ocrv6-small-2026-11-10/OWNER-DETERMINATION-pp-ocrv6-small.md",
+        )
+        self.assertIn("go with 5", authority["determined_by"])
+        determined = {model["id"]: model for model in authority["models"]}
+        self.assertEqual(sorted(determined), sorted(OCR_MODELS))
+        for asset_id, expected in OCR_MODELS.items():
+            pin = _pin(asset_id)
+            model = determined[asset_id]
+            with self.subTest(asset=asset_id):
+                self.assertEqual(
+                    model["repository"], f"https://huggingface.co/{expected['project']}"
+                )
+                self.assertEqual(model["revision"], expected["revision"])
+                self.assertEqual(model["card_licence_line"], "license: apache-2.0")
+                self.assertEqual(
+                    [(item["path"], item["bytes"], item["sha256"]) for item in pin["members"]],
+                    [(item["path"], item["bytes"], item["sha256"]) for item in model["files"]],
+                )
+                record = self.records.by_id(expected["record"])
+                self.assertEqual(record.licensor, expected["licensor"])
+                self.assertEqual(list(record.licence_ids), ["Apache-2.0"])
+                self.assertEqual(
+                    [item.id for item in record.statements], ["pp-ocrv6-card-only-grant"]
+                )
 
     def test_licence_rows_name_the_owner_determination(self) -> None:
         for asset_id, expected in MODELS.items():
@@ -291,7 +356,7 @@ class PdfEngineRecordTests(unittest.TestCase):
             self.assertIn(path, entry["upstream"]["files_note"])
 
     def test_no_undetermined_pdf_engine_model_is_in_the_catalog(self) -> None:
-        """P2-P6, the marker font, N3 and N4 are refused in 0.2.2 (OD-AY)."""
+        """P2-P6, the marker font, N3 and N4 are refused (OD-AY), still in 0.2.3."""
         catalog = CATALOG_JSON.read_text(encoding="utf-8").lower()
         for needle in REFUSED_STRINGS:
             self.assertNotIn(needle, catalog, needle)
@@ -322,7 +387,13 @@ class PdfEngineRecordTests(unittest.TestCase):
                 for spec in self.catalog.assets
                 if spec.provider == "kilix-pdf-conversion"
             ],
-            ["granite-docling-258m", "documentfigureclassifier-v2.5", "granite-vision-4.1-4b"],
+            [
+                "granite-docling-258m",
+                "documentfigureclassifier-v2.5",
+                "granite-vision-4.1-4b",
+                "pp-ocrv6-small-det",
+                "pp-ocrv6-small-rec",
+            ],
         )
 
     def test_every_pinned_member_is_guarded_against_landing_in_git(self) -> None:

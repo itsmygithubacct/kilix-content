@@ -27,11 +27,11 @@ class BasicPitchAssetTests(unittest.TestCase):
             'notices/NOTICE-basic-pitch.txt':(1034,'b810e55c0e3b520fabb45fc2ccc74880187bf84e309971968541cc812dcde905')})
         before=json.loads(subprocess.check_output(['git','show','bc7ab69d6e0089729c7113b58563f3f0f0186301:src/kilix_content/catalog/plebian.json'],cwd=ROOT))
         after=json.loads((ROOT/'src/kilix_content/catalog/plebian.json').read_bytes())
-        self.assertEqual(len(after['assets']),45)
+        self.assertEqual(len(after['assets']),47)
         # Command-model releases have their own exact preservation contract.
         for document in (before, after):
             document['assets']=[a for a in document['assets']
-                                if a['id'] not in (ID, 'paradee-8m-v1.2', 'en-core-web-sm-3.8.0', 'qwen-0.8b-no-loop-02', 'faster-whisper-medium-en', 'demucs-htdemucs-6s', 'faster-whisper-large-v3',
+                                if a['id'] not in (ID, 'paradee-8m-v1.2', 'en-core-web-sm-3.8.0', 'pp-ocrv6-small-det', 'pp-ocrv6-small-rec', 'qwen-0.8b-no-loop-02', 'faster-whisper-medium-en', 'demucs-htdemucs-6s', 'faster-whisper-large-v3',
                                               'lfm2-kilix-commands', 'lfm3-kilix-commands')]
         # Asset receipts must survive unrelated application pin updates.
         # Exact app/catalog delta scope is audited separately in the handoff.

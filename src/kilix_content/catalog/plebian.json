@@ -1314,7 +1314,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-pdf-conversion",
-        "ref": "e841241b0134fef42045a946199a92e9fa35ffbf"
+        "ref": "2cff8ffde2a64367ca2e3e567acfcb740866fb9f"
       },
       "binary": "kilix-pdf",
       "build": [
@@ -6346,6 +6346,125 @@
       },
       "stream": "F104",
       "version": "dd48e97503de471803850df70843cf9eb5da8712"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.pdf-conversion.runtime",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 9880512,
+          "path": "inference.onnx",
+          "sha256": "d73e0058b7a8086bbd57f3d10b8bcd4ff95363f67e06e2762b5e814fe9c9410e"
+        },
+        {
+          "bytes": 11358,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "id": "pp-ocrv6-small-det",
+      "label": "pp-ocrv6-small-det (kilix-pdf-conversion page-ocr text detector, PP-OCRv6 small ONNX, shipped in the image)",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "PaddlePaddle"
+          ],
+          "record_digest": "e90d224b0b67100ba080b316883c5e75f02d5c7b2280652124e72fd5d3ee56d9",
+          "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "provider": "kilix-pdf-conversion",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 9880512,
+        "installed_bytes": 9891870,
+        "temporary_bytes": 9891870
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "inference.onnx",
+            "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det_onnx/resolve/28fe5895c24fd108c19eb3e8479f4ab385fbfc62/inference.onnx"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "PaddlePaddle/PP-OCRv6_small_det_onnx",
+          "revision": "28fe5895c24fd108c19eb3e8479f4ab385fbfc62",
+          "original_url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det_onnx/resolve/28fe5895c24fd108c19eb3e8479f4ab385fbfc62/inference.onnx"
+        }
+      },
+      "stream": "F104",
+      "version": "28fe5895c24fd108c19eb3e8479f4ab385fbfc62"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.pdf-conversion.runtime",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 21159378,
+          "path": "inference.onnx",
+          "sha256": "5435fd747c9e0efe15a96d0b378d5bd157e9492ed8fd80edf08f30d02fa24634"
+        },
+        {
+          "bytes": 150579,
+          "path": "inference.yml",
+          "sha256": "ab078671bb49f06228eadccd34f1bb501e157f7a047095ffb943ba81512c77d1"
+        },
+        {
+          "bytes": 11358,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "id": "pp-ocrv6-small-rec",
+      "label": "pp-ocrv6-small-rec (kilix-pdf-conversion page-ocr text recogniser, PP-OCRv6 small ONNX, shipped in the image)",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "PaddlePaddle"
+          ],
+          "record_digest": "3846df39dba2d661d7484d2e4ebb7d6fca2a2718a6f48d03c485ab0b435d4312",
+          "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "provider": "kilix-pdf-conversion",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 21309957,
+        "installed_bytes": 21321315,
+        "temporary_bytes": 21321315
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "inference.onnx",
+            "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx/resolve/b8f84f0b80c529de40b4fbb3544b84fa7233a513/inference.onnx"
+          },
+          {
+            "path": "inference.yml",
+            "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx/resolve/b8f84f0b80c529de40b4fbb3544b84fa7233a513/inference.yml"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "PaddlePaddle/PP-OCRv6_small_rec_onnx",
+          "revision": "b8f84f0b80c529de40b4fbb3544b84fa7233a513",
+          "original_url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx/resolve/b8f84f0b80c529de40b4fbb3544b84fa7233a513/inference.onnx"
+        }
+      },
+      "stream": "F104",
+      "version": "b8f84f0b80c529de40b4fbb3544b84fa7233a513"
     },
     {
       "compatibility": {

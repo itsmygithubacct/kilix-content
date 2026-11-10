@@ -21,7 +21,7 @@ class DetectorPins(unittest.TestCase):
         after = json.loads((root / 'src/kilix_content/catalog/plebian.json').read_bytes())
         for document in (before, after):
             document['assets'] = [asset for asset in document['assets']
-                                  if asset['id'] not in ('lfm2-kilix-commands', 'lfm3-kilix-commands', 'paradee-8m-v1.2', 'en-core-web-sm-3.8.0', 'qwen-0.8b-no-loop-02',
+                                  if asset['id'] not in ('lfm2-kilix-commands', 'lfm3-kilix-commands', 'paradee-8m-v1.2', 'en-core-web-sm-3.8.0', 'pp-ocrv6-small-det', 'pp-ocrv6-small-rec', 'qwen-0.8b-no-loop-02',
                                                 'faster-whisper-medium-en', 'demucs-htdemucs-6s',
                                                 'faster-whisper-large-v3')]
         self.assertEqual(before['assets'], after['assets'])
@@ -29,7 +29,7 @@ class DetectorPins(unittest.TestCase):
             if entry['id'] in pins:
                 entry['source']['ref'] = pins[entry['id']]
             elif entry['id'] == 'kilix-pdf-conversion':
-                entry['source']['ref'] = 'e841241b0134fef42045a946199a92e9fa35ffbf'
+                entry['source']['ref'] = '2cff8ffde2a64367ca2e3e567acfcb740866fb9f'
             elif entry['id'] == 'playalong':
                 # 2026-11-08: Playalong takes every model from Kilix's
                 # licence records and never downloads one itself.

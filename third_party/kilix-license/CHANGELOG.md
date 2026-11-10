@@ -4,6 +4,14 @@ All notable changes to `kilix-license` are recorded here.
 
 ## Unreleased
 
+- `pp-ocrv6-small-det` and `pp-ocrv6-small-rec` have their own determination
+  pin and records. By the owner's 2026-11-10 determination, PaddlePaddle's
+  PP-OCRv6 small ONNX exports are Apache-2.0, published by PaddlePaddle. The
+  grant is each model card's `license: apache-2.0` line: neither repository
+  has a LICENSE or NOTICE file and no copyright holder is named, which each
+  record states beside Debian's Apache-2.0 text. The standard distribution
+  policy covers both records.
+
 - `en-core-web-sm-3.8.0` has its own determination pin and record.
   ExplosionAI GmbH distributes the `en_core_web_sm` 3.8.0 wheel under MIT.
   LICENSES_SOURCES is the training-sources statement, not a binding
