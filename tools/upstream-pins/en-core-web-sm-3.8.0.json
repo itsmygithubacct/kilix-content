@@ -1,0 +1,23 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "en-core-web-sm-3.8.0",
+  "label": "spaCy en_core_web_sm 3.8.0",
+  "mode": "upstream-files",
+  "license_record_id": "en-core-web-sm-3.8.0",
+  "provider": "spacy",
+  "consumer_schema": "kilix.paradee.frontend/v1",
+  "version": "3.8.0",
+  "provenance": {
+    "project": "explosion/spacy-models",
+    "revision": "en_core_web_sm-3.8.0",
+    "original_url": "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+  },
+  "members": [
+    {
+      "path": "en_core_web_sm-3.8.0-py3-none-any.whl",
+      "url": "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+      "bytes": 12806118,
+      "sha256": "1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85"
+    }
+  ]
+}

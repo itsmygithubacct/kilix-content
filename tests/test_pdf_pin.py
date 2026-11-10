@@ -14,11 +14,11 @@ class PDFPinTests(unittest.TestCase):
         root=Path(__file__).resolve().parents[1]
         before=json.loads(subprocess.check_output(['git','show','bc7ab69d6e0089729c7113b58563f3f0f0186301:src/kilix_content/catalog/plebian.json'],cwd=root))
         after=json.loads((root/'src/kilix_content/catalog/plebian.json').read_bytes())
-        self.assertEqual(len(after['assets']),44)
+        self.assertEqual(len(after['assets']),45)
         for document in (before, after):
             document['assets']=[asset for asset in document['assets']
                                 if asset['id'] not in ('basic-pitch-icassp-2022-onnx',
-                                                       'paradee-8m-v1.2', 'qwen-0.8b-no-loop-02',
+                                                       'paradee-8m-v1.2', 'en-core-web-sm-3.8.0', 'qwen-0.8b-no-loop-02',
                                                        'faster-whisper-medium-en',
                                                        'demucs-htdemucs-6s',
                                                        'faster-whisper-large-v3',

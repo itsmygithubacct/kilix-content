@@ -98,6 +98,8 @@ class Needle2AssetTests(unittest.TestCase):
                                 if asset_id == 'kilix-female-02' else
                                 _pinned('determinations-paradee.sha256')
                                 if asset_id == 'paradee-8m-v1.2' else
+                                _pinned('determinations-en-core-web-sm.sha256')
+                                if asset_id == 'en-core-web-sm-3.8.0' else
                                 _pinned('determinations-noloop02.sha256')
                                 if asset_id == 'qwen-0.8b-no-loop-02' else
                                 _pinned('determinations-basic-pitch.sha256')
