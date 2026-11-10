@@ -4,6 +4,11 @@ All notable changes to `kilix-license` are recorded here.
 
 ## Unreleased
 
+- `en-core-web-sm-3.8.0` has its own determination pin and record.
+  ExplosionAI GmbH distributes the `en_core_web_sm` 3.8.0 wheel under MIT.
+  LICENSES_SOURCES is the training-sources statement, not a binding
+  condition. The standard distribution policy covers the record.
+
 - `qwen-0.8b-no-loop-02` has its own determination pin and record. It is
   Qwen3.5-0.8B under Apache-2.0 (Alibaba Cloud), modified by itsmygithubacct,
   with a weight edit adapted from CC BY 4.0 material by the authors of "LLMs

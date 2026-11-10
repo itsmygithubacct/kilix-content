@@ -40,6 +40,9 @@ PIN_NAMES = (
     "piper-en-us-kristin-medium.json",
     "kilix-female-02.json",
     "paradee-8m-v1.2.json",
+    # Owner decision 2026-11-10: Paradee's offline front end. The wheel is
+    # MIT; LICENSES_SOURCES ships as a statement, not a binding condition.
+    "en-core-web-sm-3.8.0.json",
     # Owner direction 2026-11-09: an option for kilix avatar and kilix chat,
     # loaded through kilix-llm, from the kilix-llm release.
     "qwen-0.8b-no-loop-02.json",
@@ -103,6 +106,7 @@ LICENSORS = {
     "piper-en-us-kristin-medium": ["Bryce Beattie"],
     "kilix-female-02": ["itsmygithubacct"],
     "paradee-8m-v1.2": ["Sahil Mahendrakar"],
+    "en-core-web-sm-3.8.0": ["ExplosionAI GmbH"],
     "qwen-0.8b-no-loop-02": ["Alibaba Cloud / Qwen"],
     "vibevoice-asr-bitnet": ["Microsoft Corporation"],
     "yolox_s": ["Megvii (Base Detection / Megvii Inc.)"],
@@ -221,6 +225,9 @@ def notice_file(record) -> dict[str, object]:
 
 def notice_files(record) -> list[dict[str, object]]:
     files = [notice_file(record)]
+    if record.id == 'en-core-web-sm-3.8.0':
+        sources = next(item for item in record.statements if item.id == 'training-sources')
+        files.append(notice_blob(sources.text_sha256, 'notices/LICENSES_SOURCES.txt', record.id))
     if record.id == "basic-pitch-icassp-2022-onnx":
         notice = next(s for s in record.statements if s.id == "upstream-notice")
         files.append(notice_blob(notice.text_sha256, "notices/NOTICE-basic-pitch.txt", record.id))

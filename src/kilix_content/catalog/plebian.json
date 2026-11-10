@@ -3883,6 +3883,11 @@
       },
       "files": [
         {
+          "bytes": 1827,
+          "path": "config.json",
+          "sha256": "002535cf8dd08a434cdddb13372da8a7b4844152bdf9b5b4e7342e12ec30bcfb"
+        },
+        {
           "bytes": 11358,
           "path": "notices/LICENSE-apache-2.0.txt",
           "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
@@ -3909,12 +3914,16 @@
       "provider": "paradee",
       "schema": "kilix.content.asset/v3",
       "sizes": {
-        "download_bytes": 8462119,
-        "installed_bytes": 8473477,
-        "temporary_bytes": 8473477
+        "download_bytes": 8463946,
+        "installed_bytes": 8475304,
+        "temporary_bytes": 8475304
       },
       "source": {
         "fetch": [
+          {
+            "path": "config.json",
+            "url": "https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.2/resolve/ed2934d4df8a4fd891e29584c5e1104649409765/config.json"
+          },
           {
             "path": "onnx/paradee_int8.onnx",
             "url": "https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.2/resolve/ed2934d4df8a4fd891e29584c5e1104649409765/onnx/paradee_int8.onnx"
@@ -3929,6 +3938,66 @@
       },
       "stream": "F104",
       "version": "ed2934d4df8a4fd891e29584c5e1104649409765"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.paradee.frontend/v1",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 12806118,
+          "path": "en_core_web_sm-3.8.0-py3-none-any.whl",
+          "sha256": "1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85"
+        },
+        {
+          "bytes": 1056,
+          "path": "notices/LICENSE-mit.txt",
+          "sha256": "3933c176979b68bc6d0bcc902c7d6c130f1d127f476f17ba5cdba8d99cfd0012"
+        },
+        {
+          "bytes": 2347,
+          "path": "notices/LICENSES_SOURCES.txt",
+          "sha256": "20d9dfacd215112251f15341edd1a47b1f98bf393a212f10f194ffdc7ee98a90"
+        }
+      ],
+      "id": "en-core-web-sm-3.8.0",
+      "label": "spaCy en_core_web_sm 3.8.0",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "mit",
+          "licensors": [
+            "ExplosionAI GmbH"
+          ],
+          "record_digest": "e2d9e28ac557608803565e5ffb549920f8cd3a06ef0445fe1cb5a5497860deef",
+          "text_sha256": "3933c176979b68bc6d0bcc902c7d6c130f1d127f476f17ba5cdba8d99cfd0012"
+        }
+      ],
+      "provider": "spacy",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 12806118,
+        "installed_bytes": 12809521,
+        "temporary_bytes": 12809521
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "en_core_web_sm-3.8.0-py3-none-any.whl",
+            "url": "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "explosion/spacy-models",
+          "revision": "en_core_web_sm-3.8.0",
+          "original_url": "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+        }
+      },
+      "stream": "F104",
+      "version": "3.8.0"
     },
     {
       "compatibility": {

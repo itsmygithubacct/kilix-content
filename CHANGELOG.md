@@ -16,6 +16,12 @@ pre-1.0.
 
 ### Added
 
+- Catalogue `en-core-web-sm-3.8.0`, the spaCy English model Paradee uses
+  offline, and add `config.json` to the Paradee 1.2 pin. The spaCy asset
+  cites `en-core-web-sm-3.8.0` (MIT, licensor ExplosionAI GmbH) and ships
+  the MIT text plus the upstream LICENSES_SOURCES statement. The vendored
+  kilix-license moves to `f33fdf2a0e8396bd32f3617633629bc3f7973e79`.
+  Paradee download size is the int8 ONNX plus `config.json`.
 - Catalogue Demucs htdemucs_6s (`demucs-htdemucs-6s`), the six-source separator
   `kilix split` runs, at the owner's request of 2026-11-08 to route `kilix split`
   through kilix-license. The asset is Meta's unchanged weights file
