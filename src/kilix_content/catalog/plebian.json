@@ -1314,7 +1314,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-pdf-conversion",
-        "ref": "2cff8ffde2a64367ca2e3e567acfcb740866fb9f"
+        "ref": "873f3298cfe9bcbf295061cd35d5054a46f4b21a"
       },
       "binary": "kilix-pdf",
       "build": [

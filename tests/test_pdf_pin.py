@@ -8,7 +8,7 @@ from kilix_content import verified_packaged_catalog
 class PDFPinTests(unittest.TestCase):
     def test_reviewed_consumers_and_unchanged_model_assets(self):
         catalog=verified_packaged_catalog()
-        self.assertEqual(catalog.require('kilix-pdf-conversion').ref,'2cff8ffde2a64367ca2e3e567acfcb740866fb9f')
+        self.assertEqual(catalog.require('kilix-pdf-conversion').ref,'873f3298cfe9bcbf295061cd35d5054a46f4b21a')
         self.assertEqual(catalog.require('kilix-help-llm').ref,'4abc52e9236899a05738807d32a3431270b6a3c2')
         self.assertEqual(catalog.require('kilix-needle').ref,'30ee74fe770a6c3b19b23e68e3a4c7dbe4deae77')
         root=Path(__file__).resolve().parents[1]

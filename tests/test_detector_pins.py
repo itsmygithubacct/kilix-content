@@ -29,7 +29,7 @@ class DetectorPins(unittest.TestCase):
             if entry['id'] in pins:
                 entry['source']['ref'] = pins[entry['id']]
             elif entry['id'] == 'kilix-pdf-conversion':
-                entry['source']['ref'] = '2cff8ffde2a64367ca2e3e567acfcb740866fb9f'
+                entry['source']['ref'] = '873f3298cfe9bcbf295061cd35d5054a46f4b21a'
             elif entry['id'] == 'playalong':
                 # 2026-11-08: Playalong takes every model from Kilix's
                 # licence records and never downloads one itself.
