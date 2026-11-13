@@ -14,6 +14,19 @@ pre-1.0.
 
 ## Unreleased
 
+### Fixed
+
+- Select Needle `2df9ff0084d62989ce17c6819cffef69c98a339b` and kilix-tui-utils
+  `cb3dffde8c9e0b5f8abe43f81ba8e74d94fdd336` for RC9. Agent logs share one
+  inventory and a persistent full-history index, with BM25 CLI search and exact
+  record citations. The 32 MiB source window no longer limits indexed history.
+  Session Logs includes live, recent and archived transcripts, with readable
+  names and newest-first ordering. OMP/Qwen retains direct session lookup and
+  tool roles; malformed or unfinished rows report explicit coverage gaps.
+  Oversized events retain exact evidence references and source continuation.
+  Nested OMP/Qwen child logs have distinct names and session identities; their
+  session-init bookkeeping no longer produces a coverage error.
+
 ### Added
 
 - Catalogue `pp-ocrv6-small-det` and `pp-ocrv6-small-rec`, PaddlePaddle's

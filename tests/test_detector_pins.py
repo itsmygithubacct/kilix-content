@@ -35,7 +35,7 @@ class DetectorPins(unittest.TestCase):
                 # licence records and never downloads one itself.
                 entry['source']['ref'] = 'a11a02195765f3411249587918864e95dbf1fd9b'
             elif entry['id'] == 'kilix-needle':
-                entry['source']['ref'] = '9ca8ccfdfad758adf78bffa5fccaed631432f36c'
+                entry['source']['ref'] = '2df9ff0084d62989ce17c6819cffef69c98a339b'
                 # Owner determination 2026-11-07: LFM2's terms are a notice.
                 entry['dependency_hint'] = entry['dependency_hint'].replace(
                     'after licence review and acceptance;',
@@ -44,10 +44,10 @@ class DetectorPins(unittest.TestCase):
                 # RC9 selects Claudex 1f9d3c9: trust prompts are reported,
                 # fresh readings skipped, and the dashboard opens in a pane.
                 entry['source']['ref'] = '1f9d3c9c5950589182250e5e0b3267b3e65843a4'
-        # RC9 selects kilix-tui-utils 1a0b7d5 for the log reader's rollout adapter.
+        # RC9 selects shared inventory and log adapters from kilix-tui-utils.
         for package in before['packages']:
             if package['id'] == 'kilix-tui-utils':
-                package['source']['ref'] = '1a0b7d5fca6516bbc9685342e266b3a55422e098'
+                package['source']['ref'] = 'cb3dffde8c9e0b5f8abe43f81ba8e74d94fdd336'
         # Help has its own source/action contract and can evolve independently
         # of detector selection. Retain the byte comparison for every other app.
         for document in (before, after):

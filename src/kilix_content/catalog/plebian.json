@@ -6,7 +6,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-tui-utils",
-        "ref": "1a0b7d5fca6516bbc9685342e266b3a55422e098"
+        "ref": "cb3dffde8c9e0b5f8abe43f81ba8e74d94fdd336"
       },
       "build": [
         "make",
@@ -1755,7 +1755,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-needle",
-        "ref": "9ca8ccfdfad758adf78bffa5fccaed631432f36c"
+        "ref": "2df9ff0084d62989ce17c6819cffef69c98a339b"
       },
       "binary": "kilix-needle",
       "build": [
