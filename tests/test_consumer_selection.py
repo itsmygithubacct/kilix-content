@@ -66,7 +66,8 @@ CATALOG = ROOT / "src" / "kilix_content" / "catalog" / "plebian.json"
 # 1a0b7d5 (RC9) adds on b6321de the rollout adapter's current Claude and
 # Codex rows, a Grok adapter and the kilix-tool-errors survey.
 # 3ccdd09 completes the cited-record adapter for OMP and Qwen sessions.
-TUI_UTILS_REF = "3ccdd09ba284a2624c8ff1cbdda151e492c8a706"
+# ae15cd9 adds shared inventory, Codex fork names and all transcript tiers.
+TUI_UTILS_REF = "ae15cd9307ba41656c0dd91aeddd802e2a4bdac6"
 AMP_REF = "eff203a74f6cc726e9c1211cfe6d0960077fc388"
 AMP_BUILD = ("make", "all", "runtime-check", "ENCODEC=1")
 ENCODEC_CONVERTER_REF = "22290fb4a0587d5b7f937e345c99aa5d599c2282"

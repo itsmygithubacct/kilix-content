@@ -16,10 +16,13 @@ pre-1.0.
 
 ### Fixed
 
-- Select Needle `d97df8a3003a8269a34bad2fda5dc1affe166e3f` and kilix-tui-utils
-  `3ccdd09ba284a2624c8ff1cbdda151e492c8a706` for RC9. OMP/Qwen conversations
-  resolve by session ID or pane and preserve tool roles and exact citations.
-  Oversized structured logs read recent complete rows and report omitted history.
+- Select Needle `2afe657a591d588a05e5ec48f51faf9d5b01d5eb` and kilix-tui-utils
+  `ae15cd9307ba41656c0dd91aeddd802e2a4bdac6` for RC9. Agent logs share one
+  inventory and a persistent full-history index, with BM25 CLI search and exact
+  record citations. The 32 MiB source window no longer limits indexed history.
+  Session Logs includes live, recent and archived transcripts, with readable
+  names and newest-first ordering. OMP/Qwen retains direct session lookup and
+  tool roles; malformed or unfinished rows report explicit coverage gaps.
 
 ### Added
 
