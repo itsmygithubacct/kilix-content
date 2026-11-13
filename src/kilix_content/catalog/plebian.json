@@ -1821,7 +1821,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-claudex",
-        "ref": "8346512bff4d2bf2e3574285a588361124a4a321"
+        "ref": "1f9d3c9c5950589182250e5e0b3267b3e65843a4"
       },
       "binary": "claudex",
       "build": [],

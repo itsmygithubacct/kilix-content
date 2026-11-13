@@ -86,6 +86,13 @@ pre-1.0.
   the commercial-use limitation informational, so the `lfm2-kilix-commands`
   licence record decision is `record`. Its full terms are still shown and
   shipped, and no typed agreement is taken. The terms are not waived.
+- Select Claudex `1f9d3c9c5950589182250e5e0b3267b3e65843a4`. Usage sessions
+  start in the home folder and report a folder-trust question as "attention",
+  with the command that answers it, instead of typing `/status` into it.
+  `usage --max-age` reads only agents whose last good reading is older than
+  the given age. `dashboard open` and `dashboard provider` take `--pane`. A
+  SyntaxWarning printed by every command that imported the dashboard is gone.
+  The build, binary and help action are unchanged.
 - Select Needle `9ca8ccfdfad758adf78bffa5fccaed631432f36c` and kilix-tui-utils
   `1a0b7d5fca6516bbc9685342e266b3a55422e098` for RC9's log reader. Current
   Claude and Codex transcripts read without unsupported-record errors, Grok

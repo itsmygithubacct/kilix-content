@@ -78,7 +78,7 @@ class ConsumerSelectionTests(unittest.TestCase):
     def test_claudex_selects_the_public_script_without_install_side_effects(self):
         app = verified_packaged_catalog().require("kilix-claudex")
         self.assertEqual(app.repository, "https://github.com/itsmygithubacct/kilix-claudex")
-        self.assertEqual(app.ref, "8346512bff4d2bf2e3574285a588361124a4a321")
+        self.assertEqual(app.ref, "1f9d3c9c5950589182250e5e0b3267b3e65843a4")
         self.assertEqual(app.binary, "claudex")
         self.assertEqual(app.build, ())
         self.assertEqual(app.kind, "app")

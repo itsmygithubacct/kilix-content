@@ -40,6 +40,10 @@ class DetectorPins(unittest.TestCase):
                 entry['dependency_hint'] = entry['dependency_hint'].replace(
                     'after licence review and acceptance;',
                     'after showing its licence terms, which are a notice and take no agreement;')
+            elif entry['id'] == 'kilix-claudex':
+                # RC9 selects Claudex 1f9d3c9: trust prompts are reported,
+                # fresh readings skipped, and the dashboard opens in a pane.
+                entry['source']['ref'] = '1f9d3c9c5950589182250e5e0b3267b3e65843a4'
         # RC9 selects kilix-tui-utils 1a0b7d5 for the log reader's rollout adapter.
         for package in before['packages']:
             if package['id'] == 'kilix-tui-utils':
