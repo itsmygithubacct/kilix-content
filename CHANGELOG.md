@@ -14,6 +14,13 @@ pre-1.0.
 
 ## Unreleased
 
+### Fixed
+
+- Select Needle `d97df8a3003a8269a34bad2fda5dc1affe166e3f` and kilix-tui-utils
+  `3ccdd09ba284a2624c8ff1cbdda151e492c8a706` for RC9. OMP/Qwen conversations
+  resolve by session ID or pane and preserve tool roles and exact citations.
+  Oversized structured logs read recent complete rows and report omitted history.
+
 ### Added
 
 - Catalogue `pp-ocrv6-small-det` and `pp-ocrv6-small-rec`, PaddlePaddle's
