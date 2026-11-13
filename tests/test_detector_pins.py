@@ -34,6 +34,9 @@ class DetectorPins(unittest.TestCase):
                 # 2026-11-08: Playalong takes every model from Kilix's
                 # licence records and never downloads one itself.
                 entry['source']['ref'] = 'a11a02195765f3411249587918864e95dbf1fd9b'
+            elif entry['id'] == 'kilix-claudex':
+                # Published revision accepts dashboard --pane and usage --max-age.
+                entry['source']['ref'] = '1f9d3c9c5950589182250e5e0b3267b3e65843a4'
             elif entry['id'] == 'kilix-needle':
                 entry['source']['ref'] = '30ee74fe770a6c3b19b23e68e3a4c7dbe4deae77'
                 # Owner determination 2026-11-07: LFM2's terms are a notice.

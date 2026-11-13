@@ -61,6 +61,10 @@ class ContentTests(unittest.TestCase):
         self.assertIs(catalog, default_catalog())
         self.assertGreaterEqual(len(catalog), 12)
         self.assertEqual(catalog.require("kilix-jpak").launch_mode, "terminal")
+        self.assertEqual(
+            catalog.require("kilix-claudex").ref,
+            "1f9d3c9c5950589182250e5e0b3267b3e65843a4",
+        )
         rancher = catalog.require("kilix-rancher")
         self.assertEqual(rancher.binary, "kilix-rancher/kilix-rancher")
         self.assertEqual(rancher.build, ("make", "-C", "kilix-rancher", "all"))
