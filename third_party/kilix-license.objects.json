@@ -1,7 +1,7 @@
 {
-  "commit": "tree a2d740b7aa189484108f26b63afbde52b90007dc\nparent f33fdf2a0e8396bd32f3617633629bc3f7973e79\nauthor itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1794348067 -0800\ncommitter itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1794348067 -0800\n\nRecord PP-OCRv6 small under Apache-2.0, with the card-only grant stated.\n\nBy the owner's 2026-11-10 determination (\"go with Apache-2.0, note the\nreality\"), PaddlePaddle's PP-OCRv6 small ONNX detector and recogniser are\nApache-2.0, published by PaddlePaddle. The two records live in their own\nfamily so that no release record digest moves.\n\nThe reality is recorded in the determination and shown on the licence\nscreen: the grant is each model card's \"license: apache-2.0\" line,\nneither repository has a LICENSE or NOTICE file, the cards' licence\nbadge links to that missing file, and no copyright holder is named. The\nlicence text is Debian's Apache-2.0. The generator refuses a\ndetermination that claims a repository LICENSE file. Granite-Docling's\ncard-only grant is the precedent.\n\nBoth records are affirmative with no binding conditions, so the standard\ndistribution policy covers them; the image ships them for\nkilix-pdf-conversion's page OCR. The owner record is\nlicence-evidence-pp-ocrv6-small-2026-11-10.\n\nmake test passes except the wheel test, which fails the same way on the\nbase commit because the uv environment has no setuptools; with\nsetuptools supplied it passes. make notes against the evidence packets\nand make build pass.\n",
+  "commit": "tree 667d0313b1ea47ac37d711197509e0cbae820d9c\nparent 596ada2ab68b9ec441674ff4da2d431559d47378\nauthor itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1794779323 -0800\ncommitter itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1794779454 -0800\n\nRecord the lfm2-kilix-commands-20261115-v10 modified-model notice.\n\nThe LFM2 statement now names delivery lfm2-kilix-commands-20261115-v10. The\nweight is still lfm2-kilix-v5e1-wse-20261106.9, byte for byte; the delivery\nships each versioned runtime library once instead of three times. The licence\ntext, the runtime notice and the notice decision are unchanged. The previous\nnotice text stays available for earlier receipts.\n\nThe Demucs and Whisper large-v3 tests that hold every earlier record to its\nbase bytes now let exactly that statement digest move, and still compare the\nrest of the LFM2 determination and record.\n",
   "excluded_top_level": [".gitignore", ".python-version", "Makefile", "PUBLICATION.md", "tests", "tools", "uv.lock"],
-  "pin": "596ada2ab68b9ec441674ff4da2d431559d47378",
+  "pin": "f363cf25d903d62ba356f325216f63f2ae168157",
   "schema": "kilix-content.vendored-git-objects/v1",
   "trees": {
     "0637f9c78d82d43f2dd617530535f0522b6dafe3": [
@@ -10,53 +10,10 @@
     "0be6329204102186d66de6a840ddde5eea9f87de": [
       ["100644", "lfm3-kilix-commands.json", "645e240a88b4ae58b31c68c97275a15eebad9637"]
     ],
-    "3798a887551d997c6a6ff8cc0cfd37f9a565ba33": [
-      ["100644", "demucs-htdemucs-6s.json", "c3e373cbe4f9e601fcb26d64c76d8d7f4df10ff8"]
+    "0fb205841e067151073ce0d9463370665fc1b6fa": [
+      ["40000", "kilix_license", "eec227262248453a1e9879477813fbcfd415e066"]
     ],
-    "516f53f6af3986ff1624f5b5f0d451f675c61aaa": [
-      ["100644", "pp-ocrv6-small-det.json", "f8f3437cda54c2b51cf6cd4fc00c85ad1e5a3eb5"],
-      ["100644", "pp-ocrv6-small-rec.json", "711d527d85ba38fe1d9b1c66570158bff5d1b6c0"]
-    ],
-    "5edf68119fd728a8e506acb7f133c209a25cea91": [
-      ["100644", "kilix-female-02.json", "61d9b46882a8fddab1c0e97396ef0e61fadca094"]
-    ],
-    "6b6d39abdd82464b18b80646502b51413cc75209": [
-      ["100644", "__init__.py", "94b65761bbc18e55e05d26b13fb69722a7a9bdd0"],
-      ["100644", "agreement.py", "22c359c4afc567db1bf56be7c6df237d9324dc23"],
-      ["100644", "basic_pitch.py", "e99ca97a87df06109c31e1ddf3f0b547b03a3aa9"],
-      ["100644", "catalog.py", "3fe69332ea08996e587fea8815a2107c2ac06a6d"],
-      ["100644", "changed.py", "6b07ce42c06f786126174bf482b8350ece2823f7"],
-      ["100644", "coverage.py", "4debef2b4150bdd7a4161457b8c9ced013120108"],
-      ["40000", "data", "a5bf2c2bc5ec72b8a14a15ca913be53f30592be8"],
-      ["100644", "demucs.py", "3bb889bedef4e50824e08d58f28f809ad567ef7c"],
-      ["100644", "diarization.py", "345f94472f91631ec566202353fb600354210ce6"],
-      ["100644", "digest.py", "fa0e7cc8d0dd8716b57f29309694791dfaef919f"],
-      ["100644", "en_core_web_sm.py", "c0e2105c3aa5e02cc58ba479cf716ef5cc28d208"],
-      ["100644", "errors.py", "67efed6718ee0fc5d327aa9e8fdc69fc0c3bb5d7"],
-      ["100644", "female02.py", "f371d4a760e929f9c38a7fa4c4f7736fe599fb03"],
-      ["100644", "generate.py", "dbb1f06b243a61119fc3803d661be27845092bc0"],
-      ["100644", "lfm2.py", "4e063fc646777372cb86eef5470c4f94fe5e87df"],
-      ["100644", "lfm3.py", "db3f028ae4db2f8bd7f160e9a1b769d23f0f1d13"],
-      ["100644", "needle3.py", "01003025e3787aaf4e3d4f84587819597d69aacd"],
-      ["100644", "noloop02.py", "5b4ce91f12f9e9058fad2bedaaaae7c73c42d95e"],
-      ["100644", "paradee.py", "78f295a14019f3d07a8c97643992dbda09137d12"],
-      ["100644", "paraphrase.py", "15271885fbe2249b2ef90100734125af1a1dba1f"],
-      ["100644", "paths.py", "a5dffb5922ae7af2a5039d15046f6a93196d1307"],
-      ["100644", "pp_ocrv6_small.py", "48df748be062ec289d09867ad6a6afdb0aac64ec"],
-      ["100644", "py.typed", "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"],
-      ["100644", "receipts.py", "34cea1efab4915a9e6631af3a80f04aa5b746917"],
-      ["100644", "records.py", "14e16f6c0887c5bd1dec84abe4ed6c35e0718cbb"],
-      ["100644", "screen.py", "f77d77b95cdf5338eca2a7c03d5b48c3219a9ddb"],
-      ["100644", "standard_policy.py", "03099adbe99cb1af590190cab8f088e8da13c4d5"],
-      ["100644", "store.py", "4139555a5661f38d66b17d0794cae4c1712bd87b"],
-      ["100644", "texts.py", "6d95a9a91dd7f396d453569f05ef0000f2b88b4f"],
-      ["100644", "whisper_large_v3.py", "afac91fdde29bf46d5b9dc60401c9b58b07a5221"],
-      ["100644", "whisper_medium.py", "559148a7d4b1c211d2c5fb0464582367793c2340"]
-    ],
-    "77111a91e4fd0ca3d4045018ab804367a7bb947d": [
-      ["100644", "basic-pitch-icassp-2022-onnx.json", "4a5a53b7bcd0c15ede1c6008ad0d4a107a37fa85"]
-    ],
-    "7c411c3afa754bfecb365a7dcb9ec6ec19e162ec": [
+    "2c654a56c01f4e45ccb71f7241a72ea3fdfa369e": [
       ["100644", "08279522f2f6866b9a9f9c2da5842200cdc4d44211d835e225c32736bde35c9d", "067a705ee096adb16ccc4717210926c28803537c"],
       ["100644", "085c0983a59a761edd8a9dea3117c513026ad80da792c21ed8bcad9148b254ad", "76a59e1b0bfecd132e21b074013613ad0f1940db"],
       ["100644", "0a35a0ec6cc8a56038d2ec1455e2cb5c7a325207f73a541763e96fe398e7bca2", "579c3c71fc108ff6c8d719f2f36ee691a0332822"],
@@ -141,6 +98,7 @@
       ["100644", "a7a84d5c790e623adb666c5c1f423d0e8a2a061ea7a30bcc45dcb0a876ef82d5", "df21693a6ff3e62ee4c6bd5dcae5eed3609fbc66"],
       ["100644", "a9beb48f37b8512d88d15415342682bcbf67153fa6652edd7a4573769c11ac3a", "7da465ed5c93f3a3159b4b4d4113b38f21b12d5f"],
       ["100644", "ad5a0dc4ec4a589158127283f480cee64aa8f6442e38d3ab407b39bb73922871", "41cf5b343bf87cd7b854a3e8b8923eccd720d938"],
+      ["100644", "ad951c9680c6bcb084a38582514b75ae90e0b85fd022495b4a38d2a6c6810a0f", "c5591655417ba52fc4a31a7fcc82f8b08425a552"],
       ["100644", "b05785f9f18e6716bab63424b11454513b9943a222595b70411009202fc592b5", "d817195dad53ec992418c28ffca5fbd1cd86502a"],
       ["100644", "b2d5a89a3fc1b48f18dcfe388bc5416d9add392fa8152ea3af8e3ab3c23e07e5", "01cababf373ba18f2d377b8ea93975faaeaaa2f0"],
       ["100644", "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d", "d25552598bb9c5400612159ed4bab92ce12a5ce5"],
@@ -167,16 +125,20 @@
       ["100644", "fa152afc73238001c008ff67f5b8a3c6d645cfb714a3900a37a2481a8e75d748", "97a2b0bdc0857923eba59279b40f6d0cbbb4a177"],
       ["100644", "fc55213eb3512d92ec49628697f592ab85526b05abdad2b3e79ab2ceaa0778b7", "6c5aee5efe7ec1b48f7c9cfb2a5f1930e67ff27a"]
     ],
-    "823620070c979dc6bedec6a6206271e8d0ddda1e": [
-      ["100644", "qwen-0.8b-no-loop-02.json", "ed4dba7baa7bc25833538fd3b28b665e33dcd9be"]
+    "3798a887551d997c6a6ff8cc0cfd37f9a565ba33": [
+      ["100644", "demucs-htdemucs-6s.json", "c3e373cbe4f9e601fcb26d64c76d8d7f4df10ff8"]
     ],
-    "83ef44f754d3cc1930c179b145eced3f57a30a4b": [
-      ["100644", "en-core-web-sm-3.8.0.json", "bb2dfdd3f0494d7ef47fa6cecf9d17ab72d5c79e"]
+    "516f53f6af3986ff1624f5b5f0d451f675c61aaa": [
+      ["100644", "pp-ocrv6-small-det.json", "f8f3437cda54c2b51cf6cd4fc00c85ad1e5a3eb5"],
+      ["100644", "pp-ocrv6-small-rec.json", "711d527d85ba38fe1d9b1c66570158bff5d1b6c0"]
     ],
-    "a2d740b7aa189484108f26b63afbde52b90007dc": [
+    "5edf68119fd728a8e506acb7f133c209a25cea91": [
+      ["100644", "kilix-female-02.json", "61d9b46882a8fddab1c0e97396ef0e61fadca094"]
+    ],
+    "667d0313b1ea47ac37d711197509e0cbae820d9c": [
       ["100644", ".gitignore", "7e74013359efce08b816f3b27b6a941e96ce87a2"],
       ["100644", ".python-version", "04e207918ddc86409a934bfdaf92dbbf0f8ac1cc"],
-      ["100644", "CHANGELOG.md", "d24cce05385ba52fb009da4f7434bb641a0956e2"],
+      ["100644", "CHANGELOG.md", "3d5eb2aa0f3e5101325b4088497ee3616741f519"],
       ["100644", "LICENSE", "41c7d40b05d38a4b9dc2f71fab9c1f32a3567734"],
       ["100644", "Makefile", "c3f9f06dc69429ccaed15523608522d110f85e28"],
       ["100644", "NOTICE", "2da879fa9340526fc8c05392d6d0d8b895f1b089"],
@@ -184,12 +146,42 @@
       ["100644", "README.md", "0caa10f7450339c73b8e08a7992f360babaa3619"],
       ["100644", "VERSION", "6e8bf73aa550d4c57f6f35830f1bcdc7a4a62f38"],
       ["100644", "pyproject.toml", "01d6862d2ec743cdd19971013295af36086bbb46"],
-      ["40000", "src", "fec30a255b2f87e5f8dc97b5c9283d4443ffa1e4"],
-      ["40000", "tests", "aa86e5aa5bb980831af572a8116d311fac1059db"],
+      ["40000", "src", "0fb205841e067151073ce0d9463370665fc1b6fa"],
+      ["40000", "tests", "227df2937c5a7b61574ea46da50ebd97176cd030"],
       ["40000", "tools", "faee2193f74199395804e3560cdd92515ebb4947"],
       ["100644", "uv.lock", "43e09590b109b26f4fcbdf9b2ee5428fadfba778"]
     ],
-    "a5bf2c2bc5ec72b8a14a15ca913be53f30592be8": [
+    "77111a91e4fd0ca3d4045018ab804367a7bb947d": [
+      ["100644", "basic-pitch-icassp-2022-onnx.json", "4a5a53b7bcd0c15ede1c6008ad0d4a107a37fa85"]
+    ],
+    "823620070c979dc6bedec6a6206271e8d0ddda1e": [
+      ["100644", "qwen-0.8b-no-loop-02.json", "ed4dba7baa7bc25833538fd3b28b665e33dcd9be"]
+    ],
+    "83ef44f754d3cc1930c179b145eced3f57a30a4b": [
+      ["100644", "en-core-web-sm-3.8.0.json", "bb2dfdd3f0494d7ef47fa6cecf9d17ab72d5c79e"]
+    ],
+    "b4faae100b970b498fe04cafb52fe9acc42722a6": [
+      ["100644", "lfm2-kilix-commands.json", "2acbc783a808a37721bbab553852f3fa88683206"]
+    ],
+    "bd836770d2be3df22f438b2c764a6a66e9470823": [
+      ["100644", "paradee-8m-v1.2.json", "5b441c5b887517f5d8cd3d786c91058e443eaf82"]
+    ],
+    "c29fa4f9ff323b8b1f65cbdc573c910ba053df38": [
+      ["100644", "needle3-kilix-commands.json", "a283c70f725bb877751be0614f061f6e5149b7f3"]
+    ],
+    "c624dee9d5425706b41cb93021895ef4d0292c6b": [
+      ["100644", "faster-whisper-large-v3.json", "a5d0321c8aa042042829feb6ac323abdab7e4f1f"]
+    ],
+    "dadcbb744332fd9c4891dc2272ccdb64320cf52a": [
+      ["100644", "needle2-runtime.json", "da5f64c7d6b50d94b221f894ab05b6740bf088bf"],
+      ["100644", "needle2-train.json", "99befac930d6384e12c85a79a6e00f37b5b558a5"],
+      ["100644", "needle2.json", "a4366b5cda576296c1bb6ed6b010942f13ce2beb"],
+      ["100644", "whistle.json", "3811642d8a90938060d7e767a746e1f8e9cd7f68"]
+    ],
+    "db9f97f51ce27097ad8e0b749b399d7125ccc032": [
+      ["100644", "faster-whisper-medium-en.json", "7d447098d7f0718361d5814a1f8e212565038082"]
+    ],
+    "dc467c178aa307dda1d0e883d615031a21662baa": [
       ["40000", "app-records", "dadcbb744332fd9c4891dc2272ccdb64320cf52a"],
       ["40000", "basic-pitch-records", "77111a91e4fd0ca3d4045018ab804367a7bb947d"],
       ["40000", "demucs-records", "3798a887551d997c6a6ff8cc0cfd37f9a565ba33"],
@@ -205,8 +197,8 @@
       ["100644", "determinations-en-core-web-sm.sha256", "b9b6d39a165ec0800a65ce740d26440eb6deb3cf"],
       ["100644", "determinations-female02.json", "0ae87973a021debf426b00061e747150ba00c487"],
       ["100644", "determinations-female02.sha256", "6cbf21d4a4be0147b3988835b2d3d99fcf8cccf3"],
-      ["100644", "determinations-lfm2.json", "32fac6c322ee51aeaceee859e067787941820508"],
-      ["100644", "determinations-lfm2.sha256", "90ccc28fad959b9cb0d7b4615d9263a052cf08d4"],
+      ["100644", "determinations-lfm2.json", "6dc08f84bfb3351254c0ca363c2c19ca1874cbb0"],
+      ["100644", "determinations-lfm2.sha256", "a2357c83284f7a728b9167b6254e3437da986d1c"],
       ["100644", "determinations-lfm3.json", "dd9c139b04663663ec1aabc88ed911677ac67183"],
       ["100644", "determinations-lfm3.sha256", "456e2c684dc84b2432c92600c6c2c0d589ac3046"],
       ["100644", "determinations-needle3.json", "c29582998c0a3a90da0f6a078ce107e6e70b8b98"],
@@ -226,34 +218,16 @@
       ["40000", "diarization-records", "0637f9c78d82d43f2dd617530535f0522b6dafe3"],
       ["40000", "en-core-web-sm-records", "83ef44f754d3cc1930c179b145eced3f57a30a4b"],
       ["40000", "female02-records", "5edf68119fd728a8e506acb7f133c209a25cea91"],
-      ["40000", "lfm2-records", "e28e5dcbb126e43606fd2af7a2da5aff2c0c07e1"],
+      ["40000", "lfm2-records", "b4faae100b970b498fe04cafb52fe9acc42722a6"],
       ["40000", "lfm3-records", "0be6329204102186d66de6a840ddde5eea9f87de"],
       ["40000", "needle3-records", "c29fa4f9ff323b8b1f65cbdc573c910ba053df38"],
       ["40000", "noloop02-records", "823620070c979dc6bedec6a6206271e8d0ddda1e"],
       ["40000", "paradee-records", "bd836770d2be3df22f438b2c764a6a66e9470823"],
       ["40000", "pp-ocrv6-small-records", "516f53f6af3986ff1624f5b5f0d451f675c61aaa"],
       ["40000", "records", "dcc7e1d280cf3acdf7d72187cc09101bde403e8f"],
-      ["40000", "texts", "7c411c3afa754bfecb365a7dcb9ec6ec19e162ec"],
+      ["40000", "texts", "2c654a56c01f4e45ccb71f7241a72ea3fdfa369e"],
       ["40000", "whisper-large-v3-records", "c624dee9d5425706b41cb93021895ef4d0292c6b"],
       ["40000", "whisper-medium-records", "db9f97f51ce27097ad8e0b749b399d7125ccc032"]
-    ],
-    "bd836770d2be3df22f438b2c764a6a66e9470823": [
-      ["100644", "paradee-8m-v1.2.json", "5b441c5b887517f5d8cd3d786c91058e443eaf82"]
-    ],
-    "c29fa4f9ff323b8b1f65cbdc573c910ba053df38": [
-      ["100644", "needle3-kilix-commands.json", "a283c70f725bb877751be0614f061f6e5149b7f3"]
-    ],
-    "c624dee9d5425706b41cb93021895ef4d0292c6b": [
-      ["100644", "faster-whisper-large-v3.json", "a5d0321c8aa042042829feb6ac323abdab7e4f1f"]
-    ],
-    "dadcbb744332fd9c4891dc2272ccdb64320cf52a": [
-      ["100644", "needle2-runtime.json", "da5f64c7d6b50d94b221f894ab05b6740bf088bf"],
-      ["100644", "needle2-train.json", "99befac930d6384e12c85a79a6e00f37b5b558a5"],
-      ["100644", "needle2.json", "a4366b5cda576296c1bb6ed6b010942f13ce2beb"],
-      ["100644", "whistle.json", "3811642d8a90938060d7e767a746e1f8e9cd7f68"]
-    ],
-    "db9f97f51ce27097ad8e0b749b399d7125ccc032": [
-      ["100644", "faster-whisper-medium-en.json", "7d447098d7f0718361d5814a1f8e212565038082"]
     ],
     "dcc7e1d280cf3acdf7d72187cc09101bde403e8f": [
       ["100644", "bitnet-b1.58-2b4t.json", "2e894b7d3bfda5530173e61bb53063bbb7e52027"],
@@ -287,11 +261,38 @@
       ["100644", "yolox_s.json", "25c84caa492aa6530741ff8948c11bd2a43121ec"],
       ["100644", "yolox_tiny.json", "044206ccbd28c4848db7bd43edf9839d1ba80489"]
     ],
-    "e28e5dcbb126e43606fd2af7a2da5aff2c0c07e1": [
-      ["100644", "lfm2-kilix-commands.json", "b6b06c245dd25ea297b980a52d1ecf3299abdf1c"]
-    ],
-    "fec30a255b2f87e5f8dc97b5c9283d4443ffa1e4": [
-      ["40000", "kilix_license", "6b6d39abdd82464b18b80646502b51413cc75209"]
+    "eec227262248453a1e9879477813fbcfd415e066": [
+      ["100644", "__init__.py", "94b65761bbc18e55e05d26b13fb69722a7a9bdd0"],
+      ["100644", "agreement.py", "22c359c4afc567db1bf56be7c6df237d9324dc23"],
+      ["100644", "basic_pitch.py", "e99ca97a87df06109c31e1ddf3f0b547b03a3aa9"],
+      ["100644", "catalog.py", "3fe69332ea08996e587fea8815a2107c2ac06a6d"],
+      ["100644", "changed.py", "6b07ce42c06f786126174bf482b8350ece2823f7"],
+      ["100644", "coverage.py", "4debef2b4150bdd7a4161457b8c9ced013120108"],
+      ["40000", "data", "dc467c178aa307dda1d0e883d615031a21662baa"],
+      ["100644", "demucs.py", "3bb889bedef4e50824e08d58f28f809ad567ef7c"],
+      ["100644", "diarization.py", "345f94472f91631ec566202353fb600354210ce6"],
+      ["100644", "digest.py", "fa0e7cc8d0dd8716b57f29309694791dfaef919f"],
+      ["100644", "en_core_web_sm.py", "c0e2105c3aa5e02cc58ba479cf716ef5cc28d208"],
+      ["100644", "errors.py", "67efed6718ee0fc5d327aa9e8fdc69fc0c3bb5d7"],
+      ["100644", "female02.py", "f371d4a760e929f9c38a7fa4c4f7736fe599fb03"],
+      ["100644", "generate.py", "dbb1f06b243a61119fc3803d661be27845092bc0"],
+      ["100644", "lfm2.py", "4e063fc646777372cb86eef5470c4f94fe5e87df"],
+      ["100644", "lfm3.py", "db3f028ae4db2f8bd7f160e9a1b769d23f0f1d13"],
+      ["100644", "needle3.py", "01003025e3787aaf4e3d4f84587819597d69aacd"],
+      ["100644", "noloop02.py", "5b4ce91f12f9e9058fad2bedaaaae7c73c42d95e"],
+      ["100644", "paradee.py", "78f295a14019f3d07a8c97643992dbda09137d12"],
+      ["100644", "paraphrase.py", "15271885fbe2249b2ef90100734125af1a1dba1f"],
+      ["100644", "paths.py", "a5dffb5922ae7af2a5039d15046f6a93196d1307"],
+      ["100644", "pp_ocrv6_small.py", "48df748be062ec289d09867ad6a6afdb0aac64ec"],
+      ["100644", "py.typed", "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"],
+      ["100644", "receipts.py", "34cea1efab4915a9e6631af3a80f04aa5b746917"],
+      ["100644", "records.py", "14e16f6c0887c5bd1dec84abe4ed6c35e0718cbb"],
+      ["100644", "screen.py", "f77d77b95cdf5338eca2a7c03d5b48c3219a9ddb"],
+      ["100644", "standard_policy.py", "03099adbe99cb1af590190cab8f088e8da13c4d5"],
+      ["100644", "store.py", "4139555a5661f38d66b17d0794cae4c1712bd87b"],
+      ["100644", "texts.py", "6d95a9a91dd7f396d453569f05ef0000f2b88b4f"],
+      ["100644", "whisper_large_v3.py", "afac91fdde29bf46d5b9dc60401c9b58b07a5221"],
+      ["100644", "whisper_medium.py", "559148a7d4b1c211d2c5fb0464582367793c2340"]
     ]
   }
 }

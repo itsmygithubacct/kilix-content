@@ -20,7 +20,7 @@ class CommandModelReleaseTests(unittest.TestCase):
                                                 'faster-whisper-large-v3')]
         self.assertEqual(before['assets'], after['assets'])
         spec = verified_packaged_catalog().require_asset('lfm2-kilix-commands')
-        self.assertEqual(spec.version, 'lfm2-kilix-commands-20261106-v9')
+        self.assertEqual(spec.version, 'lfm2-kilix-commands-20261115-v10')
         model = next(f for f in spec.files if f.path == 'model.gguf')
         self.assertEqual(model.sha256, '3fa22c105b1f80823088de21a45fd2f3dc30a4cfdc63d21037c9344585fae4dd')
         self.assertEqual(model.bytes, 1388859040)

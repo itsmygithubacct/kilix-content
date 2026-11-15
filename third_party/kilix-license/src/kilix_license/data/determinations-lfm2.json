@@ -31,7 +31,7 @@
       "statements": [
         {
           "id": "modified-model",
-          "text_sha256": "65e4cd26f6f63d2ad45c64df2a6876bc33b17c4af5272c90bd44dd072b0e6601"
+          "text_sha256": "ad951c9680c6bcb084a38582514b75ae90e0b85fd022495b4a38d2a6c6810a0f"
         }
       ],
       "decision_class": "informational",

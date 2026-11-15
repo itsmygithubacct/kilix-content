@@ -5,16 +5,16 @@
   "license_record_id": "lfm2-kilix-commands",
   "provider": "kilix-needle",
   "consumer_schema": "kilix.commands.model/v1",
-  "version": "lfm2-kilix-commands-20261106-v9",
-  "archive_url": "https://github.com/itsmygithubacct/kilix-needle/releases/download/lfm2-kilix-commands-20261106-v9/lfm2-kilix-commands-20261106-v9.tar.gz",
-  "archive_bytes": 1362204317,
-  "archive_sha256": "ea03c42ce0f36d12bca1844c558c0fcaeb442887e55e1e7b76ccb3ed632c3a85",
+  "version": "lfm2-kilix-commands-20261115-v10",
+  "archive_url": "https://github.com/itsmygithubacct/kilix-needle/releases/download/lfm2-kilix-commands-20261115-v10/lfm2-kilix-commands-20261115-v10.tar.gz",
+  "archive_bytes": 1346876805,
+  "archive_sha256": "b9bff58b8d296cf557b721407553d15451a9856ecb8fa1bc09c908c6b0760187",
   "format": "tar",
-  "root": "lfm2-kilix-commands-20261106-v9",
+  "root": "lfm2-kilix-commands-20261115-v10",
   "provenance": {
     "project": "itsmygithubacct/kilix-needle",
     "revision": "4f3aeaff96bd2381a34396e2afb40b900840b8ec",
-    "original_url": "https://github.com/itsmygithubacct/kilix-needle/releases/download/lfm2-kilix-commands-20261106-v9/lfm2-kilix-commands-20261106-v9.tar.gz"
+    "original_url": "https://github.com/itsmygithubacct/kilix-needle/releases/download/lfm2-kilix-commands-20261115-v10/lfm2-kilix-commands-20261115-v10.tar.gz"
   },
   "members": [
     {
@@ -28,17 +28,7 @@
       "sha256": "938e0db7e6acd7e99d205863bcbdeda47f5fbd053802519f411dbefe0799071e"
     },
     {
-      "path": "runtime/libggml-base.so",
-      "bytes": 897792,
-      "sha256": "2c6ac9a8ae7c1455382c50587fe7d275e0607dfdaec4dcdb18689f31f6174c65"
-    },
-    {
       "path": "runtime/libggml-base.so.0",
-      "bytes": 897792,
-      "sha256": "2c6ac9a8ae7c1455382c50587fe7d275e0607dfdaec4dcdb18689f31f6174c65"
-    },
-    {
-      "path": "runtime/libggml-base.so.0.27.0",
       "bytes": 897792,
       "sha256": "2c6ac9a8ae7c1455382c50587fe7d275e0607dfdaec4dcdb18689f31f6174c65"
     },
@@ -118,17 +108,7 @@
       "sha256": "e28139e2d982fb057b88d243e5b2e9d72c52f8b98ae910b1cf751240ef1f9803"
     },
     {
-      "path": "runtime/libggml.so",
-      "bytes": 51040,
-      "sha256": "8643a58bb37af6fb153e2ea98b48efa227855725ee51c05f4ca76b9867956463"
-    },
-    {
       "path": "runtime/libggml.so.0",
-      "bytes": 51040,
-      "sha256": "8643a58bb37af6fb153e2ea98b48efa227855725ee51c05f4ca76b9867956463"
-    },
-    {
-      "path": "runtime/libggml.so.0.27.0",
       "bytes": 51040,
       "sha256": "8643a58bb37af6fb153e2ea98b48efa227855725ee51c05f4ca76b9867956463"
     },
@@ -148,17 +128,7 @@
       "sha256": "2cdd7c33a556ea1b7f395e9d07ae4e36738fe7bbcb1d9fbe2561d6c611b5d04d"
     },
     {
-      "path": "runtime/libllama-common.so",
-      "bytes": 6499104,
-      "sha256": "462f7e9ce1c4c537533f1d4530b37201452599d90128c3c602507b315934e795"
-    },
-    {
       "path": "runtime/libllama-common.so.0",
-      "bytes": 6499104,
-      "sha256": "462f7e9ce1c4c537533f1d4530b37201452599d90128c3c602507b315934e795"
-    },
-    {
-      "path": "runtime/libllama-common.so.0.7.0",
       "bytes": 6499104,
       "sha256": "462f7e9ce1c4c537533f1d4530b37201452599d90128c3c602507b315934e795"
     },
@@ -188,32 +158,12 @@
       "sha256": "9119be58c6ffa251c824cdf51677215735d6f4bdab131b17e7e549ff4e1ddcf1"
     },
     {
-      "path": "runtime/libllama.so",
-      "bytes": 5095048,
-      "sha256": "522213ae6b6019ba8d2673e9254990c52f0a1a5fb047c75bfb93be1b34fad839"
-    },
-    {
       "path": "runtime/libllama.so.0",
       "bytes": 5095048,
       "sha256": "522213ae6b6019ba8d2673e9254990c52f0a1a5fb047c75bfb93be1b34fad839"
     },
     {
-      "path": "runtime/libllama.so.0.7.0",
-      "bytes": 5095048,
-      "sha256": "522213ae6b6019ba8d2673e9254990c52f0a1a5fb047c75bfb93be1b34fad839"
-    },
-    {
-      "path": "runtime/libmtmd.so",
-      "bytes": 1938632,
-      "sha256": "5dc23ec9996bacb9d2791e06848cce30e33901d131a0c61f9cf2b821a587b17e"
-    },
-    {
       "path": "runtime/libmtmd.so.0",
-      "bytes": 1938632,
-      "sha256": "5dc23ec9996bacb9d2791e06848cce30e33901d131a0c61f9cf2b821a587b17e"
-    },
-    {
-      "path": "runtime/libmtmd.so.0.7.0",
       "bytes": 1938632,
       "sha256": "5dc23ec9996bacb9d2791e06848cce30e33901d131a0c61f9cf2b821a587b17e"
     },

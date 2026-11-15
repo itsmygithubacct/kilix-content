@@ -14,6 +14,20 @@ pre-1.0.
 
 ## Unreleased
 
+### Changed
+
+- Select delivery `lfm2-kilix-commands-20261115-v10` as `lfm2-kilix-commands`.
+  The weight is still `lfm2-kilix-v5e1-wse-20261106.9`, byte for byte, and the
+  CPU runtime is the same build. `lfm2-kilix-commands-20261106-v9` carried three
+  identical copies of `libggml-base`, `libggml`, `libllama-common`, `libllama`
+  and `libmtmd`; v10 keeps the one the other runtime files load (`lib*.so.0`)
+  and omits the ten duplicates. The archive holds 34 regular files and no
+  links. It is 1,346,876,805 bytes (15.3 MB smaller) and installs to
+  1,432,537,967 bytes (29.0 MB smaller). The manifest digest is new, so an
+  installed v9 directory is not this asset and its receipt does not cover it.
+  The modified-model notice is `ad951c96`. kilix-license moves `596ada2a` to
+  `f363cf25`; the licence record digest is unchanged.
+
 ### Fixed
 
 - Select Needle `2df9ff0084d62989ce17c6819cffef69c98a339b` and kilix-tui-utils

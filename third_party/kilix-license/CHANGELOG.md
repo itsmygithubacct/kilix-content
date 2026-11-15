@@ -4,6 +4,13 @@ All notable changes to `kilix-license` are recorded here.
 
 ## Unreleased
 
+- The `lfm2-kilix-commands` modified-model statement is now the notice of
+  delivery `lfm2-kilix-commands-20261115-v10` (`ad951c96`). The weight is still
+  `lfm2-kilix-v5e1-wse-20261106.9`, byte for byte; the delivery ships each
+  versioned runtime library once. The licence text, the runtime notice and
+  the notice decision are unchanged. The previous notice text stays available
+  for earlier receipts.
+
 - `pp-ocrv6-small-det` and `pp-ocrv6-small-rec` have their own determination
   pin and records. By the owner's 2026-11-10 determination, PaddlePaddle's
   PP-OCRv6 small ONNX exports are Apache-2.0, published by PaddlePaddle. The
