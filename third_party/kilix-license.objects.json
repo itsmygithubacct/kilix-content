@@ -1,7 +1,7 @@
 {
-  "commit": "tree 667d0313b1ea47ac37d711197509e0cbae820d9c\nparent 596ada2ab68b9ec441674ff4da2d431559d47378\nauthor itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1794779323 -0800\ncommitter itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1794779454 -0800\n\nRecord the lfm2-kilix-commands-20261115-v10 modified-model notice.\n\nThe LFM2 statement now names delivery lfm2-kilix-commands-20261115-v10. The\nweight is still lfm2-kilix-v5e1-wse-20261106.9, byte for byte; the delivery\nships each versioned runtime library once instead of three times. The licence\ntext, the runtime notice and the notice decision are unchanged. The previous\nnotice text stays available for earlier receipts.\n\nThe Demucs and Whisper large-v3 tests that hold every earlier record to its\nbase bytes now let exactly that statement digest move, and still compare the\nrest of the LFM2 determination and record.\n",
+  "commit": "tree 1d7238f2e08b48ecd07a4343da7dcae2935deb11\nparent f363cf25d903d62ba356f325216f63f2ae168157\nauthor itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1794786774 -0800\ncommitter itsmygithubacct <itsmygithubacct@users.noreply.github.com> 1794786774 -0800\n\nPin the exact LFM2 notice values in the base-byte tests\n\nThe two base-byte tests admitted the v10 modified-model notice by masking\nthe statement digest and skipping the determination pin file, so any\nstatement text would have passed them. They now also require the exact new\nvalues: statement ad951c96 and determination file 144cbb3e, in the\ndetermination, its pin file and the record. Everything else is still\ncompared with the base bytes.\n",
   "excluded_top_level": [".gitignore", ".python-version", "Makefile", "PUBLICATION.md", "tests", "tools", "uv.lock"],
-  "pin": "f363cf25d903d62ba356f325216f63f2ae168157",
+  "pin": "fea4626fd6f6525ed1dfa0d53696b026dd3d1403",
   "schema": "kilix-content.vendored-git-objects/v1",
   "trees": {
     "0637f9c78d82d43f2dd617530535f0522b6dafe3": [
@@ -12,6 +12,22 @@
     ],
     "0fb205841e067151073ce0d9463370665fc1b6fa": [
       ["40000", "kilix_license", "eec227262248453a1e9879477813fbcfd415e066"]
+    ],
+    "1d7238f2e08b48ecd07a4343da7dcae2935deb11": [
+      ["100644", ".gitignore", "7e74013359efce08b816f3b27b6a941e96ce87a2"],
+      ["100644", ".python-version", "04e207918ddc86409a934bfdaf92dbbf0f8ac1cc"],
+      ["100644", "CHANGELOG.md", "3d5eb2aa0f3e5101325b4088497ee3616741f519"],
+      ["100644", "LICENSE", "41c7d40b05d38a4b9dc2f71fab9c1f32a3567734"],
+      ["100644", "Makefile", "c3f9f06dc69429ccaed15523608522d110f85e28"],
+      ["100644", "NOTICE", "2da879fa9340526fc8c05392d6d0d8b895f1b089"],
+      ["100644", "PUBLICATION.md", "ad0e4496f9a6bcfde3b260844fa09ad721c1ef1c"],
+      ["100644", "README.md", "0caa10f7450339c73b8e08a7992f360babaa3619"],
+      ["100644", "VERSION", "6e8bf73aa550d4c57f6f35830f1bcdc7a4a62f38"],
+      ["100644", "pyproject.toml", "01d6862d2ec743cdd19971013295af36086bbb46"],
+      ["40000", "src", "0fb205841e067151073ce0d9463370665fc1b6fa"],
+      ["40000", "tests", "84167cec3e05644ec3b7a209f4795bd30dddab47"],
+      ["40000", "tools", "faee2193f74199395804e3560cdd92515ebb4947"],
+      ["100644", "uv.lock", "43e09590b109b26f4fcbdf9b2ee5428fadfba778"]
     ],
     "2c654a56c01f4e45ccb71f7241a72ea3fdfa369e": [
       ["100644", "08279522f2f6866b9a9f9c2da5842200cdc4d44211d835e225c32736bde35c9d", "067a705ee096adb16ccc4717210926c28803537c"],
@@ -134,22 +150,6 @@
     ],
     "5edf68119fd728a8e506acb7f133c209a25cea91": [
       ["100644", "kilix-female-02.json", "61d9b46882a8fddab1c0e97396ef0e61fadca094"]
-    ],
-    "667d0313b1ea47ac37d711197509e0cbae820d9c": [
-      ["100644", ".gitignore", "7e74013359efce08b816f3b27b6a941e96ce87a2"],
-      ["100644", ".python-version", "04e207918ddc86409a934bfdaf92dbbf0f8ac1cc"],
-      ["100644", "CHANGELOG.md", "3d5eb2aa0f3e5101325b4088497ee3616741f519"],
-      ["100644", "LICENSE", "41c7d40b05d38a4b9dc2f71fab9c1f32a3567734"],
-      ["100644", "Makefile", "c3f9f06dc69429ccaed15523608522d110f85e28"],
-      ["100644", "NOTICE", "2da879fa9340526fc8c05392d6d0d8b895f1b089"],
-      ["100644", "PUBLICATION.md", "ad0e4496f9a6bcfde3b260844fa09ad721c1ef1c"],
-      ["100644", "README.md", "0caa10f7450339c73b8e08a7992f360babaa3619"],
-      ["100644", "VERSION", "6e8bf73aa550d4c57f6f35830f1bcdc7a4a62f38"],
-      ["100644", "pyproject.toml", "01d6862d2ec743cdd19971013295af36086bbb46"],
-      ["40000", "src", "0fb205841e067151073ce0d9463370665fc1b6fa"],
-      ["40000", "tests", "227df2937c5a7b61574ea46da50ebd97176cd030"],
-      ["40000", "tools", "faee2193f74199395804e3560cdd92515ebb4947"],
-      ["100644", "uv.lock", "43e09590b109b26f4fcbdf9b2ee5428fadfba778"]
     ],
     "77111a91e4fd0ca3d4045018ab804367a7bb947d": [
       ["100644", "basic-pitch-icassp-2022-onnx.json", "4a5a53b7bcd0c15ede1c6008ad0d4a107a37fa85"]
