@@ -16,6 +16,19 @@ pre-1.0.
 
 ### Changed
 
+- Installing a versioned asset reuses an installed earlier delivery of it.
+  `Installer.ensure_upstream_asset` looks under the same root for another
+  manifest of the asset that holds every non-notice file at the new size. It
+  reads those files as it reads a user-supplied directory: each through one
+  descriptor that follows no symlink, verified against the new manifest before
+  and after the copy, with notices written from the licence authority and the
+  staged tree verified as a whole. Nothing is downloaded when that succeeds.
+  If any file is missing or differs, what was staged is discarded and the
+  asset is fetched as before. The earlier directory is never changed, and the
+  new manifest still needs its own receipt. `Installer.earlier_delivery(spec)`
+  names the candidate without hashing, for a caller that wants to say whether
+  a download is likely. Every installer that uses this component gets the
+  reuse: `kilix models`, the model wizard, Needle's setup and first use.
 - Select delivery `lfm2-kilix-commands-20261115-v10` as `lfm2-kilix-commands`.
   The weight is still `lfm2-kilix-v5e1-wse-20261106.9`, byte for byte, and the
   CPU runtime is the same build. `lfm2-kilix-commands-20261106-v9` carried three

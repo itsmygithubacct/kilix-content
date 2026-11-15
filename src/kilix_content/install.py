@@ -1272,6 +1272,93 @@ class Installer:
             raise InstallError(f"asset id is not a safe path component: {asset_id!r}")
         return destination
 
+    def earlier_delivery(self, spec: AssetSpec) -> str | None:
+        """An installed earlier delivery of a versioned asset, or None.
+
+        A new delivery of one model usually changes few of its files and none
+        of the large ones. This names a directory that could supply the new
+        one: another manifest of the same asset under this root, holding every
+        file the licence authority does not supply at the new manifest's size.
+        It reads sizes only and changes nothing, so a caller may use it to say
+        whether a download is likely. Whether the bytes are the model is
+        decided later, by hashing, when they are used.
+        """
+        prefix = spec.asset_id + "--"
+        if spec.storage != "versioned":
+            return None
+        parent = os.path.dirname(self.asset_destination(spec))
+        wanted = [item for item in spec.files if not item.path.startswith("notices/")]
+        if not wanted:
+            return None
+        found = []
+        try:
+            names = os.listdir(parent)
+        except OSError:
+            return None
+        for name in names:
+            digest = name[len(prefix):]
+            if (
+                not name.startswith(prefix)
+                or name == spec.install_name
+                or len(digest) != 64
+                or any(char not in "0123456789abcdef" for char in digest)
+            ):
+                continue
+            path = os.path.join(parent, name)
+            try:
+                root_info = os.lstat(path)
+                if not stat.S_ISDIR(root_info.st_mode):
+                    continue
+                for item in wanted:
+                    info = os.lstat(os.path.join(path, item.path))
+                    if not stat.S_ISREG(info.st_mode) or info.st_size != item.bytes:
+                        break
+                else:
+                    found.append((root_info.st_mtime_ns, path))
+            except OSError:
+                continue
+        return max(found)[1] if found else None
+
+    def _populate_upstream_or_earlier(
+        self,
+        spec: AssetSpec,
+        stage: str,
+        report: Report,
+        notices: TextStore,
+        **options,
+    ) -> str:
+        """Stage from an installed earlier delivery when one holds the bytes.
+
+        The earlier directory is read exactly as a user-supplied one is: each
+        file through one descriptor that follows no symlink, verified against
+        this manifest before and after it is copied, with the notices written
+        from the licence authority. The caller then verifies the staged tree
+        as a whole, as for any install. When the earlier delivery cannot
+        supply every file, what was staged from it is discarded and the asset
+        is downloaded as if it had not been there. The earlier directory is
+        never changed.
+        """
+        earlier = self.earlier_delivery(spec)
+        if earlier is not None:
+            report(
+                f"an earlier delivery of {spec.asset_id} is installed; "
+                "verifying and reusing its files instead of downloading …"
+            )
+            try:
+                output = self._populate_supplied_asset(
+                    spec, stage, report, notices, supplied=earlier
+                )
+                if self._verify_asset_directory(spec, output) is None:
+                    raise InstallError("the reused files do not match the manifest")
+                return output
+            except (InstallError, OSError) as error:
+                report(
+                    "the earlier delivery could not supply this one "
+                    f"({str(error)[:512]}); downloading instead …"
+                )
+                shutil.rmtree(os.path.join(stage, "content"), ignore_errors=True)
+        return self._populate_upstream_asset(spec, stage, report, notices, **options)
+
     def _ensure_asset_parent(self, spec: AssetSpec) -> str:
         parent = os.path.dirname(self.asset_destination(spec))
         os.makedirs(parent, mode=0o700, exist_ok=True)
@@ -1810,10 +1897,14 @@ class Installer:
         progress: Callable[[Progress], None] | None = None,
         installed_by_other: list[bool] | None = None,
     ) -> tuple[str, ...]:
-        """Install one exact upstream asset after a covering licence receipt exists."""
+        """Install one exact upstream asset after a covering licence receipt exists.
+
+        Files an installed earlier delivery of the same versioned asset
+        already holds are verified and reused; otherwise the asset is fetched.
+        """
         return self._select_asset(
             spec,
-            lambda stage: self._populate_upstream_asset(
+            lambda stage: self._populate_upstream_or_earlier(
                 spec,
                 stage,
                 report,
