@@ -27,6 +27,12 @@ pre-1.0.
   installed v9 directory is not this asset and its receipt does not cover it.
   The modified-model notice is `ad951c96`. kilix-license moves `596ada2a` to
   `f363cf25`; the licence record digest is unchanged.
+- Select Needle `257e08568c51b1df4b344685b0d4428c78325804`. With nothing
+  chosen, Ask uses LFM2 only on a machine that has this release's bundle
+  installed with its receipt, and its grammar otherwise; it downloads no model
+  on its own. `kilix-needle workflows choice` reports the backend and its
+  source, and `workflows status` names the model a caller may offer. That
+  Needle pins delivery v10 and vendors the catalog commit that carries it.
 
 ### Fixed
 

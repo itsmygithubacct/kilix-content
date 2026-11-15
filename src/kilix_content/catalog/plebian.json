@@ -1751,18 +1751,18 @@
       "label": "Needle",
       "kind": "app",
       "icon": "terminal",
-      "description": "Kilix Ask handles supported app and coding-session commands with a pinned local LFM2 model, an optional Needle 3 model and grammar shortcuts. Every proposal is checked against the whole request before confirmation and execution. Other Needle jobs drive panes, settings, audio, music, voice and text size, search files and read system status. Includes X11 desktop actions and local pane-log search. Keeps a private local request history (KILIX_NEEDLE_HISTORY=0 turns this off).",
+      "description": "Kilix Ask handles supported app and coding-session commands with its grammar, and with the pinned local LFM2 model once that is installed, or an optional Needle 3 model. Every proposal is checked against the whole request before confirmation and execution. Other Needle jobs drive panes, settings, audio, music, voice and text size, search files and read system status. Includes X11 desktop actions and local pane-log search. Keeps a private local request history (KILIX_NEEDLE_HISTORY=0 turns this off).",
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-needle",
-        "ref": "2df9ff0084d62989ce17c6819cffef69c98a339b"
+        "ref": "257e08568c51b1df4b344685b0d4428c78325804"
       },
       "binary": "kilix-needle",
       "build": [
         "make",
         "all"
       ],
-      "dependency_hint": "needs Python 3.11 or newer and make on x86-64 Linux; `kilix-needle install --commands` installs the default LFM2 Ask model after showing its licence terms, which are a notice and take no agreement; `kilix-needle install --commands needle3` installs the optional Needle 3 model for x86-64-v3 CPUs; exact grammar requests need no model. Legacy Needle 2 jobs use their separately installed Apache-2.0 engine. Desktop actions use xdotool, xprop and python3-xlib; `kilix-needle setup` changes settings only when run",
+      "dependency_hint": "needs Python 3.11 or newer and make on x86-64 Linux; Ask uses its grammar until a model is installed and downloads none on its own; `kilix-needle install --commands` installs the LFM2 Ask model after showing its licence terms, which are a notice and take no agreement; `kilix-needle install --commands needle3` installs the optional Needle 3 model for x86-64-v3 CPUs; exact grammar requests need no model. Legacy Needle 2 jobs use their separately installed Apache-2.0 engine. Desktop actions use xdotool, xprop and python3-xlib; `kilix-needle setup` changes settings only when run",
       "capabilities": [
         "kilix-control",
         "session-read",

@@ -35,11 +35,24 @@ class DetectorPins(unittest.TestCase):
                 # licence records and never downloads one itself.
                 entry['source']['ref'] = 'a11a02195765f3411249587918864e95dbf1fd9b'
             elif entry['id'] == 'kilix-needle':
-                entry['source']['ref'] = '2df9ff0084d62989ce17c6819cffef69c98a339b'
+                entry['source']['ref'] = '257e08568c51b1df4b344685b0d4428c78325804'
                 # Owner determination 2026-11-07: LFM2's terms are a notice.
                 entry['dependency_hint'] = entry['dependency_hint'].replace(
                     'after licence review and acceptance;',
                     'after showing its licence terms, which are a notice and take no agreement;')
+                # Owner decision 2026-11-15: LFM2 is a first-use download and
+                # Ask uses its grammar until the model is installed.
+                for field, old, new in (
+                        ('dependency_hint',
+                         '`kilix-needle install --commands` installs the default LFM2 Ask model',
+                         'Ask uses its grammar until a model is installed and downloads none on its own; '
+                         '`kilix-needle install --commands` installs the LFM2 Ask model'),
+                        ('description',
+                         'with a pinned local LFM2 model, an optional Needle 3 model and grammar shortcuts.',
+                         'with its grammar, and with the pinned local LFM2 model once that is installed, '
+                         'or an optional Needle 3 model.')):
+                    self.assertEqual(entry[field].count(old), 1, field)
+                    entry[field] = entry[field].replace(old, new)
             elif entry['id'] == 'kilix-claudex':
                 # RC9 selects Claudex 1f9d3c9: trust prompts are reported,
                 # fresh readings skipped, and the dashboard opens in a pane.
