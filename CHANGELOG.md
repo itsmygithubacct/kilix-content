@@ -16,6 +16,15 @@ pre-1.0.
 
 ### Changed
 
+- Select Needle `bcef7e1738188ca951a6e16b608a01ec26f723e3` for Plebian-OS 0.2.3. With no LFM2 command model
+  installed, Kilix Ask reads requests with its grammar; this Needle fixes the
+  five grammar readings deferred to 0.2.3 (history for labelled and `--job`
+  requests; a directory or placement shared by launches that share a verb; a
+  model before a launch's own directory; verbless launches in a clause of
+  their own; a comma-set model after a list of launches now refuses) and
+  vendors this component at `a67f4a81`.
+- Select kilix-tui-utils `bd1999bd446a7e1f2d8ed440ff1c880884721452`, the 0.2.3 QEMU manager fix. The range from
+  `cb3dffde` touches only `kilix-qemu-manager/` and its tests.
 - Select Needle `e9103f6ad714db33f38e0d9b7ee43483f2d9ce01`, which corrects the
   first-use texts, keeps the delivery build tool and vendors this component
   with the earlier-delivery reuse.
