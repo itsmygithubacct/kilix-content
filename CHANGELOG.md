@@ -16,6 +16,9 @@ pre-1.0.
 
 ### Changed
 
+- Select Needle `e9103f6ad714db33f38e0d9b7ee43483f2d9ce01`, which corrects the
+  first-use texts, keeps the delivery build tool and vendors this component
+  with the earlier-delivery reuse.
 - Installing a versioned asset reuses an installed earlier delivery of it.
   `Installer.ensure_upstream_asset` looks under the same root for another
   manifest of the asset that holds every non-notice file at the new size. It
