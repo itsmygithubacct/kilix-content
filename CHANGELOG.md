@@ -29,8 +29,11 @@ pre-1.0.
   If any file is missing or differs, what was staged is discarded and the
   asset is fetched as before. The earlier directory is never changed, and the
   new manifest still needs its own receipt. `Installer.earlier_delivery(spec)`
-  names the candidate without hashing, for a caller that wants to say whether
-  a download is likely. Every installer that uses this component gets the
+  names the newest candidate without hashing, for a caller that wants to say
+  whether a download is likely. Candidates are tried newest first, so an older
+  intact delivery is used when a newer one cannot supply the files. The found
+  directory is opened beneath the assets directory without following a
+  symlink, like every component below it. Every installer that uses this component gets the
   reuse: `kilix models`, the model wizard, Needle's setup and first use.
 - Select delivery `lfm2-kilix-commands-20261115-v10` as `lfm2-kilix-commands`.
   The weight is still `lfm2-kilix-v5e1-wse-20261106.9`, byte for byte, and the

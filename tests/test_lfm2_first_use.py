@@ -276,6 +276,37 @@ class LFM2FirstUseTests(unittest.TestCase):
         self.assertEqual((new_path/'model.gguf').read_bytes(), good)
         self.assertEqual(model.read_bytes(), bytes(len(good)))
 
+    def test_an_older_intact_delivery_is_used_when_the_newest_cannot_supply(self):
+        import os, shutil
+        old_path, spec = self.earlier_then_next()
+        newer = old_path.parent/(self.asset_id + '--' + 'c'*64)
+        shutil.copytree(old_path, newer)
+        (newer/'model.gguf').chmod(0o600)
+        (newer/'model.gguf').write_bytes(bytes((old_path/'model.gguf').stat().st_size))
+        os.utime(old_path, ns=(1, 1))
+        self.assertEqual(self.installer.earlier_deliveries(spec), [str(newer), str(old_path)])
+        with mock.patch('kilix_content.install.fetch_exact', side_effect=AssertionError('downloaded')):
+            self.assertIsNotNone(self.upstream())
+
+    def test_a_link_put_in_place_of_the_found_directory_is_not_read(self):
+        # The scan saw a directory; before it is read it becomes a link to a
+        # tree outside the assets directory that holds the right bytes.
+        import shutil
+        old_path, spec = self.earlier_then_next()
+        outside = Path(self.scratch.name)/'outside'
+        found = self.installer.earlier_deliveries(spec)
+        shutil.move(str(old_path), str(outside))
+        old_path.symlink_to(outside)
+        reports = []
+        with mock.patch.object(self.installer, 'earlier_deliveries', return_value=found), \
+                mock.patch.object(self.installer, '_populate_upstream_asset',
+                                  side_effect=InstallError('would download')) as download, \
+                self.assertRaises(InstallError):
+            self.upstream(reports)
+        download.assert_called_once()
+        self.assertTrue(any('could not supply' in line for line in reports), reports)
+        self.assertFalse(Path(self.installer.asset_destination(spec)).exists())
+
     def test_what_is_not_an_earlier_delivery(self):
         old_path, spec = self.earlier_then_next()
         parent = old_path.parent

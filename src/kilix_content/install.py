@@ -1272,8 +1272,8 @@ class Installer:
             raise InstallError(f"asset id is not a safe path component: {asset_id!r}")
         return destination
 
-    def earlier_delivery(self, spec: AssetSpec) -> str | None:
-        """An installed earlier delivery of a versioned asset, or None.
+    def earlier_deliveries(self, spec: AssetSpec) -> list[str]:
+        """Installed earlier deliveries of a versioned asset, newest first.
 
         A new delivery of one model usually changes few of its files and none
         of the large ones. This names a directory that could supply the new
@@ -1285,16 +1285,16 @@ class Installer:
         """
         prefix = spec.asset_id + "--"
         if spec.storage != "versioned":
-            return None
+            return []
         parent = os.path.dirname(self.asset_destination(spec))
         wanted = [item for item in spec.files if not item.path.startswith("notices/")]
         if not wanted:
-            return None
+            return []
         found = []
         try:
             names = os.listdir(parent)
         except OSError:
-            return None
+            return []
         for name in names:
             digest = name[len(prefix):]
             if (
@@ -1317,7 +1317,12 @@ class Installer:
                     found.append((root_info.st_mtime_ns, path))
             except OSError:
                 continue
-        return max(found)[1] if found else None
+        return [path for _modified, path in sorted(found, reverse=True)]
+
+    def earlier_delivery(self, spec: AssetSpec) -> str | None:
+        """The newest installed earlier delivery that could supply `spec`, or None."""
+        found = self.earlier_deliveries(spec)
+        return found[0] if found else None
 
     def _populate_upstream_or_earlier(
         self,
@@ -1332,29 +1337,36 @@ class Installer:
         The earlier directory is read exactly as a user-supplied one is: each
         file through one descriptor that follows no symlink, verified against
         this manifest before and after it is copied, with the notices written
-        from the licence authority. The caller then verifies the staged tree
+        from the licence authority. Candidates are tried newest first. The caller then verifies the staged tree
         as a whole, as for any install. When the earlier delivery cannot
         supply every file, what was staged from it is discarded and the asset
         is downloaded as if it had not been there. The earlier directory is
         never changed.
         """
-        earlier = self.earlier_delivery(spec)
-        if earlier is not None:
+        for earlier in self.earlier_deliveries(spec):
             report(
                 f"an earlier delivery of {spec.asset_id} is installed; "
                 "verifying and reusing its files instead of downloading …"
             )
             try:
+                # The directory was found by a scan, not named by the user, so
+                # it is opened beneath the assets directory like any other
+                # component: a symlink put in its place is refused, not read.
                 output = self._populate_supplied_asset(
-                    spec, stage, report, notices, supplied=earlier
+                    spec,
+                    stage,
+                    report,
+                    notices,
+                    supplied=os.path.dirname(earlier),
+                    beneath=os.path.basename(earlier),
                 )
                 if self._verify_asset_directory(spec, output) is None:
                     raise InstallError("the reused files do not match the manifest")
                 return output
             except (InstallError, OSError) as error:
                 report(
-                    "the earlier delivery could not supply this one "
-                    f"({str(error)[:512]}); downloading instead …"
+                    "that earlier delivery could not supply this one "
+                    f"({str(error)[:512]})"
                 )
                 shutil.rmtree(os.path.join(stage, "content"), ignore_errors=True)
         return self._populate_upstream_asset(spec, stage, report, notices, **options)
@@ -1655,8 +1667,13 @@ class Installer:
         notices: TextStore,
         *,
         supplied: str | os.PathLike[str],
+        beneath: str = "",
     ) -> str:
         """Stage the asset from bytes the user already holds (OD-BO).
+
+        `beneath` names one directory inside `supplied` that holds the files.
+        It is opened without following a symlink, like every component below
+        `supplied`; the installer uses it for a directory it found itself.
 
         Every installed file except the licence notices is read from
         `<supplied>/<path>`, where `path` is exactly the manifest path -- the
@@ -1688,7 +1705,8 @@ class Installer:
                     wanted.append(item)
         report(f"reading {len(wanted)} supplied file(s) for {spec.asset_id} …")
         for item in wanted:
-            with SuppliedFile.open_beneath(source, item.path) as handle:
+            relative = f"{beneath}/{item.path}" if beneath else item.path
+            with SuppliedFile.open_beneath(source, relative) as handle:
                 if handle.bytes != item.bytes or handle.sha256 != item.sha256:
                     raise InstallError(
                         f"supplied file does not match the manifest: {item.path}"
