@@ -33,6 +33,9 @@ pre-1.0.
 
 ### Changed
 
+- Select Kilix Amp `20fe4860` for 0.2.4. It opens M4B, Matroska audio and
+  WebM audio through kilix-mpv and fixes track selection, shuffle and stop
+  behavior in the shared playback session.
 - Catalogue Whisper large-v3 (`faster-whisper-large-v3`, Systran revision
   `edaa852e`) for Kilix Playalong lyrics that are not in English. Its provider
   is `kilix-playalong` and it is installed only after a yes. It cites its own

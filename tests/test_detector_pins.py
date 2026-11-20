@@ -9,6 +9,7 @@ from kilix_content import verified_packaged_catalog
 class DetectorPins(unittest.TestCase):
     def test_selection_preserves_assets_and_application_behavior(self):
         pins = {
+            'kilix-amp': '20fe48604ee2e64ec46b72d9021008538bc909f0',
             'kilix-object-detect': 'ee8ca0679503bcfacccbba0e61fff5c055ad9113',
             'kilix-nvr': 'e68b5d144cdff3330bc0f29ee5bc6e96649a26ae',
         }
