@@ -1244,7 +1244,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-amp",
-        "ref": "20fe48604ee2e64ec46b72d9021008538bc909f0"
+        "ref": "72b781ff04abfe82a99577ed7cae48875176ad44"
       },
       "binary": "kilix-amp",
       "build": [
