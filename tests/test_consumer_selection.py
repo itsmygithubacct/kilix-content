@@ -64,7 +64,7 @@ CATALOG = ROOT / "src" / "kilix_content" / "catalog" / "plebian.json"
 # b6321de preserves the shipped 61a514f ancestry and adds the reviewed QEMU
 # manager, launch-claim cleanup and authenticated early-exit cleanup.
 TUI_UTILS_REF = "b6321de94371029b40955e606d371fca83657d6f"
-AMP_REF = "72b781ff04abfe82a99577ed7cae48875176ad44"
+AMP_REF = "a66a010cc55d306d7a95e3bdefd536056e06bbbe"
 AMP_BUILD = ("make", "all", "runtime-check", "ENCODEC=1")
 ENCODEC_CONVERTER_REF = "22290fb4a0587d5b7f937e345c99aa5d599c2282"
 ENCODEC_CONVERTERS = ("kilix-encodec-convert-24khz", "kilix-encodec-convert-48khz")

@@ -12,7 +12,7 @@ _RELEASE_ID = "0.2.2"
 # Production trust root. Re-pinned by tools/generate_upstream_records.py with
 # the old-value guard whenever catalog/plebian.json bytes change.
 _CATALOG_SHA256 = (
-    "d62da7d651b04c8dbbfe732e90288fcbbe2f5a282ab57aaaeb24cb3c7038b292"
+    "a1ef9cba44fd1e59b6613e2ed792a768c4aec7068eeb337d6bcd31e5590b4a49"
 )
 _ASSET_V3_SCHEMA_SHA256 = (
     "a884f259da5275016744f0a4ff08d970084404cc01ebf2e261692b0522162b20"
