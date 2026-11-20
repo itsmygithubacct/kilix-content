@@ -1,0 +1,18 @@
+#!/usr/bin/make -f
+# The catalog finds its licence library two directories above this file.
+# The package keeps that layout under /usr/share/kilix-content.
+
+D := debian/kilix-content/usr/share/kilix-content
+
+%:
+	dh $@
+
+override_dh_auto_build:
+
+override_dh_auto_test:
+
+override_dh_auto_install:
+	install -d $(D)
+	cp -a src third_party $(D)/
+	find $(D) -depth -name __pycache__ -type d -exec rm -rf {} +
+	find $(D) -type f -name '*.pyc' -delete
