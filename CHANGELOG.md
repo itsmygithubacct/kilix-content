@@ -5,6 +5,11 @@
 All notable user-visible changes are recorded here. The public API remains
 pre-1.0.
 
+## 0.2.4 converter installation
+
+- Selecting either EnCodec converter reuses the launcher installed by
+  Plebian-OS. Other desktops can still build the pinned converter locally.
+
 ## Ready-source integration for 0.2.2
 
 - Select Kilix Amp `eff203a74f6cc726e9c1211cfe6d0960077fc388` so a second startup does not block when the control socket's accept queue is full.

@@ -776,6 +776,24 @@ class Installer:
         except (OSError, ValueError):
             return False
 
+    @staticmethod
+    def system_converter(spec: ContentSpec) -> str | None:
+        """Find the OS launcher declared for this exact packaged tool."""
+        if spec.kind != "tool":
+            return None
+        from . import verified_packaged_catalog
+
+        catalog = verified_packaged_catalog()
+        if catalog.get(spec.content_id) != spec:
+            return None
+        for asset in catalog.assets:
+            if (asset.source_mode == "upstream-convert"
+                    and asset.convert_tool_asset_id == spec.content_id):
+                launcher = asset.convert_argv[0]
+                if os.path.isabs(launcher) and shutil.which(launcher):
+                    return launcher
+        return None
+
     def ready(self, spec: ContentSpec, directory: str | None = None) -> str | None:
         return self.ready_provided((spec,), directory=directory).get(spec.content_id)
 
@@ -824,6 +842,14 @@ class Installer:
                     f"duplicate provided content id: {spec.content_id}"
                 )
             seen.add(spec.content_id)
+
+        # A standalone converter can already belong to the OS. Use the same
+        # absolute launcher as model conversion. Explicit directories still
+        # have to prove their own checkout and binary during a staged build.
+        if directory is None and len(provided) == 1:
+            launcher = self.system_converter(first)
+            if launcher:
+                return {first.content_id: launcher}
 
         selected = os.path.abspath(
             os.path.normpath(directory or self.destination(first))
