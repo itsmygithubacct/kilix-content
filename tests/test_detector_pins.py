@@ -36,7 +36,7 @@ class DetectorPins(unittest.TestCase):
                 # licence records and never downloads one itself.
                 entry['source']['ref'] = 'a11a02195765f3411249587918864e95dbf1fd9b'
             elif entry['id'] == 'kilix-needle':
-                entry['source']['ref'] = 'bcef7e1738188ca951a6e16b608a01ec26f723e3'
+                entry['source']['ref'] = '4a94f2fb89bb23e160cce50cccd89eec075d8787'
                 # Owner determination 2026-11-07: LFM2's terms are a notice.
                 entry['dependency_hint'] = entry['dependency_hint'].replace(
                     'after licence review and acceptance;',
@@ -61,7 +61,7 @@ class DetectorPins(unittest.TestCase):
         # RC9 selects shared inventory and log adapters from kilix-tui-utils.
         for package in before['packages']:
             if package['id'] == 'kilix-tui-utils':
-                package['source']['ref'] = 'bd1999bd446a7e1f2d8ed440ff1c880884721452'
+                package['source']['ref'] = 'ddfff2e85b156abcb14ae6d76c1ab7736ce5be24'
         # Help has its own source/action contract and can evolve independently
         # of detector selection. Retain the byte comparison for every other app.
         for document in (before, after):
