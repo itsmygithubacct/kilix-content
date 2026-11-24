@@ -16,6 +16,15 @@ pre-1.0.
 
 ### Added
 
+- Move the twelve kilix-games entries from 668faac to 6d08a74. Chess Bash
+  draws a board frame in about 9 ms instead of 68 ms and runs game time by
+  the clock, so it no longer plays at half speed; a held key no longer
+  confirms a resignation; a skipped battle plays one sound, not all of them;
+  a player can take back a move (U or Backspace) and hide the result banner
+  (V); and the title menu fits a compact terminal. Every game builds on
+  kilix-game-sdk a39f0f2, whose soft-raster fills convex polygons about five
+  times faster with the same pixels. Brokeout, Lander and Lights refuse
+  malformed self-test arguments.
 - Catalogue Demucs htdemucs_6s (`demucs-htdemucs-6s`), the six-source separator
   `kilix split` runs, at the owner's request of 2026-11-08 to route `kilix split`
   through kilix-license. The asset is Meta's unchanged weights file

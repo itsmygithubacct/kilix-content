@@ -62,7 +62,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "668faacf17a84ed74f6fd1c2fa417d19574e3327"
+        "ref": "6d08a74fa6e0496a842944151d514d05139eff94"
       },
       "binary": "bashed-earth/bashed-earth",
       "build": [
@@ -90,7 +90,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "668faacf17a84ed74f6fd1c2fa417d19574e3327"
+        "ref": "6d08a74fa6e0496a842944151d514d05139eff94"
       },
       "binary": "kilix-jpak/kilix-jpak",
       "build": [
@@ -118,7 +118,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "668faacf17a84ed74f6fd1c2fa417d19574e3327"
+        "ref": "6d08a74fa6e0496a842944151d514d05139eff94"
       },
       "binary": "kilix-rancher/kilix-rancher",
       "build": [
@@ -146,7 +146,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "668faacf17a84ed74f6fd1c2fa417d19574e3327"
+        "ref": "6d08a74fa6e0496a842944151d514d05139eff94"
       },
       "binary": "kilix-pong/kilix-pong",
       "build": [
@@ -174,7 +174,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "668faacf17a84ed74f6fd1c2fa417d19574e3327"
+        "ref": "6d08a74fa6e0496a842944151d514d05139eff94"
       },
       "binary": "solitaire-tui/bin/solitaire-tui",
       "dependency_hint": "needs Python 3",
@@ -194,7 +194,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "668faacf17a84ed74f6fd1c2fa417d19574e3327"
+        "ref": "6d08a74fa6e0496a842944151d514d05139eff94"
       },
       "binary": "tictactoe-tui/tictactoe-tui",
       "build": [
@@ -248,7 +248,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "668faacf17a84ed74f6fd1c2fa417d19574e3327"
+        "ref": "6d08a74fa6e0496a842944151d514d05139eff94"
       },
       "binary": "kilix-lights/bin/kilix-lights",
       "build": [
@@ -303,7 +303,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "668faacf17a84ed74f6fd1c2fa417d19574e3327"
+        "ref": "6d08a74fa6e0496a842944151d514d05139eff94"
       },
       "binary": "joustix/joustix",
       "build": [
@@ -331,7 +331,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "668faacf17a84ed74f6fd1c2fa417d19574e3327"
+        "ref": "6d08a74fa6e0496a842944151d514d05139eff94"
       },
       "binary": "chess-bash/chess-bash",
       "build": [
@@ -359,7 +359,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "668faacf17a84ed74f6fd1c2fa417d19574e3327"
+        "ref": "6d08a74fa6e0496a842944151d514d05139eff94"
       },
       "binary": "kilix-fishtank/kilix-fishtank",
       "build": [
@@ -388,7 +388,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "668faacf17a84ed74f6fd1c2fa417d19574e3327"
+        "ref": "6d08a74fa6e0496a842944151d514d05139eff94"
       },
       "binary": "kilix-lander/terminal-lander",
       "build": [
@@ -416,7 +416,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-games",
-        "ref": "668faacf17a84ed74f6fd1c2fa417d19574e3327"
+        "ref": "6d08a74fa6e0496a842944151d514d05139eff94"
       },
       "binary": "kilix-brokeout/kitty-brokeout",
       "build": [

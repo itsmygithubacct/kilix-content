@@ -40,6 +40,17 @@ class DetectorPins(unittest.TestCase):
                 entry['dependency_hint'] = entry['dependency_hint'].replace(
                     'after licence review and acceptance;',
                     'after showing its licence terms, which are a notice and take no agreement;')
+        # 2026-11-23: the twelve kilix-games entries move from 668faac to
+        # 6d08a74 (Chess Bash review, SDK with the run-based convex fill).
+        # Only their ref changes.
+        games = [entry for entry in before['content']
+                 if entry.get('source', {}).get('repository') ==
+                 'https://github.com/itsmygithubacct/kilix-games']
+        self.assertEqual(len(games), 12)
+        for entry in games:
+            self.assertEqual(entry['source']['ref'],
+                             '668faacf17a84ed74f6fd1c2fa417d19574e3327')
+            entry['source']['ref'] = '6d08a74fa6e0496a842944151d514d05139eff94'
         # 2026-11-10: Todo and Scheduled Tasks are added for 0.2.4. They are
         # new entries and change no existing one. Outline passes --cells
         # because tui is another name for gui on these two programs.

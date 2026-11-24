@@ -60,20 +60,20 @@ At this commit `plebian.json` is schema version 4 and holds 1 package, 55 conten
 |---|---|---|---|
 | `doom` | game | custom (host-owned setup) | run |
 | `dosbox` | app | custom (host-owned setup) | run |
-| `bashed-earth` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `668faacf` | terminal |
-| `kilix-jpak` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `668faacf` | terminal |
-| `kilix-rancher` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `668faacf` | terminal |
-| `kilix-pong` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `668faacf` | terminal |
-| `solitaire` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `668faacf` | terminal |
-| `tictactoe-tui` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `668faacf` | terminal |
+| `bashed-earth` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `6d08a74f` | terminal |
+| `kilix-jpak` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `6d08a74f` | terminal |
+| `kilix-rancher` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `6d08a74f` | terminal |
+| `kilix-pong` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `6d08a74f` | terminal |
+| `solitaire` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `6d08a74f` | terminal |
+| `tictactoe-tui` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `6d08a74f` | terminal |
 | `pleb-tower` | game | [pleb-tower](https://github.com/itsmygithubacct/pleb-tower#readme) at `9e4595ee` | terminal |
-| `kilix-lights` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `668faacf` | terminal |
+| `kilix-lights` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `6d08a74f` | terminal |
 | `super-kilix` | game | [super-kilix](https://github.com/itsmygithubacct/super-kilix#readme) at `e47f6687` | terminal |
-| `joustix` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `668faacf` | terminal |
-| `chess-bash` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `668faacf` | terminal |
-| `kilix-fishtank` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `668faacf` | terminal |
-| `terminal-lander` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `668faacf` | terminal |
-| `kitty-brokeout` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `668faacf` | terminal |
+| `joustix` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `6d08a74f` | terminal |
+| `chess-bash` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `6d08a74f` | terminal |
+| `kilix-fishtank` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `6d08a74f` | terminal |
+| `terminal-lander` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `6d08a74f` | terminal |
+| `kitty-brokeout` | game | [kilix-games](https://github.com/itsmygithubacct/kilix-games#readme) at `6d08a74f` | terminal |
 | `kilix-land` | game | [kilix-land](https://github.com/itsmygithubacct/kilix-land#readme) at `710d73ef` | terminal |
 | `kilix-file` | app | package `kilix-tui-utils` | terminal |
 | `kilix-system-center` | app | package `kilix-tui-utils` | terminal |
