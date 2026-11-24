@@ -16,6 +16,15 @@ pre-1.0.
 
 ### Changed
 
+- Move the twelve kilix-games entries from 668faac to 6d08a74. Chess Bash
+  draws a board frame in about 9 ms instead of 68 ms and keeps game time by
+  the clock, so it no longer runs at half speed; a held key no longer
+  confirms a resignation; a skipped battle plays one sound, not all of them;
+  a player can take back a move (U or Backspace) and hide the result banner
+  (V); and the title menu fits a compact terminal. Every game builds on
+  kilix-game-sdk a39f0f2, whose soft-raster fills convex polygons about five
+  times faster with the same pixels. Brokeout, Lander and Lights refuse
+  malformed self-test arguments.
 - Select Needle `bcef7e1738188ca951a6e16b608a01ec26f723e3` for Plebian-OS 0.2.3. With no LFM2 command model
   installed, Kilix Ask reads requests with its grammar; this Needle fixes the
   five grammar readings deferred to 0.2.3 (history for labelled and `--job`
