@@ -9,6 +9,7 @@ import hashlib
 import math
 import os
 import selectors
+import shlex
 import shutil
 import signal
 import stat
@@ -51,6 +52,90 @@ _SAFE_GIT_PROTOCOLS = frozenset(("file", "git", "http", "https", "ssh"))
 
 class InstallError(RuntimeError):
     """A content install failed without selecting a partial result."""
+
+
+# rename(2) exchange is a Linux renameat2 flag. FreeBSD's renameat2 has only
+# RENAME_NOREPLACE, and some file systems refuse the flag; both mean "this
+# host cannot swap two trees atomically", never "the swap was attempted".
+_NO_EXCHANGE_ERRNOS = frozenset(
+    code for code in (errno.ENOSYS, errno.EINVAL, getattr(errno, "EOPNOTSUPP", None),
+                      getattr(errno, "ENOTSUP", None)) if code is not None)
+
+
+class ExchangeUnavailable(InstallError):
+    """An installed tree would have to be replaced, and this host cannot swap
+    two directories atomically. Nothing was changed; the installed tree is
+    never replaced non-atomically. ``set_aside`` is the way forward."""
+
+    def __init__(self, destination: str) -> None:
+        self.destination = destination
+        super().__init__(
+            f"cannot replace {destination} atomically: this host has no atomic "
+            "directory exchange (RENAME_EXCHANGE; FreeBSD has none), and an installed "
+            "tree is never replaced non-atomically. Nothing was changed.\n"
+            "To reinstall or repair it, set the installed tree aside, then run the "
+            "same install again:\n"
+            f"  kilix content set-aside {shlex.quote(destination)}\n"
+            "The old tree is kept (the command prints where), not deleted.")
+
+
+def set_aside(destination: str) -> str:
+    """Move the installed tree at DESTINATION aside so it can be reinstalled.
+
+    One rename(2) within the same directory, made under the installation lock
+    for that name, so a concurrent install of it waits. Nothing is deleted: the
+    tree moves to a hidden sibling whose path is returned. Refuses anything that
+    is not a plain directory owned by the caller (a symlink, a mount point, a
+    hidden name or the file-system root).
+    """
+    path = os.path.abspath(destination)
+    parent, name = os.path.split(path)
+    if not name or name.startswith(".") or parent == path:
+        raise InstallError(f"not an installed content path: {destination}")
+    try:
+        info = os.lstat(path)
+    except FileNotFoundError as exc:
+        raise InstallError(f"nothing is installed at {path}") from exc
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISDIR(info.st_mode):
+        raise InstallError(f"refusing to set aside a non-directory: {path}")
+    if info.st_uid != os.getuid():
+        raise InstallError(f"refusing to set aside a tree you do not own: {path}")
+    if os.path.ismount(path):
+        raise InstallError(f"refusing to set aside a mount point: {path}")
+    lock_path = os.path.join(parent, f".{name}.lock")
+    descriptor = _acquire_install_lock(lock_path)
+    try:
+        if not os.path.isdir(path) or os.path.islink(path):
+            raise InstallError(f"{path} changed while waiting for its install lock")
+        stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
+        for attempt in range(100):
+            suffix = f"-{attempt}" if attempt else ""
+            aside = os.path.join(parent, f".{name}.set-aside-{stamp}{suffix}")
+            # Reserve the name with an exclusive mkdir, then rename onto that
+            # empty directory: rename(2) replaces an empty directory atomically
+            # and fails if anything appeared in it, so nothing is overwritten.
+            try:
+                os.mkdir(aside, 0o700)
+            except FileExistsError:
+                continue
+            try:
+                os.rename(path, aside)
+            except OSError as exc:
+                try:
+                    os.rmdir(aside)
+                except OSError:
+                    pass
+                if exc.errno in (errno.ENOTEMPTY, errno.EEXIST):
+                    continue
+                raise InstallError(f"could not set aside {path}: {exc.strerror}") from exc
+            return aside
+        raise InstallError(f"could not find a free set-aside name beside {path}")
+    finally:
+        try:
+            os.unlink(lock_path)
+        except OSError:
+            pass
+        os.close(descriptor)
 
 
 class SuppliedFile:
@@ -957,6 +1042,8 @@ class Installer:
         try:
             _rename_exchange(stage, destination)
         except OSError as exc:
+            if exc.errno in _NO_EXCHANGE_ERRNOS:
+                raise ExchangeUnavailable(destination) from exc
             raise InstallError(
                 f"could not atomically replace content path: {destination}"
             ) from exc

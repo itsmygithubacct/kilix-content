@@ -10,7 +10,9 @@ ensure_license_importable()
 from .fetch import DownloadError, Progress, fetch_exact
 from .install import (
     Installer,
+    ExchangeUnavailable,
     InstallError,
+    set_aside,
     download,
     safe_extract_tar,
     safe_extract_zip,
@@ -86,7 +88,9 @@ __all__ = [
     "CatalogError",
     "ContentSpec",
     "DownloadError",
+    "ExchangeUnavailable",
     "InstallError",
+    "set_aside",
     "Installer",
     "LifecycleSpec",
     "PackageSpec",

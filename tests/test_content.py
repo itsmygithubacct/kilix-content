@@ -40,7 +40,31 @@ from kilix_content import (
     safe_extract_zip,
     verify_git_checkout,
 )
-from kilix_content.install import _rename_exchange, _run_with_tail
+from kilix_content.install import (
+    ExchangeUnavailable,
+    _rename_exchange,
+    _run_with_tail,
+    set_aside,
+)
+
+
+def _host_can_exchange() -> bool:
+    """Whether rename(2) exchange works here (Linux renameat2; not FreeBSD)."""
+    with tempfile.TemporaryDirectory() as temporary:
+        first, second = os.path.join(temporary, "a"), os.path.join(temporary, "b")
+        os.mkdir(first)
+        os.mkdir(second)
+        try:
+            _rename_exchange(first, second)
+        except OSError:
+            return False
+        return True
+
+
+HOST_CAN_EXCHANGE = _host_can_exchange()
+NEEDS_EXCHANGE = unittest.skipUnless(
+    HOST_CAN_EXCHANGE,
+    "replacing an installed tree needs RENAME_EXCHANGE; NoExchangeHostTests covers this host")
 
 
 def run(*argv: str, cwd: Path) -> str:
@@ -775,6 +799,7 @@ class ContentTests(unittest.TestCase):
             any(path.name.startswith(".missing.install-") for path in data.iterdir())
         )
 
+    @NEEDS_EXCHANGE
     def test_clean_stale_git_checkout_updates_atomically(self) -> None:
         source, first_ref = self._git_fixture()
         first = ContentSpec.from_mapping(
@@ -951,6 +976,7 @@ if unsafe:
             any(p.name.startswith(".build-cache-") for p in self.root.iterdir())
         )
 
+    @NEEDS_EXCHANGE
     def test_interrupted_empty_git_init_is_replaced_atomically(self) -> None:
         source, ref = self._git_fixture()
         spec = ContentSpec.from_mapping(
@@ -1020,6 +1046,7 @@ if unsafe:
         with self.assertRaises(InstallError):
             installer.executable(escaped_binary)
 
+    @NEEDS_EXCHANGE
     def test_replacement_uses_exchange_without_hiding_destination(self) -> None:
         data = self.root / "data"
         destination = data / "fixture"
@@ -1260,6 +1287,7 @@ if unsafe:
             any(path.name.startswith(".fixture.install-") for path in data.iterdir())
         )
 
+    @NEEDS_EXCHANGE
     def test_selection_retries_as_exchange_when_the_destination_appears(self) -> None:
         data = self.root / "data"
         destination = data / "fixture"
@@ -1563,6 +1591,85 @@ if unsafe:
         path.write_text(json.dumps({"schema_version": 5, "content": []}))
         with self.assertRaises(CatalogError):
             Catalog.load(path)
+
+
+class NoExchangeHostTests(unittest.TestCase):
+    """Without an atomic exchange an installed tree is never replaced; the
+    error names the way forward, and set_aside() is that way. Exchange is
+    mocked away, so this runs on every host."""
+
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.data = Path(self.temp.name) / "data"
+        self.destination = self.data / "fixture"
+        self.destination.mkdir(parents=True)
+        (self.destination / "value").write_text("old")
+
+    def stage(self, value: str) -> Path:
+        stage = Path(tempfile.mkdtemp(prefix=".fixture.install-", dir=self.data))
+        (stage / "value").write_text(value)
+        return stage
+
+    def no_exchange(self):
+        return mock.patch("kilix_content.install._rename_exchange",
+                          side_effect=OSError(errno.ENOSYS, "renameat2 is unavailable"))
+
+    def test_replacement_fails_closed_and_names_the_set_aside_command(self) -> None:
+        stage = self.stage("new")
+        with self.no_exchange(), self.assertRaises(ExchangeUnavailable) as caught:
+            Installer(str(self.data))._replace_stage(str(stage), str(self.destination))
+        self.assertIsInstance(caught.exception, InstallError)
+        self.assertEqual(caught.exception.destination, str(self.destination))
+        message = str(caught.exception)
+        self.assertIn("Nothing was changed", message)
+        self.assertIn(f"kilix content set-aside {shlex.quote(str(self.destination))}", message)
+        self.assertEqual((self.destination / "value").read_text(), "old")
+        self.assertEqual((stage / "value").read_text(), "new")
+
+    def test_other_exchange_failures_keep_their_own_error(self) -> None:
+        stage = self.stage("new")
+        with mock.patch("kilix_content.install._rename_exchange",
+                        side_effect=OSError(errno.EACCES, "denied")), \
+                self.assertRaises(InstallError) as caught:
+            Installer(str(self.data))._replace_stage(str(stage), str(self.destination))
+        self.assertNotIsInstance(caught.exception, ExchangeUnavailable)
+
+    def test_set_aside_then_the_same_install_selects_the_new_tree(self) -> None:
+        installer = Installer(str(self.data))
+        with self.no_exchange():
+            with self.assertRaises(ExchangeUnavailable):
+                installer._replace_stage(str(self.stage("new")), str(self.destination))
+            aside = Path(set_aside(str(self.destination)))
+            self.assertFalse(self.destination.exists())
+            self.assertEqual(aside.parent, self.data)
+            self.assertTrue(aside.name.startswith(".fixture.set-aside-"), aside.name)
+            self.assertEqual((aside / "value").read_text(), "old")
+            # With nothing installed the selection is a plain rename.
+            installer._replace_stage(str(self.stage("new")), str(self.destination))
+        self.assertEqual((self.destination / "value").read_text(), "new")
+        self.assertEqual((aside / "value").read_text(), "old")
+        self.assertFalse((self.data / ".fixture.lock").exists())
+
+    def test_set_aside_never_overwrites_an_earlier_set_aside(self) -> None:
+        with mock.patch("kilix_content.install.time.strftime", return_value="STAMP"):
+            first = Path(set_aside(str(self.destination)))
+            self.destination.mkdir()
+            (self.destination / "value").write_text("second")
+            second = Path(set_aside(str(self.destination)))
+        self.assertNotEqual(first, second)
+        self.assertEqual((first / "value").read_text(), "old")
+        self.assertEqual((second / "value").read_text(), "second")
+
+    def test_set_aside_refuses_what_is_not_an_installed_tree(self) -> None:
+        (self.data / "file").write_text("x")
+        (self.data / "link").symlink_to(self.destination)
+        (self.data / ".hidden").mkdir()
+        for target in (self.data / "missing", self.data / "file", self.data / "link",
+                       self.data / ".hidden", Path("/")):
+            with self.subTest(target=str(target)), self.assertRaises(InstallError):
+                set_aside(str(target))
+        self.assertEqual((self.destination / "value").read_text(), "old")
 
 
 if __name__ == "__main__":
