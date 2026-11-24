@@ -5,6 +5,7 @@ import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -469,7 +470,7 @@ class C2dAssetTests(unittest.TestCase):
             license_record=record,
             notice=notice,
             licensors=["Kyutai"],
-            argv=["/bin/true"],
+            argv=[shutil.which("true") or "/bin/true"],
         )
         fixture = AssetSpec.from_mapping(mapping)
         declined = io.BytesIO()

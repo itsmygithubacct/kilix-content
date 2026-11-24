@@ -1,6 +1,7 @@
 """Refuse every open/write under the NSS-home live receipt store.
 
-dir_fd-relative paths are resolved via /proc/self/fd/<n> or refused.
+dir_fd-relative paths are resolved via /proc/self/fd/<n> (Linux) or
+fcntl(F_KINFO) (FreeBSD), or refused.
 truncate, chmod, utime and rmdir are wrapped. subprocess is a stated
 limit (same as the PLAN-R4 lease guard): a child process is not wrapped.
 """
@@ -12,6 +13,7 @@ import io
 import os
 from pathlib import Path
 import shutil
+import sys
 
 from kilix_license.errors import LiveStoreForbidden
 from kilix_license.paths import is_under_live_store, live_store_root
@@ -43,12 +45,32 @@ def live_root() -> Path:
     return live_store_root()
 
 
+def _fd_path(fd: int) -> str:
+    """The path an open descriptor names, or OSError."""
+    if sys.platform.startswith("freebsd"):
+        import ctypes
+        # struct kinfo_file: 1392 bytes, kf_structsize first, kf_path at 368
+        # (the same on amd64 and arm64). F_KINFO = 22. fcntl.fcntl() caps a
+        # buffer argument at 1024 bytes, so call libc directly.
+        libc = ctypes.CDLL(None, use_errno=True)
+        record = ctypes.create_string_buffer(1392)
+        ctypes.memmove(record, (1392).to_bytes(4, sys.byteorder), 4)
+        if libc.fcntl(ctypes.c_int(fd), ctypes.c_int(22), record) == -1:
+            error = ctypes.get_errno()
+            raise OSError(error, os.strerror(error))
+        path = record.raw[368:368 + 1024].split(b"\0", 1)[0]
+        if not path:
+            raise OSError(f"descriptor {fd} has no recorded path")
+        return os.fsdecode(path)
+    return os.readlink(f"/proc/self/fd/{fd}")
+
+
 def _resolve(path: object, *, dir_fd: int | None = None) -> str | None:
     if path is None:
         return None
     if isinstance(path, int):
         try:
-            return os.readlink(f"/proc/self/fd/{path}")
+            return _fd_path(path)
         except OSError:
             return None
     text = os.fsdecode(path)
@@ -58,7 +80,7 @@ def _resolve(path: object, *, dir_fd: int | None = None) -> str | None:
         return text
     if dir_fd is not None:
         try:
-            base = os.readlink(f"/proc/self/fd/{dir_fd}")
+            base = _fd_path(dir_fd)
         except OSError as exc:
             raise LiveStoreForbidden(
                 f"dir_fd path refused (unresolvable fd {dir_fd}): {text}"

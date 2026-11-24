@@ -131,8 +131,13 @@ class NetworkGuardCoverageTests(unittest.TestCase):
         handle = socket.socket()
         try:
             # sin_family is host byte order; sin_port and sin_addr are network.
+            # BSD sockaddrs start with a one-byte length, then a one-byte family.
+            if sys.platform.startswith(("freebsd", "openbsd", "netbsd", "darwin")):
+                family = struct.pack("BB", 16, socket.AF_INET)
+            else:
+                family = struct.pack("=H", socket.AF_INET)
             address = (
-                struct.pack("=H", socket.AF_INET)
+                family
                 + struct.pack("!H", port)
                 + socket.inet_aton(host)
                 + b"\x00" * 8

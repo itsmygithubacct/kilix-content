@@ -266,7 +266,8 @@ class HarnessTests(unittest.TestCase):
 
     def test_only_the_test_recipe_puts_tests_support_on_pythonpath(self) -> None:
         """No other recipe loads the test sitecustomize (C2E-FIX-VERIFY R4)."""
-        make = shutil.which("make")
+        # The Makefile is GNU make; BSD hosts install it as gmake.
+        make = shutil.which("gmake") or shutil.which("make")
         self.assertIsNotNone(make, "make is not on PATH")
         env = {
             key: value
