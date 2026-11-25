@@ -36,7 +36,7 @@ class DetectorPins(unittest.TestCase):
                 # licence records and never downloads one itself.
                 entry['source']['ref'] = 'a11a02195765f3411249587918864e95dbf1fd9b'
             elif entry['id'] == 'kilix-needle':
-                entry['source']['ref'] = '4a94f2fb89bb23e160cce50cccd89eec075d8787'
+                entry['source']['ref'] = '35254d40869b41b61bf55faa0de39beedfe1965e'
                 # Owner determination 2026-11-07: LFM2's terms are a notice.
                 entry['dependency_hint'] = entry['dependency_hint'].replace(
                     'after licence review and acceptance;',
