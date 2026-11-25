@@ -1,0 +1,20 @@
+kilix-content (0.4.0+packaging3) UNRELEASED; urgency=medium
+
+  * Select the reviewed Ask release of Needle and the noninteractive
+    volume client for installations from the catalog.
+
+ -- itsmygithubacct <itsmygithubacct@users.noreply.github.com>  Sat, 21 Nov 2026 01:43:24 +0000
+
+kilix-content (0.4.0+packaging2) UNRELEASED; urgency=medium
+
+  * Use the OS converters when available and select the docked Kilix Amp
+    with native EnCodec and kilix-mpv playback.
+
+ -- itsmygithubacct <itsmygithubacct@users.noreply.github.com>  Fri, 20 Nov 2026 18:47:00 +0000
+
+kilix-content (0.4.0+packaging1) UNRELEASED; urgency=medium
+
+  * Install the catalog and its vendored licence library under
+    /usr/share/kilix-content. Developer checkouts are unchanged.
+
+ -- itsmygithubacct <itsmygithubacct@users.noreply.github.com>  Fri, 20 Nov 2026 06:40:02 +0000

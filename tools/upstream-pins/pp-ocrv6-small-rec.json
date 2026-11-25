@@ -1,0 +1,30 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "pp-ocrv6-small-rec",
+  "label": "pp-ocrv6-small-rec (kilix-pdf-conversion page-ocr text recogniser, PP-OCRv6 small ONNX, shipped in the image)",
+  "mode": "upstream-files",
+  "license_record_id": "pp-ocrv6-small-rec",
+  "provider": "kilix-pdf-conversion",
+  "consumer_schema": "kilix.pdf-conversion.runtime",
+  "version": "b8f84f0b80c529de40b4fbb3544b84fa7233a513",
+  "provenance": {
+    "project": "PaddlePaddle/PP-OCRv6_small_rec_onnx",
+    "revision": "b8f84f0b80c529de40b4fbb3544b84fa7233a513",
+    "original_url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx/resolve/b8f84f0b80c529de40b4fbb3544b84fa7233a513/inference.onnx"
+  },
+  "members": [
+    {
+      "path": "inference.onnx",
+      "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx/resolve/b8f84f0b80c529de40b4fbb3544b84fa7233a513/inference.onnx",
+      "bytes": 21159378,
+      "sha256": "5435fd747c9e0efe15a96d0b378d5bd157e9492ed8fd80edf08f30d02fa24634"
+    },
+    {
+      "path": "inference.yml",
+      "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx/resolve/b8f84f0b80c529de40b4fbb3544b84fa7233a513/inference.yml",
+      "bytes": 150579,
+      "sha256": "ab078671bb49f06228eadccd34f1bb501e157f7a047095ffb943ba81512c77d1"
+    }
+  ],
+  "provenance_scope": "PaddlePaddle's unchanged ONNX export at the pinned revision, the files kilix-pdf-conversion's page OCR loads and nothing else. The repository's README.md, inference.json and .gitattributes are not installed. The repository has no LICENSE file; the Apache-2.0 text is Debian's common-licenses copy (kilix-license pp-ocrv6-small)."
+}

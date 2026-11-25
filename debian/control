@@ -1,0 +1,17 @@
+Source: kilix-content
+Section: python
+Priority: optional
+Maintainer: itsmygithubacct <itsmygithubacct@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.2
+Homepage: https://github.com/itsmygithubacct/kilix-content
+Vcs-Git: https://github.com/itsmygithubacct/kilix-content.git
+Vcs-Browser: https://github.com/itsmygithubacct/kilix-content
+Rules-Requires-Root: no
+
+Package: kilix-content
+Architecture: all
+Depends: python3, ${misc:Depends}
+Description: pinned content catalog for Kilix
+ The catalog and installer live under /usr/share/kilix-content, with the
+ vendored licence library beside them. Model files are not included.

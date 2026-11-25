@@ -24,10 +24,14 @@ def standard_policy_eligible(record):
     or a substring found in licence prose. Original documents remain required.
     """
     # The legacy component field also holds ordinary licence notices. Only
-    # this reviewed, byte-pinned MIT notice is allowed through that field.
+    # these reviewed, byte-pinned notices are allowed through that field: an
+    # MIT notice, and the CC BY 4.0 legal code of no-loop-02's weight edit
+    # (owner determination of 2026-11-09).
     ordinary_notices = {
         ('needle3-kilix-commands', 'cached-runtime',
          '831c057440d79f85a28362fd6765ccba24346e28343f1cecdb7eda7d1b479863'),
+        ('qwen-0.8b-no-loop-02', 'weight-edit-from-lm-understand-logs',
+         '9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411'),
     }
     if record.binding_conditions or any(
         c.exception_text_sha256 and (record.id, c.id, c.exception_text_sha256)

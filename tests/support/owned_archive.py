@@ -1,7 +1,7 @@
 """Exact owned derivative selected for Ask; other model URLs stay upstream."""
 
 VERSIONS = {'lfm3-kilix-commands': 'lfm3-kilix-commands-20261103-v1',
-            'lfm2-kilix-commands': 'lfm2-kilix-commands-20261106-v9',
+            'lfm2-kilix-commands': 'lfm2-kilix-commands-20261115-v10',
             'needle3-kilix-commands': 'needle3-kilix-commands-20261026-v9'}
 
 
@@ -30,5 +30,22 @@ def selected_female02_file(record, url):
             and url in FEMALE02_FILES)
 
 
+NOLOOP02_FILES = (
+    'https://github.com/itsmygithubacct/kilix-llm/releases/download/qwen-0.8b-no-loop-02/qwen-0.8b-no-loop-02.gguf',
+)
+
+
+def selected_noloop02_file(record, url):
+    """The one no-loop-02 GGUF, and no other Kilix-hosted language model file."""
+    return (record.get('id') == 'qwen-0.8b-no-loop-02'
+            and record.get('provider') == 'kilix-llm'
+            and record.get('version') == 'qwen-0.8b-no-loop-02'
+            and url in NOLOOP02_FILES)
+
+
+def selected_owned_file(record, url):
+    return selected_female02_file(record, url) or selected_noloop02_file(record, url)
+
+
 def selected_owned_bytes(record, url):
-    return selected_commands_archive(record, url) or selected_female02_file(record, url)
+    return selected_commands_archive(record, url) or selected_owned_file(record, url)

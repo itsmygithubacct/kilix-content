@@ -5,6 +5,11 @@
 All notable user-visible changes are recorded here. The public API remains
 pre-1.0.
 
+## 0.2.4 converter installation
+
+- Selecting either EnCodec converter reuses the launcher installed by
+  Plebian-OS. Other desktops can still build the pinned converter locally.
+
 ## Ready-source integration for 0.2.2
 
 - Select Kilix Amp `eff203a74f6cc726e9c1211cfe6d0960077fc388` so a second startup does not block when the control socket's accept queue is full.
@@ -13,6 +18,67 @@ pre-1.0.
 - Select the toolkit revision that supplies `kilix rollout log`.
 
 ## Unreleased
+
+### Changed
+
+- Select Needle `bcef7e1738188ca951a6e16b608a01ec26f723e3` for Plebian-OS 0.2.3. With no LFM2 command model
+  installed, Kilix Ask reads requests with its grammar; this Needle fixes the
+  five grammar readings deferred to 0.2.3 (history for labelled and `--job`
+  requests; a directory or placement shared by launches that share a verb; a
+  model before a launch's own directory; verbless launches in a clause of
+  their own; a comma-set model after a list of launches now refuses) and
+  vendors this component at `a67f4a81`.
+- Select kilix-tui-utils `bd1999bd446a7e1f2d8ed440ff1c880884721452`, the 0.2.3 QEMU manager fix. The range from
+  `cb3dffde` touches only `kilix-qemu-manager/` and its tests.
+- Select Needle `e9103f6ad714db33f38e0d9b7ee43483f2d9ce01`, which corrects the
+  first-use texts, keeps the delivery build tool and vendors this component
+  with the earlier-delivery reuse.
+- Installing a versioned asset reuses an installed earlier delivery of it.
+  `Installer.ensure_upstream_asset` looks under the same root for another
+  manifest of the asset that holds every non-notice file at the new size. It
+  reads those files as it reads a user-supplied directory: each through one
+  descriptor that follows no symlink, verified against the new manifest before
+  and after the copy, with notices written from the licence authority and the
+  staged tree verified as a whole. Nothing is downloaded when that succeeds.
+  If any file is missing or differs, what was staged is discarded and the
+  asset is fetched as before. The earlier directory is never changed, and the
+  new manifest still needs its own receipt. `Installer.earlier_delivery(spec)`
+  names the newest candidate without hashing, for a caller that wants to say
+  whether a download is likely. Candidates are tried newest first, so an older
+  intact delivery is used when a newer one cannot supply the files. The found
+  directory is opened beneath the assets directory without following a
+  symlink, like every component below it. Every installer that uses this component gets the
+  reuse: `kilix models`, the model wizard, Needle's setup and first use.
+- Select delivery `lfm2-kilix-commands-20261115-v10` as `lfm2-kilix-commands`.
+  The weight is still `lfm2-kilix-v5e1-wse-20261106.9`, byte for byte, and the
+  CPU runtime is the same build. `lfm2-kilix-commands-20261106-v9` carried three
+  identical copies of `libggml-base`, `libggml`, `libllama-common`, `libllama`
+  and `libmtmd`; v10 keeps the one the other runtime files load (`lib*.so.0`)
+  and omits the ten duplicates. The archive holds 34 regular files and no
+  links. It is 1,346,876,805 bytes (15.3 MB smaller) and installs to
+  1,432,537,967 bytes (29.0 MB smaller). The manifest digest is new, so an
+  installed v9 directory is not this asset and its receipt does not cover it.
+  The modified-model notice is `ad951c96`. kilix-license moves `596ada2a` to
+  `f363cf25`; the licence record digest is unchanged.
+- Select Needle `257e08568c51b1df4b344685b0d4428c78325804`. With nothing
+  chosen, Ask uses LFM2 only on a machine that has this release's bundle
+  installed with its receipt, and its grammar otherwise; it downloads no model
+  on its own. `kilix-needle workflows choice` reports the backend and its
+  source, and `workflows status` names the model a caller may offer. That
+  Needle pins delivery v10 and vendors the catalog commit that carries it.
+
+### Fixed
+
+- Select Needle `2df9ff0084d62989ce17c6819cffef69c98a339b` and kilix-tui-utils
+  `cb3dffde8c9e0b5f8abe43f81ba8e74d94fdd336` for RC9. Agent logs share one
+  inventory and a persistent full-history index, with BM25 CLI search and exact
+  record citations. The 32 MiB source window no longer limits indexed history.
+  Session Logs includes live, recent and archived transcripts, with readable
+  names and newest-first ordering. OMP/Qwen retains direct session lookup and
+  tool roles; malformed or unfinished rows report explicit coverage gaps.
+  Oversized events retain exact evidence references and source continuation.
+  Nested OMP/Qwen child logs have distinct names and session identities; their
+  session-init bookkeeping no longer produces a coverage error.
 
 ### Added
 
@@ -25,6 +91,22 @@ pre-1.0.
   kilix-game-sdk a39f0f2, whose soft-raster fills convex polygons about five
   times faster with the same pixels. Brokeout, Lander and Lights refuse
   malformed self-test arguments.
+- Catalogue `pp-ocrv6-small-det` and `pp-ocrv6-small-rec`, PaddlePaddle's
+  PP-OCRv6 small text detector and recogniser as ONNX, for
+  kilix-pdf-conversion's page OCR. The owner determined Apache-2.0 for both
+  on 2026-11-10 and widened OD-AY from three PDF models to five. Each asset
+  holds the files page OCR reads, unchanged from Hugging Face at the pinned
+  revision, plus the Apache-2.0 text. Neither repository has a LICENSE file,
+  so that text is Debian's copy; the records' statement says so. Plebian-OS
+  ships both in the image. Select kilix-pdf-conversion
+  `2cff8ffde2a64367ca2e3e567acfcb740866fb9f`, which adds page OCR. The
+  vendored kilix-license moves to `596ada2ab68b9ec441674ff4da2d431559d47378`.
+- Catalogue `en-core-web-sm-3.8.0`, the spaCy English model Paradee uses
+  offline, and add `config.json` to the Paradee 1.2 pin. The spaCy asset
+  cites `en-core-web-sm-3.8.0` (MIT, licensor ExplosionAI GmbH) and ships
+  the MIT text plus the upstream LICENSES_SOURCES statement. The vendored
+  kilix-license moves to `f33fdf2a0e8396bd32f3617633629bc3f7973e79`.
+  Paradee download size is the int8 ONNX plus `config.json`.
 - Catalogue Demucs htdemucs_6s (`demucs-htdemucs-6s`), the six-source separator
   `kilix split` runs, at the owner's request of 2026-11-08 to route `kilix split`
   through kilix-license. The asset is Meta's unchanged weights file
@@ -42,6 +124,22 @@ pre-1.0.
 
 ### Changed
 
+- Catalogue `qwen-0.8b-no-loop-02`, a modified Qwen3.5-0.8B GGUF, for
+  kilix-llm (provider `kilix-llm`, consumer schema `kilix.llm.models/v1`). Only
+  its one file on the `itsmygithubacct/kilix-llm` release is admitted. The
+  licence record has an Apache-2.0 row (Alibaba Cloud / Qwen; itsmygithubacct
+  is the modifier) and a CC BY 4.0 row for the weight edit, and the asset ships
+  both texts, the modification notice, the attribution and the edit source's
+  licence file. The vendored kilix-license is
+  `2737f321c49371c08d2b624190fda7719a13a52a` (the RC6
+  pin `f8486ed3` plus this record), where the owner approved both
+  components and the standard distribution policy covers the CC BY 4.0 text.
+  The other catalog assets are unchanged.
+- An early end of a pinned download is reported as `interrupted` ("the
+  download stopped before the pinned size") and the partial is kept for the
+  next run. It was reported as `size-mismatch` ("upstream size differs from
+  the pin") when the stream closed before the pinned length. A Content-Length
+  or body that is longer than the pin is still `size-mismatch`.
 - Catalogue Whisper large-v3 (`faster-whisper-large-v3`, Systran revision
   `edaa852e`) for Kilix Playalong lyrics that are not in English. Its provider
   is `kilix-playalong` and it is installed only after a yes. It cites its own
@@ -63,6 +161,26 @@ pre-1.0.
   the commercial-use limitation informational, so the `lfm2-kilix-commands`
   licence record decision is `record`. Its full terms are still shown and
   shipped, and no typed agreement is taken. The terms are not waived.
+- Select Claudex `1f9d3c9c5950589182250e5e0b3267b3e65843a4`. Usage sessions
+  start in the home folder and report a folder-trust question as "attention",
+  with the command that answers it, instead of typing `/status` into it.
+  `usage --max-age` reads only agents whose last good reading is older than
+  the given age. `dashboard open` and `dashboard provider` take `--pane`. A
+  SyntaxWarning printed by every command that imported the dashboard is gone.
+  The build, binary and help action are unchanged.
+- Select Needle `9ca8ccfdfad758adf78bffa5fccaed631432f36c` and kilix-tui-utils
+  `1a0b7d5fca6516bbc9685342e266b3a55422e098` for RC9's log reader. Current
+  Claude and Codex transcripts read without unsupported-record errors, Grok
+  sessions read by file, folder, session ID or pane, a full session ID reads
+  without a pane listing, and a long brief or events page returns the events
+  that fit instead of failing. An action refusal names the missing and unknown
+  fields. kilix-tui-utils adds `kilix-tool-errors`, which groups failed tool
+  calls from recent agent sessions. The grammar and the vendored catalog pin
+  are unchanged.
+- Select Needle `30ee74fe770a6c3b19b23e68e3a4c7dbe4deae77`. A plain ask
+  with no job exits 3, and a pane or tab listing prints without asking to
+  run it. The grammar and the vendored catalog pin are unchanged from
+  `a887e2fa`.
 - Select Needle `a887e2fae221272aece6b7b9aef143df8bc7ba64`, which vendors this
   catalog's LFM2 delivery and notice record (content `81f2321b`) so its install
   and runtime read the same terms the image records. Needle `3a8e41c5` still

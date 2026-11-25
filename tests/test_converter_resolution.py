@@ -23,6 +23,31 @@ class ConverterResolutionTests(unittest.TestCase):
             spec, str(self.stage), lambda _: None, Mock(),
             store=Mock(root=self.root / 'receipts'))
 
+    def test_system_converters_are_ready_without_a_user_checkout(self):
+        catalog = verified_packaged_catalog()
+        for model in ('encodec-24khz-stateful', 'encodec-48khz-frame'):
+            spec = catalog.require_asset(model)
+            tool = catalog.require(spec.convert_tool_asset_id)
+            launcher = spec.convert_argv[0]
+            with self.subTest(model=model), \
+                    patch('kilix_content.install.shutil.which',
+                          side_effect=lambda path: path if path == launcher else None), \
+                    patch.object(self.installer, '_ensure_git') as build:
+                self.assertEqual(self.installer.ready_provided((tool,)), {tool.content_id: launcher})
+                self.assertEqual(self.installer.ensure(tool), launcher)
+                self.assertIsNone(self.installer.ready(tool, directory=str(self.stage)))
+                self.assertIsNone(self.installer.ready(replace(tool, ref='a' * 40)))
+                build.assert_not_called()
+                self.assertFalse(Path(self.installer.destination(tool)).exists())
+
+    def test_standalone_converter_builds_when_the_system_launcher_is_missing(self):
+        tool = verified_packaged_catalog().require(self.spec.convert_tool_asset_id)
+        with patch('kilix_content.install.shutil.which', return_value=None), \
+                patch.object(self.installer, '_ensure_git', return_value='/user/tool') as build:
+            self.assertIsNone(self.installer.ready(tool))
+            self.assertEqual(self.installer.ensure(tool), '/user/tool')
+            self.assertEqual(build.call_args.args[0], tool)
+
     def test_missing_system_converter_uses_pinned_user_install(self):
         with patch('kilix_content.install.shutil.which', return_value=None), \
                 patch.object(self.installer, 'ensure', return_value='/user/converter') as ensure, \

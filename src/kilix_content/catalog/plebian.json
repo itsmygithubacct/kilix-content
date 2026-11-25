@@ -6,7 +6,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-tui-utils",
-        "ref": "b6321de94371029b40955e606d371fca83657d6f"
+        "ref": "ddfff2e85b156abcb14ae6d76c1ab7736ce5be24"
       },
       "build": [
         "make",
@@ -1244,7 +1244,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-amp",
-        "ref": "eff203a74f6cc726e9c1211cfe6d0960077fc388"
+        "ref": "a66a010cc55d306d7a95e3bdefd536056e06bbbe"
       },
       "binary": "kilix-amp",
       "build": [
@@ -1314,7 +1314,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-pdf-conversion",
-        "ref": "e841241b0134fef42045a946199a92e9fa35ffbf"
+        "ref": "873f3298cfe9bcbf295061cd35d5054a46f4b21a"
       },
       "binary": "kilix-pdf",
       "build": [
@@ -1873,18 +1873,18 @@
       "label": "Needle",
       "kind": "app",
       "icon": "terminal",
-      "description": "Kilix Ask handles supported app and coding-session commands with a pinned local LFM2 model, an optional Needle 3 model and grammar shortcuts. Every proposal is checked against the whole request before confirmation and execution. Other Needle jobs drive panes, settings, audio, music, voice and text size, search files and read system status. Includes X11 desktop actions and local pane-log search. Keeps a private local request history (KILIX_NEEDLE_HISTORY=0 turns this off).",
+      "description": "Kilix Ask handles supported app and coding-session commands with its grammar, and with the pinned local LFM2 model once that is installed, or an optional Needle 3 model. Every proposal is checked against the whole request before confirmation and execution. Other Needle jobs drive panes, settings, audio, music, voice and text size, search files and read system status. Includes X11 desktop actions and local pane-log search. Keeps a private local request history (KILIX_NEEDLE_HISTORY=0 turns this off).",
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-needle",
-        "ref": "a887e2fae221272aece6b7b9aef143df8bc7ba64"
+        "ref": "4a94f2fb89bb23e160cce50cccd89eec075d8787"
       },
       "binary": "kilix-needle",
       "build": [
         "make",
         "all"
       ],
-      "dependency_hint": "needs Python 3.11 or newer and make on x86-64 Linux; `kilix-needle install --commands` installs the default LFM2 Ask model after showing its licence terms, which are a notice and take no agreement; `kilix-needle install --commands needle3` installs the optional Needle 3 model for x86-64-v3 CPUs; exact grammar requests need no model. Legacy Needle 2 jobs use their separately installed Apache-2.0 engine. Desktop actions use xdotool, xprop and python3-xlib; `kilix-needle setup` changes settings only when run",
+      "dependency_hint": "needs Python 3.11 or newer and make on x86-64 Linux; Ask uses its grammar until a model is installed and downloads none on its own; `kilix-needle install --commands` installs the LFM2 Ask model after showing its licence terms, which are a notice and take no agreement; `kilix-needle install --commands needle3` installs the optional Needle 3 model for x86-64-v3 CPUs; exact grammar requests need no model. Legacy Needle 2 jobs use their separately installed Apache-2.0 engine. Desktop actions use xdotool, xprop and python3-xlib; `kilix-needle setup` changes settings only when run",
       "capabilities": [
         "kilix-control",
         "session-read",
@@ -1943,7 +1943,7 @@
       "source": {
         "type": "git",
         "repository": "https://github.com/itsmygithubacct/kilix-claudex",
-        "ref": "8346512bff4d2bf2e3574285a588361124a4a321"
+        "ref": "1f9d3c9c5950589182250e5e0b3267b3e65843a4"
       },
       "binary": "claudex",
       "build": [],
@@ -2218,23 +2218,13 @@
           "sha256": "571c0295ffbb60b79627a8956e2990826448eee7678b8d9a1e37c82bbf779f4c"
         },
         {
-          "bytes": 1545,
+          "bytes": 2031,
           "path": "notices/NOTICE.txt",
-          "sha256": "65e4cd26f6f63d2ad45c64df2a6876bc33b17c4af5272c90bd44dd072b0e6601"
-        },
-        {
-          "bytes": 897792,
-          "path": "runtime/libggml-base.so",
-          "sha256": "2c6ac9a8ae7c1455382c50587fe7d275e0607dfdaec4dcdb18689f31f6174c65"
+          "sha256": "ad951c9680c6bcb084a38582514b75ae90e0b85fd022495b4a38d2a6c6810a0f"
         },
         {
           "bytes": 897792,
           "path": "runtime/libggml-base.so.0",
-          "sha256": "2c6ac9a8ae7c1455382c50587fe7d275e0607dfdaec4dcdb18689f31f6174c65"
-        },
-        {
-          "bytes": 897792,
-          "path": "runtime/libggml-base.so.0.27.0",
           "sha256": "2c6ac9a8ae7c1455382c50587fe7d275e0607dfdaec4dcdb18689f31f6174c65"
         },
         {
@@ -2314,17 +2304,7 @@
         },
         {
           "bytes": 51040,
-          "path": "runtime/libggml.so",
-          "sha256": "8643a58bb37af6fb153e2ea98b48efa227855725ee51c05f4ca76b9867956463"
-        },
-        {
-          "bytes": 51040,
           "path": "runtime/libggml.so.0",
-          "sha256": "8643a58bb37af6fb153e2ea98b48efa227855725ee51c05f4ca76b9867956463"
-        },
-        {
-          "bytes": 51040,
-          "path": "runtime/libggml.so.0.27.0",
           "sha256": "8643a58bb37af6fb153e2ea98b48efa227855725ee51c05f4ca76b9867956463"
         },
         {
@@ -2344,17 +2324,7 @@
         },
         {
           "bytes": 6499104,
-          "path": "runtime/libllama-common.so",
-          "sha256": "462f7e9ce1c4c537533f1d4530b37201452599d90128c3c602507b315934e795"
-        },
-        {
-          "bytes": 6499104,
           "path": "runtime/libllama-common.so.0",
-          "sha256": "462f7e9ce1c4c537533f1d4530b37201452599d90128c3c602507b315934e795"
-        },
-        {
-          "bytes": 6499104,
-          "path": "runtime/libllama-common.so.0.7.0",
           "sha256": "462f7e9ce1c4c537533f1d4530b37201452599d90128c3c602507b315934e795"
         },
         {
@@ -2384,32 +2354,12 @@
         },
         {
           "bytes": 5095048,
-          "path": "runtime/libllama.so",
-          "sha256": "522213ae6b6019ba8d2673e9254990c52f0a1a5fb047c75bfb93be1b34fad839"
-        },
-        {
-          "bytes": 5095048,
           "path": "runtime/libllama.so.0",
           "sha256": "522213ae6b6019ba8d2673e9254990c52f0a1a5fb047c75bfb93be1b34fad839"
         },
         {
-          "bytes": 5095048,
-          "path": "runtime/libllama.so.0.7.0",
-          "sha256": "522213ae6b6019ba8d2673e9254990c52f0a1a5fb047c75bfb93be1b34fad839"
-        },
-        {
-          "bytes": 1938632,
-          "path": "runtime/libmtmd.so",
-          "sha256": "5dc23ec9996bacb9d2791e06848cce30e33901d131a0c61f9cf2b821a587b17e"
-        },
-        {
           "bytes": 1938632,
           "path": "runtime/libmtmd.so.0",
-          "sha256": "5dc23ec9996bacb9d2791e06848cce30e33901d131a0c61f9cf2b821a587b17e"
-        },
-        {
-          "bytes": 1938632,
-          "path": "runtime/libmtmd.so.0.7.0",
           "sha256": "5dc23ec9996bacb9d2791e06848cce30e33901d131a0c61f9cf2b821a587b17e"
         },
         {
@@ -2435,25 +2385,25 @@
       "provider": "kilix-needle",
       "schema": "kilix.content.asset/v3",
       "sizes": {
-        "download_bytes": 1362204317,
-        "installed_bytes": 1461500713,
-        "temporary_bytes": 2823705030
+        "download_bytes": 1346876805,
+        "installed_bytes": 1432537967,
+        "temporary_bytes": 2779414772
       },
       "source": {
-        "archive_bytes": 1362204317,
-        "archive_sha256": "ea03c42ce0f36d12bca1844c558c0fcaeb442887e55e1e7b76ccb3ed632c3a85",
+        "archive_bytes": 1346876805,
+        "archive_sha256": "b9bff58b8d296cf557b721407553d15451a9856ecb8fa1bc09c908c6b0760187",
         "format": "tar",
         "mode": "upstream-archive",
         "provenance": {
           "project": "itsmygithubacct/kilix-needle",
           "revision": "4f3aeaff96bd2381a34396e2afb40b900840b8ec",
-          "original_url": "https://github.com/itsmygithubacct/kilix-needle/releases/download/lfm2-kilix-commands-20261106-v9/lfm2-kilix-commands-20261106-v9.tar.gz"
+          "original_url": "https://github.com/itsmygithubacct/kilix-needle/releases/download/lfm2-kilix-commands-20261115-v10/lfm2-kilix-commands-20261115-v10.tar.gz"
         },
-        "root": "lfm2-kilix-commands-20261106-v9",
-        "url": "https://github.com/itsmygithubacct/kilix-needle/releases/download/lfm2-kilix-commands-20261106-v9/lfm2-kilix-commands-20261106-v9.tar.gz"
+        "root": "lfm2-kilix-commands-20261115-v10",
+        "url": "https://github.com/itsmygithubacct/kilix-needle/releases/download/lfm2-kilix-commands-20261115-v10/lfm2-kilix-commands-20261115-v10.tar.gz"
       },
       "stream": "F104",
-      "version": "lfm2-kilix-commands-20261106-v9",
+      "version": "lfm2-kilix-commands-20261115-v10",
       "storage": "versioned"
     },
     {
@@ -4005,6 +3955,11 @@
       },
       "files": [
         {
+          "bytes": 1827,
+          "path": "config.json",
+          "sha256": "002535cf8dd08a434cdddb13372da8a7b4844152bdf9b5b4e7342e12ec30bcfb"
+        },
+        {
           "bytes": 11358,
           "path": "notices/LICENSE-apache-2.0.txt",
           "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
@@ -4031,12 +3986,16 @@
       "provider": "paradee",
       "schema": "kilix.content.asset/v3",
       "sizes": {
-        "download_bytes": 8462119,
-        "installed_bytes": 8473477,
-        "temporary_bytes": 8473477
+        "download_bytes": 8463946,
+        "installed_bytes": 8475304,
+        "temporary_bytes": 8475304
       },
       "source": {
         "fetch": [
+          {
+            "path": "config.json",
+            "url": "https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.2/resolve/ed2934d4df8a4fd891e29584c5e1104649409765/config.json"
+          },
           {
             "path": "onnx/paradee_int8.onnx",
             "url": "https://huggingface.co/sahilmahendrakar/Paradee-8M-v1.2/resolve/ed2934d4df8a4fd891e29584c5e1104649409765/onnx/paradee_int8.onnx"
@@ -4051,6 +4010,150 @@
       },
       "stream": "F104",
       "version": "ed2934d4df8a4fd891e29584c5e1104649409765"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.paradee.frontend/v1",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 12806118,
+          "path": "en_core_web_sm-3.8.0-py3-none-any.whl",
+          "sha256": "1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85"
+        },
+        {
+          "bytes": 1056,
+          "path": "notices/LICENSE-mit.txt",
+          "sha256": "3933c176979b68bc6d0bcc902c7d6c130f1d127f476f17ba5cdba8d99cfd0012"
+        },
+        {
+          "bytes": 2347,
+          "path": "notices/LICENSES_SOURCES.txt",
+          "sha256": "20d9dfacd215112251f15341edd1a47b1f98bf393a212f10f194ffdc7ee98a90"
+        }
+      ],
+      "id": "en-core-web-sm-3.8.0",
+      "label": "spaCy en_core_web_sm 3.8.0",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "mit",
+          "licensors": [
+            "ExplosionAI GmbH"
+          ],
+          "record_digest": "e2d9e28ac557608803565e5ffb549920f8cd3a06ef0445fe1cb5a5497860deef",
+          "text_sha256": "3933c176979b68bc6d0bcc902c7d6c130f1d127f476f17ba5cdba8d99cfd0012"
+        }
+      ],
+      "provider": "spacy",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 12806118,
+        "installed_bytes": 12809521,
+        "temporary_bytes": 12809521
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "en_core_web_sm-3.8.0-py3-none-any.whl",
+            "url": "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "explosion/spacy-models",
+          "revision": "en_core_web_sm-3.8.0",
+          "original_url": "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+        }
+      },
+      "stream": "F104",
+      "version": "3.8.0"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.llm.models/v1",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 11358,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "bytes": 18657,
+          "path": "notices/LICENSE-cc-by-4.0.txt",
+          "sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+        },
+        {
+          "bytes": 1819,
+          "path": "notices/LICENSE-lm_understand-logs.txt",
+          "sha256": "395f7febedfda6b5498ca36cfe3344d3986659ce4385dd8b03d2d75604250a8e"
+        },
+        {
+          "bytes": 1607,
+          "path": "notices/modified-model.txt",
+          "sha256": "2569309df198a85501c07065c837ecf18d48a0387208cfdb755702f3be2d9b44"
+        },
+        {
+          "bytes": 1229,
+          "path": "notices/weight-edit-attribution.txt",
+          "sha256": "a4e74ed6c5f68677ebe95445696de6d9e2f789b5f63184d95a7a70a5f8cd962f"
+        },
+        {
+          "bytes": 833592416,
+          "path": "qwen-0.8b-no-loop-02.gguf",
+          "sha256": "e4d6e93eb644da62e0c5ac0b7b188b4c2cbf31f07a7dcfd42764b6236f96d8a0"
+        }
+      ],
+      "id": "qwen-0.8b-no-loop-02",
+      "label": "Qwen3.5 0.8B no-loop 02",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "Alibaba Cloud / Qwen"
+          ],
+          "record_digest": "f5a93c984528e50574f42f04d8d9403a217bec2c49f88b5f94980e385f7abcc0",
+          "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        },
+        {
+          "decision": "affirmative",
+          "id": "cc-by-4.0",
+          "licensors": [
+            "the authors of \"LLMs can understand and write neural network weights\""
+          ],
+          "record_digest": "f5a93c984528e50574f42f04d8d9403a217bec2c49f88b5f94980e385f7abcc0",
+          "text_sha256": "9ba9550ad48438d0836ddab3da480b3b69ffa0aac7b7878b5a0039e7ab429411"
+        }
+      ],
+      "provider": "kilix-llm",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 833592416,
+        "installed_bytes": 833627086,
+        "temporary_bytes": 833627086
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "qwen-0.8b-no-loop-02.gguf",
+            "url": "https://github.com/itsmygithubacct/kilix-llm/releases/download/qwen-0.8b-no-loop-02/qwen-0.8b-no-loop-02.gguf"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "itsmygithubacct/kilix-llm",
+          "revision": "4267e55277de7ab3d3380a561a1f5f0d58261f18",
+          "original_url": "https://github.com/itsmygithubacct/kilix-llm/releases/download/qwen-0.8b-no-loop-02/qwen-0.8b-no-loop-02.gguf"
+        }
+      },
+      "stream": "F104",
+      "version": "qwen-0.8b-no-loop-02"
     },
     {
       "compatibility": {
@@ -6315,6 +6418,125 @@
       },
       "stream": "F104",
       "version": "dd48e97503de471803850df70843cf9eb5da8712"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.pdf-conversion.runtime",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 9880512,
+          "path": "inference.onnx",
+          "sha256": "d73e0058b7a8086bbd57f3d10b8bcd4ff95363f67e06e2762b5e814fe9c9410e"
+        },
+        {
+          "bytes": 11358,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "id": "pp-ocrv6-small-det",
+      "label": "pp-ocrv6-small-det (kilix-pdf-conversion page-ocr text detector, PP-OCRv6 small ONNX, shipped in the image)",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "PaddlePaddle"
+          ],
+          "record_digest": "e90d224b0b67100ba080b316883c5e75f02d5c7b2280652124e72fd5d3ee56d9",
+          "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "provider": "kilix-pdf-conversion",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 9880512,
+        "installed_bytes": 9891870,
+        "temporary_bytes": 9891870
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "inference.onnx",
+            "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det_onnx/resolve/28fe5895c24fd108c19eb3e8479f4ab385fbfc62/inference.onnx"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "PaddlePaddle/PP-OCRv6_small_det_onnx",
+          "revision": "28fe5895c24fd108c19eb3e8479f4ab385fbfc62",
+          "original_url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det_onnx/resolve/28fe5895c24fd108c19eb3e8479f4ab385fbfc62/inference.onnx"
+        }
+      },
+      "stream": "F104",
+      "version": "28fe5895c24fd108c19eb3e8479f4ab385fbfc62"
+    },
+    {
+      "compatibility": {
+        "consumer_schema": "kilix.pdf-conversion.runtime",
+        "maximum": 1,
+        "minimum": 1
+      },
+      "files": [
+        {
+          "bytes": 21159378,
+          "path": "inference.onnx",
+          "sha256": "5435fd747c9e0efe15a96d0b378d5bd157e9492ed8fd80edf08f30d02fa24634"
+        },
+        {
+          "bytes": 150579,
+          "path": "inference.yml",
+          "sha256": "ab078671bb49f06228eadccd34f1bb501e157f7a047095ffb943ba81512c77d1"
+        },
+        {
+          "bytes": 11358,
+          "path": "notices/LICENSE-apache-2.0.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "id": "pp-ocrv6-small-rec",
+      "label": "pp-ocrv6-small-rec (kilix-pdf-conversion page-ocr text recogniser, PP-OCRv6 small ONNX, shipped in the image)",
+      "licenses": [
+        {
+          "decision": "affirmative",
+          "id": "apache-2.0",
+          "licensors": [
+            "PaddlePaddle"
+          ],
+          "record_digest": "3846df39dba2d661d7484d2e4ebb7d6fca2a2718a6f48d03c485ab0b435d4312",
+          "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ],
+      "provider": "kilix-pdf-conversion",
+      "schema": "kilix.content.asset/v3",
+      "sizes": {
+        "download_bytes": 21309957,
+        "installed_bytes": 21321315,
+        "temporary_bytes": 21321315
+      },
+      "source": {
+        "fetch": [
+          {
+            "path": "inference.onnx",
+            "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx/resolve/b8f84f0b80c529de40b4fbb3544b84fa7233a513/inference.onnx"
+          },
+          {
+            "path": "inference.yml",
+            "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx/resolve/b8f84f0b80c529de40b4fbb3544b84fa7233a513/inference.yml"
+          }
+        ],
+        "mode": "upstream-files",
+        "provenance": {
+          "project": "PaddlePaddle/PP-OCRv6_small_rec_onnx",
+          "revision": "b8f84f0b80c529de40b4fbb3544b84fa7233a513",
+          "original_url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx/resolve/b8f84f0b80c529de40b4fbb3544b84fa7233a513/inference.onnx"
+        }
+      },
+      "stream": "F104",
+      "version": "b8f84f0b80c529de40b4fbb3544b84fa7233a513"
     },
     {
       "compatibility": {

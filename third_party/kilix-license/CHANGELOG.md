@@ -4,6 +4,35 @@ All notable changes to `kilix-license` are recorded here.
 
 ## Unreleased
 
+- The `lfm2-kilix-commands` modified-model statement is now the notice of
+  delivery `lfm2-kilix-commands-20261115-v10` (`ad951c96`). The weight is still
+  `lfm2-kilix-v5e1-wse-20261106.9`, byte for byte; the delivery ships each
+  versioned runtime library once. The licence text, the runtime notice and
+  the notice decision are unchanged. The previous notice text stays available
+  for earlier receipts.
+
+- `pp-ocrv6-small-det` and `pp-ocrv6-small-rec` have their own determination
+  pin and records. By the owner's 2026-11-10 determination, PaddlePaddle's
+  PP-OCRv6 small ONNX exports are Apache-2.0, published by PaddlePaddle. The
+  grant is each model card's `license: apache-2.0` line: neither repository
+  has a LICENSE or NOTICE file and no copyright holder is named, which each
+  record states beside Debian's Apache-2.0 text. The standard distribution
+  policy covers both records.
+
+- `en-core-web-sm-3.8.0` has its own determination pin and record.
+  ExplosionAI GmbH distributes the `en_core_web_sm` 3.8.0 wheel under MIT.
+  LICENSES_SOURCES is the training-sources statement, not a binding
+  condition. The standard distribution policy covers the record.
+
+- `qwen-0.8b-no-loop-02` has its own determination pin and record. It is
+  Qwen3.5-0.8B under Apache-2.0 (Alibaba Cloud), modified by itsmygithubacct,
+  with a weight edit adapted from CC BY 4.0 material by the authors of "LLMs
+  can understand and write neural network weights". The owner approved both
+  components on 2026-11-09. The CC BY 4.0 legal code is a component text; the
+  standard distribution policy covers exactly that pinned text for this
+  record, like kilix-female-02, so the wizard asks no separate question.
+  itsmygithubacct is the modifier, not a licensor.
+
 - Whisper large-v3 (`faster-whisper-large-v3`, Systran revision `edaa852e`)
   has its own determination pin and record, on the owner's determination of
   2026-11-08 (`licence-evidence-whisper-large-v3-2026-11-08`), which the

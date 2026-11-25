@@ -40,6 +40,12 @@ PIN_NAMES = (
     "piper-en-us-kristin-medium.json",
     "kilix-female-02.json",
     "paradee-8m-v1.2.json",
+    # Owner decision 2026-11-10: Paradee's offline front end. The wheel is
+    # MIT; LICENSES_SOURCES ships as a statement, not a binding condition.
+    "en-core-web-sm-3.8.0.json",
+    # Owner direction 2026-11-09: an option for kilix avatar and kilix chat,
+    # loaded through kilix-llm, from the kilix-llm release.
+    "qwen-0.8b-no-loop-02.json",
     "vibevoice-asr-bitnet.json",
     "yolox_s.json",
     "yolox_tiny.json",
@@ -60,6 +66,12 @@ PIN_NAMES = (
     "granite-docling-258m.json",
     "documentfigureclassifier-v2.5.json",
     "granite-vision-4.1-4b.json",
+    # Owner determination 2026-11-10, which widens OD-AY from three PDF models
+    # to five: "go with Apache-2.0, note the reality. 2: go with 5. ship them
+    # with the image if they are small." kilix-pdf-conversion page OCR's
+    # PP-OCRv6 small detector and recogniser, shipped in the Plebian-OS image.
+    "pp-ocrv6-small-det.json",
+    "pp-ocrv6-small-rec.json",
     # OD-AR: both EnCodec checkpoints, downloaded from upstream on first use
     # under CC BY-NC 4.0 and converted locally (R4-068).
     "encodec-24khz-stateful.json",
@@ -100,6 +112,8 @@ LICENSORS = {
     "piper-en-us-kristin-medium": ["Bryce Beattie"],
     "kilix-female-02": ["itsmygithubacct"],
     "paradee-8m-v1.2": ["Sahil Mahendrakar"],
+    "en-core-web-sm-3.8.0": ["ExplosionAI GmbH"],
+    "qwen-0.8b-no-loop-02": ["Alibaba Cloud / Qwen"],
     "vibevoice-asr-bitnet": ["Microsoft Corporation"],
     "yolox_s": ["Megvii (Base Detection / Megvii Inc.)"],
     "yolox_tiny": ["Megvii (Base Detection / Megvii Inc.)"],
@@ -119,6 +133,8 @@ LICENSORS = {
     "granite-docling-258m": ["IBM"],
     "documentfigureclassifier-v2.5": ["docling-project"],
     "granite-vision-4.1-4b": ["IBM"],
+    "pp-ocrv6-small-det": ["PaddlePaddle"],
+    "pp-ocrv6-small-rec": ["PaddlePaddle"],
     "encodec-24khz-stateful": ["Meta Platforms"],
     "encodec-48khz-frame": ["Meta Platforms"],
     "needle2": ["Cactus Compute, Inc."],
@@ -160,6 +176,23 @@ COMPONENT_LICENSE_ROWS = {
         "licensors": ["Meta Platforms, Inc."],
         "notice_path": "notices/LICENSE-llama-3-community.txt",
     },
+    # qwen-0.8b-no-loop-02: the weight edit is adapted from CC BY 4.0 material.
+    # The owner approved this component on 2026-11-09 (kilix-license
+    # determinations-noloop02.json, owner_determination). The row is affirmative.
+    "weight-edit-from-lm-understand-logs": {
+        "decision": "affirmative",
+        "license_id": "cc-by-4.0",
+        "licensors": ['the authors of "LLMs can understand and write neural network weights"'],
+        "notice_path": "notices/LICENSE-cc-by-4.0.txt",
+    },
+}
+
+# qwen-0.8b-no-loop-02's modification notice, CC BY attribution and the edit
+# source's own licence file, at the names those notices refer to.
+NOLOOP02_STATEMENT_PATHS = {
+    "modified-model": "notices/modified-model.txt",
+    "weight-edit-attribution": "notices/weight-edit-attribution.txt",
+    "weight-edit-source-licence": "notices/LICENSE-lm_understand-logs.txt",
 }
 
 
@@ -200,6 +233,9 @@ def notice_file(record) -> dict[str, object]:
 
 def notice_files(record) -> list[dict[str, object]]:
     files = [notice_file(record)]
+    if record.id == 'en-core-web-sm-3.8.0':
+        sources = next(item for item in record.statements if item.id == 'training-sources')
+        files.append(notice_blob(sources.text_sha256, 'notices/LICENSES_SOURCES.txt', record.id))
     if record.id == "basic-pitch-icassp-2022-onnx":
         notice = next(s for s in record.statements if s.id == "upstream-notice")
         files.append(notice_blob(notice.text_sha256, "notices/NOTICE-basic-pitch.txt", record.id))
@@ -226,6 +262,9 @@ def notice_files(record) -> list[dict[str, object]]:
         for item in record.statements:
             files.append(notice_blob(item.text_sha256,'notices/'+item.id+'.txt',record.id))
         return files
+    if record.id == 'qwen-0.8b-no-loop-02':
+        for statement in record.statements:
+            files.append(notice_blob(statement.text_sha256, NOLOOP02_STATEMENT_PATHS[statement.id], record.id))
     for component in record.components:
         extra = COMPONENT_LICENSE_ROWS.get(component.id)
         if extra is None:

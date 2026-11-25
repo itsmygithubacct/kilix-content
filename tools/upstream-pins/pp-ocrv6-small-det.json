@@ -1,0 +1,24 @@
+{
+  "schema": "kilix.content.upstream-pin/v1",
+  "id": "pp-ocrv6-small-det",
+  "label": "pp-ocrv6-small-det (kilix-pdf-conversion page-ocr text detector, PP-OCRv6 small ONNX, shipped in the image)",
+  "mode": "upstream-files",
+  "license_record_id": "pp-ocrv6-small-det",
+  "provider": "kilix-pdf-conversion",
+  "consumer_schema": "kilix.pdf-conversion.runtime",
+  "version": "28fe5895c24fd108c19eb3e8479f4ab385fbfc62",
+  "provenance": {
+    "project": "PaddlePaddle/PP-OCRv6_small_det_onnx",
+    "revision": "28fe5895c24fd108c19eb3e8479f4ab385fbfc62",
+    "original_url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det_onnx/resolve/28fe5895c24fd108c19eb3e8479f4ab385fbfc62/inference.onnx"
+  },
+  "members": [
+    {
+      "path": "inference.onnx",
+      "url": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det_onnx/resolve/28fe5895c24fd108c19eb3e8479f4ab385fbfc62/inference.onnx",
+      "bytes": 9880512,
+      "sha256": "d73e0058b7a8086bbd57f3d10b8bcd4ff95363f67e06e2762b5e814fe9c9410e"
+    }
+  ],
+  "provenance_scope": "PaddlePaddle's unchanged ONNX export at the pinned revision, the files kilix-pdf-conversion's page OCR loads and nothing else. The repository's README.md, inference.json and .gitattributes are not installed. The repository has no LICENSE file; the Apache-2.0 text is Debian's common-licenses copy (kilix-license pp-ocrv6-small)."
+}

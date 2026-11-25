@@ -1,0 +1,96 @@
+{
+  "schema": "kilix.license.pp-ocrv6-small-determination/v1",
+  "authority": {
+    "models": [
+      {
+        "id": "pp-ocrv6-small-det",
+        "repository": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_det_onnx",
+        "revision": "28fe5895c24fd108c19eb3e8479f4ab385fbfc62",
+        "files": [
+          {
+            "path": "inference.onnx",
+            "bytes": 9880512,
+            "sha256": "d73e0058b7a8086bbd57f3d10b8bcd4ff95363f67e06e2762b5e814fe9c9410e"
+          }
+        ],
+        "card_bytes": 16076,
+        "card_sha256": "e9403667f0f92055d8ce9e73a2beb1002fc489d9342697db74039eb7178bb5fb",
+        "card_licence_line": "license: apache-2.0"
+      },
+      {
+        "id": "pp-ocrv6-small-rec",
+        "repository": "https://huggingface.co/PaddlePaddle/PP-OCRv6_small_rec_onnx",
+        "revision": "b8f84f0b80c529de40b4fbb3544b84fa7233a513",
+        "files": [
+          {
+            "path": "inference.onnx",
+            "bytes": 21159378,
+            "sha256": "5435fd747c9e0efe15a96d0b378d5bd157e9492ed8fd80edf08f30d02fa24634"
+          },
+          {
+            "path": "inference.yml",
+            "bytes": 150579,
+            "sha256": "ab078671bb49f06228eadccd34f1bb501e157f7a047095ffb943ba81512c77d1"
+          }
+        ],
+        "card_bytes": 16585,
+        "card_sha256": "7d46dbd183ac09bd5a2e6b4577dcb29240751b1c00eb6813eca308d529f86806",
+        "card_licence_line": "license: apache-2.0"
+      }
+    ],
+    "licence_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "repository_licence_file": null,
+    "owner_record": {
+      "path": "licence-evidence-pp-ocrv6-small-2026-11-10/OWNER-DETERMINATION-pp-ocrv6-small.md",
+      "bytes": 4431,
+      "sha256": "733df4a6c6ce287cc2a066ddd1faf8aba35010497fba31cf78de31d30cea8f85"
+    },
+    "determined_by": "The owner, 2026-11-10, verbatim: \"go with Apache-2.0, note the reality. 2: go with 5. ship them with the image if they are small. work this into RC8.\"",
+    "reality": "The grant is each model card's front-matter line \"license: apache-2.0\". Neither repository has a LICENSE or NOTICE file; each card's licence badge links to a LICENSE file that does not exist. No copyright holder is named. The licence text is Debian's common-licenses Apache-2.0, not a file from either repository.",
+    "precedent": "granite-docling-258m (card-only grant, no LICENSE file in the repository)",
+    "distribution": "Shipped in the Plebian-OS image from 0.2.3 RC8 with the Apache-2.0 text; a fresh install installs both offline, and an upgrade without the image archives downloads the same files from the pinned revisions. kilix-pdf-conversion page OCR reads them.",
+    "scope": "Unchanged PaddlePaddle ONNX exports of the PP-OCRv6 small text detector and recogniser at the pinned revisions. The licensor is the publishing organization; the cards name no copyright holder."
+  },
+  "records": [
+    {
+      "schema": "kilix.license.record/v1",
+      "id": "pp-ocrv6-small-det",
+      "licensor": "PaddlePaddle",
+      "licence_ids": [
+        "Apache-2.0"
+      ],
+      "licence_text_id": "debian/common-licenses/Apache-2.0",
+      "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "decision_class": "affirmative",
+      "advisories": [],
+      "binding_conditions": [],
+      "components": [],
+      "statements": [
+        {
+          "id": "pp-ocrv6-card-only-grant",
+          "text_sha256": "d10106e0139030f2ea1f330c9a165c418114909d32838719f2aa35cf5d9c95d6"
+        }
+      ]
+    },
+    {
+      "schema": "kilix.license.record/v1",
+      "id": "pp-ocrv6-small-rec",
+      "licensor": "PaddlePaddle",
+      "licence_ids": [
+        "Apache-2.0"
+      ],
+      "licence_text_id": "debian/common-licenses/Apache-2.0",
+      "text_sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "decision_class": "affirmative",
+      "advisories": [],
+      "binding_conditions": [],
+      "components": [],
+      "statements": [
+        {
+          "id": "pp-ocrv6-card-only-grant",
+          "text_sha256": "d10106e0139030f2ea1f330c9a165c418114909d32838719f2aa35cf5d9c95d6"
+        }
+      ]
+    }
+  ]
+}

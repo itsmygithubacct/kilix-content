@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from owned_archive import selected_female02_file, selected_owned_bytes
+from owned_archive import selected_owned_bytes, selected_owned_file
 
 import io
 import json
@@ -194,13 +194,13 @@ class KristinVibeVoiceAssetTests(unittest.TestCase):
     def test_no_packaged_asset_source_url_is_kilix_hosted(self) -> None:
         for spec in self.catalog.assets:
             packed = str(spec.to_mapping()).lower()
-            if not selected_owned_bytes(spec.to_mapping(), spec.url) and spec.asset_id != "kilix-female-02":
+            if not selected_owned_bytes(spec.to_mapping(), spec.url) and spec.asset_id not in ("kilix-female-02", "qwen-0.8b-no-loop-02"):
                 self.assertNotIn("itsmygithubacct", packed)
             self.assertNotIn("assets-0.2.2-candidate", packed)
             for item in spec.fetch:
                 parsed = urlsplit(item.url)
                 self.assertEqual(parsed.scheme, "https")
-                self.assertFalse(_is_kilix_hosted(item.url) and not selected_female02_file(spec.to_mapping(), item.url), item.url)
+                self.assertFalse(_is_kilix_hosted(item.url) and not selected_owned_file(spec.to_mapping(), item.url), item.url)
             for item in spec.blobs:
                 parsed = urlsplit(item.url)
                 self.assertEqual(parsed.scheme, "https")

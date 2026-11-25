@@ -1,0 +1,24 @@
+qwen-0.8b-no-loop-02 — attribution for the CC BY 4.0 weight edit
+
+The weight change in this model is adapted from material licensed under the
+Creative Commons Attribution 4.0 International licence (CC BY 4.0). The model
+card's Attribution section reads:
+
+The edit direction and the 64-column edit it is scaled from are from
+"LLMs can understand and write neural network weights" (the blog post
+[Sparks of Weight-Space Programming](https://rikiyat.github.io/blog/weight-space-programming/)),
+by its authors. They are published in
+[RikiyaT/lm_understand-logs](https://github.com/RikiyaT/lm_understand-logs),
+`exp8_math/runs/p50c/edit`, commit `4d09ba6d6a7e891dd8063974dfe81b3d78e3494f`,
+under the [Creative Commons Attribution 4.0 International licence](https://creativecommons.org/licenses/by/4.0/)
+(their licence file is `LICENSE-lm_understand-logs.txt`).
+
+Changes made here:
+- the edit is scaled to one third (alpha 2 of 6);
+- it is applied to the Q8_0 GGUF conversion and quantized;
+- it is packaged with new GGUF metadata.
+
+The authors have not reviewed or endorsed this model.
+
+The CC BY 4.0 legal code is in LICENSE-cc-by-4.0.txt, and the source
+repository's licence file, unchanged, is in LICENSE-lm_understand-logs.txt.

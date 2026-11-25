@@ -202,6 +202,133 @@ class LFM2FirstUseTests(unittest.TestCase):
         self.assertFalse(Path(self.installer.asset_destination(self.spec)).exists())
         self.assertEqual((old_path/'model.gguf').read_bytes(), original)
 
+    # --- a new delivery is built from the installed earlier one ---
+
+    def delivery(self, *, extra):
+        """A versioned delivery of the same model, with or without a file the next one drops."""
+        value = self.spec.to_mapping()
+        value['storage'] = 'versioned'
+        payload = b'a runtime library the next delivery omits'
+        present = any(item['path'] == 'runtime/extra.so' for item in value['files'])
+        if extra and not present:
+            value['files'].append({'path': 'runtime/extra.so', 'bytes': len(payload),
+                                   'sha256': hashlib.sha256(payload).hexdigest()})
+            (self.supplied/'runtime').mkdir(exist_ok=True)
+            (self.supplied/'runtime/extra.so').write_bytes(payload)
+            delta = len(payload)
+        elif not extra and present:
+            value['files'] = [item for item in value['files'] if item['path'] != 'runtime/extra.so']
+            delta = -len(payload)
+        else:
+            delta = 0
+        value['sizes']['installed_bytes'] += delta
+        value['sizes']['temporary_bytes'] += delta
+        self.spec = AssetSpec.from_mapping(value)
+        return self.spec
+
+    def earlier_then_next(self):
+        earlier = self.delivery(extra=True)
+        self.install(typed_text=self.answer(), screen=io.BytesIO())
+        return Path(self.installer.asset_destination(earlier)), self.delivery(extra=False)
+
+    def upstream(self, reports=None):
+        return install_with_agreement(
+            self.spec, installer=self.installer, store=self.store, records=self.records,
+            texts=self.texts, typed_text=self.answer(), screen=io.BytesIO(),
+            report=(reports.append if reports is not None else lambda _message: None))
+
+    def test_a_new_delivery_is_installed_from_the_earlier_one_without_a_download(self):
+        old_path, spec = self.earlier_then_next()
+        before = {path.relative_to(old_path): path.read_bytes()
+                  for path in old_path.rglob('*') if path.is_file()}
+        self.assertEqual(self.installer.earlier_delivery(spec), str(old_path))
+        self.assertTrue(needs_agreement(spec, records=self.records, store=self.store))
+        reports = []
+        with mock.patch('kilix_content.install.fetch_exact', side_effect=AssertionError('downloaded')):
+            self.assertIsNotNone(self.upstream(reports))
+        new_path = Path(self.installer.asset_destination(spec))
+        self.assertNotEqual(new_path, old_path)
+        self.assertEqual(sorted(str(path.relative_to(new_path)) for path in new_path.rglob('*') if path.is_file()),
+                         sorted(member.path for member in spec.files))
+        self.assertFalse((new_path/'runtime/extra.so').exists())
+        self.assertTrue(any('earlier delivery' in line for line in reports), reports)
+        # The earlier delivery is read, never changed, and stays selectable.
+        self.assertEqual({path.relative_to(old_path): path.read_bytes()
+                          for path in old_path.rglob('*') if path.is_file()}, before)
+
+    def test_reuse_still_needs_the_new_manifests_own_receipt(self):
+        _old_path, spec = self.earlier_then_next()
+        with mock.patch('kilix_content.install.fetch_exact', side_effect=AssertionError('downloaded')), \
+                self.assertRaises(CoverageRefused):
+            self.installer.ensure_upstream_asset(spec, store=self.store, records=self.records,
+                                                 notices=self.texts)
+        self.assertFalse(Path(self.installer.asset_destination(spec)).exists())
+
+    def test_an_earlier_delivery_with_other_bytes_is_discarded_and_the_asset_is_downloaded(self):
+        old_path, spec = self.earlier_then_next()
+        model = old_path/'model.gguf'
+        good = model.read_bytes()
+        model.chmod(0o600)
+        model.write_bytes(bytes(len(good)))          # same size, other bytes
+        self.assertEqual(self.installer.earlier_delivery(spec), str(old_path))
+        self.assertIsNotNone(self.install_archive())
+        new_path = Path(self.installer.asset_destination(self.spec))
+        self.assertEqual((new_path/'model.gguf').read_bytes(), good)
+        self.assertEqual(model.read_bytes(), bytes(len(good)))
+
+    def test_an_older_intact_delivery_is_used_when_the_newest_cannot_supply(self):
+        import os, shutil
+        old_path, spec = self.earlier_then_next()
+        newer = old_path.parent/(self.asset_id + '--' + 'c'*64)
+        shutil.copytree(old_path, newer)
+        (newer/'model.gguf').chmod(0o600)
+        (newer/'model.gguf').write_bytes(bytes((old_path/'model.gguf').stat().st_size))
+        os.utime(old_path, ns=(1, 1))
+        self.assertEqual(self.installer.earlier_deliveries(spec), [str(newer), str(old_path)])
+        with mock.patch('kilix_content.install.fetch_exact', side_effect=AssertionError('downloaded')):
+            self.assertIsNotNone(self.upstream())
+
+    def test_a_link_put_in_place_of_the_found_directory_is_not_read(self):
+        # The scan saw a directory; before it is read it becomes a link to a
+        # tree outside the assets directory that holds the right bytes.
+        import shutil
+        old_path, spec = self.earlier_then_next()
+        outside = Path(self.scratch.name)/'outside'
+        found = self.installer.earlier_deliveries(spec)
+        shutil.move(str(old_path), str(outside))
+        old_path.symlink_to(outside)
+        reports = []
+        with mock.patch.object(self.installer, 'earlier_deliveries', return_value=found), \
+                mock.patch.object(self.installer, '_populate_upstream_asset',
+                                  side_effect=InstallError('would download')) as download, \
+                self.assertRaises(InstallError):
+            self.upstream(reports)
+        download.assert_called_once()
+        self.assertTrue(any('could not supply' in line for line in reports), reports)
+        self.assertFalse(Path(self.installer.asset_destination(spec)).exists())
+
+    def test_what_is_not_an_earlier_delivery(self):
+        old_path, spec = self.earlier_then_next()
+        parent = old_path.parent
+        # A file of another size, a missing file, a link, another asset, an unversioned asset.
+        (old_path/'model.gguf').chmod(0o600)
+        (old_path/'model.gguf').write_bytes(b'short')
+        self.assertIsNone(self.installer.earlier_delivery(spec))
+        (old_path/'model.gguf').unlink()
+        self.assertIsNone(self.installer.earlier_delivery(spec))
+        (old_path/'model.gguf').symlink_to(self.supplied/'model.gguf')
+        self.assertIsNone(self.installer.earlier_delivery(spec))
+        moved = parent/'elsewhere'
+        (moved/'x').mkdir(parents=True)
+        (moved/'model.gguf').write_bytes((self.supplied/'model.gguf').read_bytes())
+        (parent/('other-asset--' + 'a'*64)).symlink_to(moved)
+        (parent/(self.asset_id + '--' + 'b'*64)).symlink_to(moved)
+        (parent/(self.asset_id + '--not-a-digest')).mkdir()
+        self.assertIsNone(self.installer.earlier_delivery(spec))
+        value = spec.to_mapping()
+        value.pop('storage')                      # flat storage: one directory, no deliveries
+        self.assertIsNone(self.installer.earlier_delivery(AssetSpec.from_mapping(value)))
+
     def test_versioned_storage_round_trips_and_refuses_unknown_layout(self):
         self.revised_model()
         value = self.spec.to_mapping()

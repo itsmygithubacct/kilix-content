@@ -1,0 +1,8 @@
+PP-OCRv6 small (PaddlePaddle/PP-OCRv6_small_det_onnx at 28fe5895 and
+PaddlePaddle/PP-OCRv6_small_rec_onnx at b8f84f0b on Hugging Face) is
+offered under Apache-2.0 by the "license: apache-2.0" line of each model
+card. Neither repository contains a LICENSE or NOTICE file, each card's
+licence badge links to a LICENSE file that does not exist, and no
+copyright holder is named. The Apache License 2.0 text shown with these
+models is Debian's copy (/usr/share/common-licenses/Apache-2.0). The
+training data and its terms are not stated.

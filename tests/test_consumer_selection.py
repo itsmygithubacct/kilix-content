@@ -63,8 +63,12 @@ CATALOG = ROOT / "src" / "kilix_content" / "catalog" / "plebian.json"
 # rc1's af7e848 with kilix-tui-utils main for 0.2.2 rc2.
 # b6321de preserves the shipped 61a514f ancestry and adds the reviewed QEMU
 # manager, launch-claim cleanup and authenticated early-exit cleanup.
-TUI_UTILS_REF = "b6321de94371029b40955e606d371fca83657d6f"
-AMP_REF = "eff203a74f6cc726e9c1211cfe6d0960077fc388"
+# 1a0b7d5 (RC9) adds on b6321de the rollout adapter's current Claude and
+# Codex rows, a Grok adapter and the kilix-tool-errors survey.
+# 3ccdd09 completes the cited-record adapter for OMP and Qwen sessions.
+# ae15cd9 adds shared inventory, Codex fork names and all transcript tiers.
+TUI_UTILS_REF = "ddfff2e85b156abcb14ae6d76c1ab7736ce5be24"
+AMP_REF = "a66a010cc55d306d7a95e3bdefd536056e06bbbe"
 AMP_BUILD = ("make", "all", "runtime-check", "ENCODEC=1")
 ENCODEC_CONVERTER_REF = "22290fb4a0587d5b7f937e345c99aa5d599c2282"
 ENCODEC_CONVERTERS = ("kilix-encodec-convert-24khz", "kilix-encodec-convert-48khz")
@@ -76,7 +80,7 @@ class ConsumerSelectionTests(unittest.TestCase):
     def test_claudex_selects_the_public_script_without_install_side_effects(self):
         app = verified_packaged_catalog().require("kilix-claudex")
         self.assertEqual(app.repository, "https://github.com/itsmygithubacct/kilix-claudex")
-        self.assertEqual(app.ref, "8346512bff4d2bf2e3574285a588361124a4a321")
+        self.assertEqual(app.ref, "1f9d3c9c5950589182250e5e0b3267b3e65843a4")
         self.assertEqual(app.binary, "claudex")
         self.assertEqual(app.build, ())
         self.assertEqual(app.kind, "app")

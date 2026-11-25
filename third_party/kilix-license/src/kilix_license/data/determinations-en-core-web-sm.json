@@ -1,0 +1,36 @@
+{
+  "schema": "kilix.license.en-core-web-sm-determination/v1",
+  "authority": {
+    "model": "en-core-web-sm-3.8.0",
+    "project": "explosion/spacy-models",
+    "wheel": "en_core_web_sm-3.8.0-py3-none-any.whl",
+    "wheel_bytes": 12806118,
+    "wheel_sha256": "1932429db727d4bff3deed6b34cfc05df17794f4a52eeb26cf8928f7c1a0fb85",
+    "source": "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+    "licence_sha256": "3933c176979b68bc6d0bcc902c7d6c130f1d127f476f17ba5cdba8d99cfd0012",
+    "sources_sha256": "20d9dfacd215112251f15341edd1a47b1f98bf393a212f10f194ffdc7ee98a90",
+    "scope": "The en_core_web_sm 3.8.0 wheel and its MIT licence. LICENSES_SOURCES is the upstream training-data statement, not a binding condition."
+  },
+  "records": [
+    {
+      "schema": "kilix.license.record/v1",
+      "id": "en-core-web-sm-3.8.0",
+      "licensor": "ExplosionAI GmbH",
+      "licence_ids": [
+        "MIT"
+      ],
+      "licence_text_id": "github.com/explosion/spacy-models/en_core_web_sm-3.8.0/LICENSE",
+      "text_sha256": "3933c176979b68bc6d0bcc902c7d6c130f1d127f476f17ba5cdba8d99cfd0012",
+      "decision_class": "affirmative",
+      "advisories": [],
+      "binding_conditions": [],
+      "components": [],
+      "statements": [
+        {
+          "id": "training-sources",
+          "text_sha256": "20d9dfacd215112251f15341edd1a47b1f98bf393a212f10f194ffdc7ee98a90"
+        }
+      ]
+    }
+  ]
+}
