@@ -140,6 +140,12 @@ pre-1.0.
   next run. It was reported as `size-mismatch` ("upstream size differs from
   the pin") when the stream closed before the pinned length. A Content-Length
   or body that is longer than the pin is still `size-mismatch`.
+- Select Kilix Amp `a66a010c` for 0.2.4. The player and playlist share one
+  window and move together from either title bar. They fit smaller displays
+  and restore the preferred size on larger ones. The playlist scrollbar
+  supports dragging, and selected tracks survive queue reorders, including
+  duplicate entries. Amp plays M4B, Matroska audio and WebM audio through
+  kilix-mpv and fixes shuffle and stop behavior in the shared playback session.
 - Catalogue Whisper large-v3 (`faster-whisper-large-v3`, Systran revision
   `edaa852e`) for Kilix Playalong lyrics that are not in English. Its provider
   is `kilix-playalong` and it is installed only after a yes. It cites its own
